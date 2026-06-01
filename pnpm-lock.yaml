@@ -21,6 +21,16 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/protocol:
+    dependencies:
+      '@tooldeck/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@types/json-schema':
+        specifier: ^7.0.15
+        version: 7.0.15
+
   packages/shared: {}
 
 packages:
@@ -299,6 +309,9 @@ packages:
     cpu: [arm64]
     os: [win32]
 
+  '@types/json-schema@7.0.15':
+    resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
+
   oxfmt@0.52.0:
     resolution: {integrity: sha512-nJlYM35F64zTDMecCNhoHNkf+D/eHv7xcjj9XDSj+bFAVtN93m7v8DQMdHd6nDG6Akf/kEYYHmDUBs2Dz27Sug==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -471,6 +484,8 @@ snapshots:
 
   '@turbo/windows-arm64@2.9.16':
     optional: true
+
+  '@types/json-schema@7.0.15': {}
 
   oxfmt@0.52.0:
     dependencies:

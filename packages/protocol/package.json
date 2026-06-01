@@ -1,0 +1,19 @@
+{
+  "name": "@tooldeck/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Toolbox Plugin Protocol types for Tooldeck.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tooldeck/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/json-schema": "^7.0.15"
+  }
+}
