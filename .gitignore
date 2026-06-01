@@ -1,0 +1,25 @@
+# IDE files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Node modules and dist files
+node_modules/
+dist/
+build/
+out/
+
+# Data files
+.data/
+*.sqlite
+*.sqlite-*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+#System files
+.DS_Store
+Thumbs.db
