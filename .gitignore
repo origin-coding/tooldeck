@@ -9,6 +9,7 @@ node_modules/
 dist/
 build/
 out/
+.pnpm-store/
 
 # Data files
 .data/
