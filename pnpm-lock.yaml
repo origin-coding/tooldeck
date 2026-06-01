@@ -31,6 +31,15 @@ importers:
         specifier: ^7.0.15
         version: 7.0.15
 
+  packages/sdk:
+    dependencies:
+      '@tooldeck/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@tooldeck/shared':
+        specifier: workspace:*
+        version: link:../shared
+
   packages/shared: {}
 
 packages:
