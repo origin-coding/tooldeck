@@ -7,7 +7,7 @@ export default defineConfig({
   semi: true,
   singleQuote: false,
   trailingComma: "all",
-  ignorePatterns: ["packages/api-types/src/generated/**"],
+  ignorePatterns: [],
   sortImports: true,
   sortTailwindcss: true,
 });
