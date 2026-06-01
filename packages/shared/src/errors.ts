@@ -28,3 +28,25 @@ export class TooldeckError extends Error {
     this.details = options.details;
   }
 }
+
+export function toTooldeckError(error: unknown): TooldeckError {
+  if (error instanceof TooldeckError) {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return new TooldeckError({
+      code: "ERR_UNKNOWN",
+      message: error.message,
+      cause: error,
+    });
+  }
+
+  return new TooldeckError({
+    code: "ERR_UNKNOWN",
+    message: String(error),
+    details: {
+      thrown: String(error),
+    },
+  });
+}
