@@ -10,6 +10,7 @@ dist/
 build/
 out/
 .pnpm-store/
+.turbo/
 
 # Data files
 .data/

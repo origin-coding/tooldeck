@@ -48,7 +48,9 @@ export class CommandRegistry implements SdkCommandRegistry {
 
     return {
       dispose: () => {
-        this.commands.delete(commandId);
+        if (this.commands.get(commandId) === command) {
+          this.commands.delete(commandId);
+        }
       },
     };
   }
