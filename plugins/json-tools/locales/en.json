@@ -1,0 +1,8 @@
+{
+  "plugin.name": "JSON Tools",
+  "plugin.description": "Tools for formatting JSON.",
+  "commands.format.title": "Format JSON",
+  "commands.format.description": "Format JSON text with configurable indentation.",
+  "schema.format.text.title": "JSON Text",
+  "schema.format.indent.title": "Indent Size"
+}

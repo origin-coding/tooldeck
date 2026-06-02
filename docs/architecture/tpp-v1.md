@@ -359,24 +359,24 @@ interface CommandContribution {
   "inputSchema": {
     "type": "object",
     "required": ["text"],
+    "additionalProperties": false,
     "properties": {
       "text": {
         "type": "string",
         "title": "JSON Text",
         "description": "Input JSON text.",
+        "minLength": 1,
         "x-i18n": {
           "title": "schema.format.text.title",
           "description": "schema.format.text.description"
-        },
-        "x-ui": {
-          "widget": "textarea",
-          "language": "json"
         }
       },
       "indent": {
         "type": "integer",
         "title": "Indent Size",
         "default": 2,
+        "minimum": 0,
+        "maximum": 8,
         "enum": [2, 4],
         "x-i18n": {
           "title": "schema.format.indent.title"
@@ -386,6 +386,10 @@ interface CommandContribution {
   }
 }
 ```
+
+`inputSchema` 语义应尽量保持 JSON Schema 标准兼容。必填、默认值、范围、字符串长度、枚举和额外字段控制分别使用 `required`、`default`、`minimum` / `maximum`、`minLength` / `maxLength`、`enum`、`additionalProperties` 等标准字段。
+
+MVP 实现备忘：当前只实现标准 JSON Schema 语义和 `x-i18n` 翻译 key。`x-ui`、`x-cli` 暂时不作为 v1 MVP 的实现目标，后续只作为宿主展示和交互提示扩展，不改变数据校验语义。
 
 ### 6.2 Document
 

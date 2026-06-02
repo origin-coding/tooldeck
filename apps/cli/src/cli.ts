@@ -2,9 +2,15 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 
-import { CommandRegistry, ManifestIndex, PluginManager } from "@tooldeck/core";
+import {
+  CommandRegistry,
+  ManifestIndex,
+  parseCommandInputFromCliArgs,
+  PluginManager,
+} from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { CommandResult } from "@tooldeck/protocol";
+import type { JsonObject } from "@tooldeck/shared";
 import { CommandRunRepository, openTooldeckDatabase } from "@tooldeck/storage";
 import { defineCommand } from "citty";
 import type { CommandDef } from "citty";
@@ -20,6 +26,8 @@ export interface RunCliCommandOptions {
   commandId: string;
   pluginsRoot: string;
   storagePath: string;
+  input?: JsonObject;
+  rawArgs?: string[];
 }
 
 export interface CreatePluginManagerOptions {
@@ -69,6 +77,7 @@ export async function runCliCommandWithStorage(
   const startedAt = performance.now();
   let pluginHost: NodePluginHost | undefined;
   let pluginId: string | undefined;
+  let input = options.input;
 
   try {
     const created = await createPluginManager({
@@ -80,8 +89,16 @@ export async function runCliCommandWithStorage(
 
     assertPluginsAvailable(created, options.pluginsRoot);
 
+    input ??= parseCommandInputFromCliArgs({
+      rawArgs: options.rawArgs ?? [],
+      commandId: options.commandId,
+      inputSchema: created.manifestIndex.getCommand(options.commandId)?.definition.inputSchema,
+      ignoredOptions: ["plugins", "storage"],
+    });
+
     const result = await created.pluginManager.runCommand({
       commandId: options.commandId,
+      input,
     });
 
     commandRuns.create({
@@ -89,6 +106,7 @@ export async function runCliCommandWithStorage(
       pluginId,
       source: "cli",
       status: result.status,
+      input,
       output: result,
       durationMs: elapsedMilliseconds(startedAt),
     });
@@ -100,6 +118,7 @@ export async function runCliCommandWithStorage(
       pluginId,
       source: "cli",
       status: "error",
+      input,
       error: serializeError(error),
       durationMs: elapsedMilliseconds(startedAt),
     });
@@ -151,13 +170,14 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
             valueHint: "path",
           },
         },
-        async run({ args }) {
+        async run({ args, rawArgs }) {
           const pluginsRoot = path.resolve(options.workspaceRoot, args.plugins);
           const storagePath = path.resolve(options.workspaceRoot, args.storage);
           const result = await runCliCommandWithStorage({
             commandId: args.commandId,
             pluginsRoot,
             storagePath,
+            rawArgs,
           });
 
           printTextBlocks(result);

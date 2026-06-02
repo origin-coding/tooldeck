@@ -1,0 +1,8 @@
+{
+  "plugin.name": "JSON 工具",
+  "plugin.description": "用于格式化 JSON 的工具。",
+  "commands.format.title": "格式化 JSON",
+  "commands.format.description": "使用可配置缩进格式化 JSON 文本。",
+  "schema.format.text.title": "JSON 文本",
+  "schema.format.indent.title": "缩进大小"
+}

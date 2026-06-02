@@ -1,0 +1,63 @@
+{
+  "$schema": "../../packages/protocol/schema/manifest-v1.schema.json",
+  "schemaVersion": "1.0",
+  "id": "dev.tooldeck.json-tools",
+  "name": {
+    "key": "plugin.name",
+    "default": "JSON Tools"
+  },
+  "description": {
+    "key": "plugin.description",
+    "default": "Tools for formatting JSON."
+  },
+  "version": "0.0.0",
+  "runtime": {
+    "kind": "node",
+    "entry": "./dist/index.js"
+  },
+  "defaultLocale": "en",
+  "locales": {
+    "en": "./locales/en.json",
+    "zh-CN": "./locales/zh-CN.json"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "json.format",
+        "title": {
+          "key": "commands.format.title",
+          "default": "Format JSON"
+        },
+        "description": {
+          "key": "commands.format.description",
+          "default": "Format JSON text with configurable indentation."
+        },
+        "inputSchema": {
+          "type": "object",
+          "required": ["text"],
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "title": "JSON Text",
+              "minLength": 1,
+              "x-i18n": {
+                "title": "schema.format.text.title"
+              }
+            },
+            "indent": {
+              "type": "integer",
+              "title": "Indent Size",
+              "default": 2,
+              "minimum": 0,
+              "maximum": 8,
+              "x-i18n": {
+                "title": "schema.format.indent.title"
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

@@ -38,9 +38,15 @@ importers:
       '@tooldeck/host-node':
         specifier: workspace:*
         version: link:../../packages/host-node
+      '@tooldeck/json-tools':
+        specifier: workspace:*
+        version: link:../../plugins/json-tools
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@tooldeck/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@tooldeck/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -121,6 +127,12 @@ importers:
         version: 25.9.1
 
   plugins/hello-world:
+    dependencies:
+      '@tooldeck/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+
+  plugins/json-tools:
     dependencies:
       '@tooldeck/sdk':
         specifier: workspace:*
