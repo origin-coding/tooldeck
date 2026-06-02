@@ -1,8 +1,11 @@
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
+import { performance } from "node:perf_hooks";
 
 import { CommandRegistry, ManifestIndex, PluginManager } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { CommandResult } from "@tooldeck/protocol";
+import { CommandRunRepository, openTooldeckDatabase } from "@tooldeck/storage";
 import { defineCommand } from "citty";
 import type { CommandDef } from "citty";
 import { consola } from "consola";
@@ -13,6 +16,12 @@ export interface CreateCliCommandOptions {
   workspaceRoot: string;
 }
 
+export interface RunCliCommandOptions {
+  commandId: string;
+  pluginsRoot: string;
+  storagePath: string;
+}
+
 export interface CreatePluginManagerOptions {
   pluginsRoot: string;
 }
@@ -20,6 +29,7 @@ export interface CreatePluginManagerOptions {
 export interface CreatedPluginManager {
   pluginManager: PluginManager;
   pluginHost: NodePluginHost;
+  manifestIndex: ManifestIndex;
   pluginCount: number;
   commandCount: number;
 }
@@ -38,6 +48,7 @@ export async function createPluginManager(
 
   return {
     pluginHost,
+    manifestIndex,
     pluginCount: scanResult.pluginCount,
     commandCount: scanResult.commandCount,
     pluginManager: new PluginManager({
@@ -46,6 +57,58 @@ export async function createPluginManager(
       pluginHost,
     }),
   };
+}
+
+export async function runCliCommandWithStorage(
+  options: RunCliCommandOptions,
+): Promise<CommandResult> {
+  await mkdir(path.dirname(options.storagePath), { recursive: true });
+
+  const database = openTooldeckDatabase({ path: options.storagePath });
+  const commandRuns = new CommandRunRepository(database.db);
+  const startedAt = performance.now();
+  let pluginHost: NodePluginHost | undefined;
+  let pluginId: string | undefined;
+
+  try {
+    const created = await createPluginManager({
+      pluginsRoot: options.pluginsRoot,
+    });
+
+    pluginHost = created.pluginHost;
+    pluginId = created.manifestIndex.getCommandOwner(options.commandId);
+
+    assertPluginsAvailable(created, options.pluginsRoot);
+
+    const result = await created.pluginManager.runCommand({
+      commandId: options.commandId,
+    });
+
+    commandRuns.create({
+      commandId: options.commandId,
+      pluginId,
+      source: "cli",
+      status: result.status,
+      output: result,
+      durationMs: elapsedMilliseconds(startedAt),
+    });
+
+    return result;
+  } catch (error) {
+    commandRuns.create({
+      commandId: options.commandId,
+      pluginId,
+      source: "cli",
+      status: "error",
+      error: serializeError(error),
+      durationMs: elapsedMilliseconds(startedAt),
+    });
+
+    throw error;
+  } finally {
+    await pluginHost?.disposeAll();
+    database.close();
+  }
 }
 
 export function printTextBlocks(result: CommandResult): void {
@@ -81,33 +144,53 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
             description: "Plugin directory to scan.",
             valueHint: "path",
           },
+          storage: {
+            type: "string",
+            default: "./.data/tooldeck.sqlite",
+            description: "SQLite database path for command history.",
+            valueHint: "path",
+          },
         },
         async run({ args }) {
           const pluginsRoot = path.resolve(options.workspaceRoot, args.plugins);
-          const { pluginManager, pluginHost, pluginCount, commandCount } =
-            await createPluginManager({
-              pluginsRoot,
-            });
+          const storagePath = path.resolve(options.workspaceRoot, args.storage);
+          const result = await runCliCommandWithStorage({
+            commandId: args.commandId,
+            pluginsRoot,
+            storagePath,
+          });
 
-          try {
-            if (pluginCount === 0) {
-              throw new Error(`No plugins found in directory: ${pluginsRoot}`);
-            }
-
-            if (commandCount === 0) {
-              throw new Error(`No commands found in plugin directory: ${pluginsRoot}`);
-            }
-
-            const result = await pluginManager.runCommand({
-              commandId: args.commandId,
-            });
-
-            printTextBlocks(result);
-          } finally {
-            await pluginHost.disposeAll();
-          }
+          printTextBlocks(result);
         },
       }),
     },
   });
+}
+
+function elapsedMilliseconds(startedAt: number): number {
+  return Math.max(0, Math.round(performance.now() - startedAt));
+}
+
+function assertPluginsAvailable(created: CreatedPluginManager, pluginsRoot: string): void {
+  if (created.pluginCount === 0) {
+    throw new Error(`No plugins found in directory: ${pluginsRoot}`);
+  }
+
+  if (created.commandCount === 0) {
+    throw new Error(`No commands found in plugin directory: ${pluginsRoot}`);
+  }
+}
+
+function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  return {
+    message: String(error),
+  };
 }

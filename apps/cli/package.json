@@ -21,6 +21,7 @@
     "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/host-node": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
+    "@tooldeck/storage": "workspace:*",
     "citty": "^0.2.2",
     "consola": "^3.4.2"
   },
