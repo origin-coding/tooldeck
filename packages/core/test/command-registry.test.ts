@@ -19,9 +19,9 @@ describe("CommandRegistry", () => {
   it("runs a registered command", async () => {
     const registry = new CommandRegistry();
 
-    registry.register<{ text: string }>("json.echo", (input) => ({
+    registry.register("json.echo", (input) => ({
       status: "success",
-      blocks: [{ type: "text", text: input.text }],
+      blocks: [{ type: "text", text: String(input.text) }],
     }));
 
     await expect(

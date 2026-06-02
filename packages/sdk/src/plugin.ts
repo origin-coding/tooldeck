@@ -1,14 +1,20 @@
 import type { MaybePromise } from "@tooldeck/shared";
 
+import type { CommandInput, CommandInputMap } from "./commands";
 import type { PluginContextV1 } from "./context";
 
-export interface ToolboxPluginV1 {
-  activate(ctx: PluginContextV1): MaybePromise<void>;
-  deactivate?(ctx: PluginContextV1): MaybePromise<void>;
+export interface ToolboxPluginV1<
+  TCommandInputs extends CommandInputMap = Record<string, CommandInput>,
+> {
+  activate(ctx: PluginContextV1<TCommandInputs>): MaybePromise<void>;
+  deactivate?(ctx: PluginContextV1<TCommandInputs>): MaybePromise<void>;
 }
 
-export type ToolboxPlugin = ToolboxPluginV1;
+export type ToolboxPlugin<TCommandInputs extends CommandInputMap = Record<string, CommandInput>> =
+  ToolboxPluginV1<TCommandInputs>;
 
-export function definePlugin(plugin: ToolboxPluginV1): ToolboxPluginV1 {
+export function definePlugin<TCommandInputs extends CommandInputMap = Record<string, CommandInput>>(
+  plugin: ToolboxPluginV1<TCommandInputs>,
+): ToolboxPluginV1<TCommandInputs> {
   return plugin;
 }

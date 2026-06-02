@@ -391,6 +391,19 @@ interface CommandContribution {
 
 MVP 实现备忘：当前只实现标准 JSON Schema 语义和 `x-i18n` 翻译 key。`x-ui`、`x-cli` 暂时不作为 v1 MVP 的实现目标，后续只作为宿主展示和交互提示扩展，不改变数据校验语义。
 
+插件 SDK 支持 command input map。Manifest 的 `inputSchema` 是运行时解析和校验的来源；插件代码可以用 command map 给 `ctx.commands.register()` 提供编译期类型推导。后续可由 manifest 自动生成 command map，避免手写类型和 schema 不一致。
+
+```ts
+interface JsonFormatInput {
+  text: string;
+  indent?: number;
+}
+
+interface PluginCommandInputs {
+  "json.format": JsonFormatInput;
+}
+```
+
 ### 6.2 Document
 
 Document 表示 Markdown / HTML / Text 文档资源。CheatSheet 属于 Document。
@@ -542,7 +555,16 @@ export function definePlugin(plugin: ToolboxPlugin): ToolboxPlugin {
 ```ts
 import { definePlugin } from "@tooldeck/sdk";
 
-export default definePlugin({
+interface JsonFormatInput {
+  text: string;
+  indent?: number;
+}
+
+interface PluginCommandInputs {
+  "json.format": JsonFormatInput;
+}
+
+export default definePlugin<PluginCommandInputs>({
   activate(ctx) {
     ctx.subscriptions.push(
       ctx.commands.register("json.format", async (input) => {
@@ -552,8 +574,7 @@ export default definePlugin({
           status: "success",
           blocks: [
             {
-              type: "code",
-              language: "json",
+              type: "text",
               text: JSON.stringify(value, null, input.indent ?? 2),
             },
           ],

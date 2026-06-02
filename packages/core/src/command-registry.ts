@@ -28,10 +28,10 @@ export type CommandRunResult =
       result: CommandResult;
     };
 
-export class CommandRegistry implements SdkCommandRegistry {
+export class CommandRegistry implements SdkCommandRegistry<Record<string, CommandInput>> {
   private readonly commands = new Map<string, RegisteredCommand>();
 
-  register<TInput = CommandInput>(commandId: string, handler: CommandHandler<TInput>): Disposable {
+  register(commandId: string, handler: CommandHandler<CommandInput>): Disposable {
     if (this.commands.has(commandId)) {
       throw new TooldeckError({
         code: "ERR_ALREADY_EXISTS",
@@ -41,7 +41,7 @@ export class CommandRegistry implements SdkCommandRegistry {
 
     const command: RegisteredCommand = {
       id: commandId,
-      handler: handler as CommandHandler,
+      handler,
     };
 
     this.commands.set(commandId, command);

@@ -56,9 +56,9 @@ describe("PluginManager", () => {
     addManifest(manifestIndex, createManifest("dev.example.json-tools", ["json.format"]));
 
     const pluginHost = new TestPluginHost(() => {
-      commandRegistry.register<{ text: string }>("json.format", (input) => ({
+      commandRegistry.register("json.format", (input) => ({
         status: "success",
-        blocks: [{ type: "text", text: input.text }],
+        blocks: [{ type: "text", text: String(input.text) }],
       }));
     });
 

@@ -1,14 +1,18 @@
 import { definePlugin } from "@tooldeck/sdk";
 
 interface JsonFormatInput {
-  text?: unknown;
-  indent?: unknown;
+  text: string;
+  indent?: number;
 }
 
-export default definePlugin({
+interface PluginCommandInputs {
+  "json.format": JsonFormatInput;
+}
+
+export default definePlugin<PluginCommandInputs>({
   activate(ctx) {
     ctx.subscriptions.push(
-      ctx.commands.register<JsonFormatInput>("json.format", async (input) => {
+      ctx.commands.register("json.format", async (input) => {
         if (typeof input.text !== "string") {
           return {
             status: "error",
@@ -60,12 +64,12 @@ export default definePlugin({
   },
 });
 
-function normalizeIndent(value: unknown): number {
+function normalizeIndent(value: number | undefined): number {
   if (value === undefined) {
     return 2;
   }
 
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 8) {
+  if (!Number.isInteger(value) || value < 0 || value > 8) {
     return 2;
   }
 
