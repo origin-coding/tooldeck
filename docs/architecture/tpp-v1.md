@@ -393,6 +393,8 @@ MVP 实现备忘：当前只实现标准 JSON Schema 语义和 `x-i18n` 翻译 k
 
 插件 SDK 支持 command input map。Manifest 的 `inputSchema` 是运行时解析和校验的来源；插件代码可以用 command map 给 `ctx.commands.register()` 提供编译期类型推导。后续可由 manifest 自动生成 command map，避免手写类型和 schema 不一致。
 
+MVP 中先用 `@tooldeck/plugin-tools` 的类型生成工具从插件 `manifest.json` 生成 `src/generated/commands.ts`，插件 `build` 和 `typecheck` 前应先运行类型生成。工具源码使用 TypeScript，包内 `bin` 指向 build 后的 JavaScript 入口。
+
 ```ts
 interface JsonFormatInput {
   text: string;

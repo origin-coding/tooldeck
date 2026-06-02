@@ -1,0 +1,23 @@
+{
+  "name": "@tooldeck/plugin-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Development tools for Tooldeck plugins.",
+  "bin": {
+    "tooldeck-plugin-types": "./dist/generate-command-types.js"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tooldeck/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
+  }
+}

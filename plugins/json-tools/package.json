@@ -8,10 +8,12 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "generate:types": "pnpm --dir ../.. --filter @tooldeck/plugin-tools build && node ../../packages/plugin-tools/dist/generate-command-types.js manifest.json src/generated/commands.ts",
+    "build": "pnpm generate:types && tsc -p tsconfig.json",
+    "typecheck": "pnpm generate:types && tsc --noEmit"
   },
   "dependencies": {
+    "@tooldeck/plugin-tools": "workspace:*",
     "@tooldeck/sdk": "workspace:*"
   }
 }

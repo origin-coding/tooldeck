@@ -1,13 +1,6 @@
 import { definePlugin } from "@tooldeck/sdk";
 
-interface JsonFormatInput {
-  text: string;
-  indent?: number;
-}
-
-interface PluginCommandInputs {
-  "json.format": JsonFormatInput;
-}
+import type { PluginCommandInputs } from "./generated/commands";
 
 export default definePlugin<PluginCommandInputs>({
   activate(ctx) {

@@ -92,6 +92,16 @@ importers:
         specifier: ^25.9.1
         version: 25.9.1
 
+  packages/plugin-tools:
+    dependencies:
+      '@tooldeck/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+
   packages/protocol:
     dependencies:
       '@tooldeck/shared':
@@ -134,6 +144,9 @@ importers:
 
   plugins/json-tools:
     dependencies:
+      '@tooldeck/plugin-tools':
+        specifier: workspace:*
+        version: link:../../packages/plugin-tools
       '@tooldeck/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
