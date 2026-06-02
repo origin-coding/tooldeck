@@ -1,37 +1,25 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { CommandRegistry, ManifestIndex, PluginManager } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
-import type { PluginManifest } from "@tooldeck/protocol";
 import { defineCommand, runMain } from "citty";
 import { consola } from "consola";
+import { scanPluginDirectory } from "./plugin-scanner";
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
-async function readManifest(manifestPath: string): Promise<PluginManifest> {
-  const text = await readFile(manifestPath, "utf8");
-
-  return JSON.parse(text) as PluginManifest;
-}
-
-async function createPluginManager(): Promise<{
+async function createPluginManager(options: { pluginsRoot: string }): Promise<{
   pluginManager: PluginManager;
   pluginHost: NodePluginHost;
 }> {
-  const manifestPath = path.join(workspaceRoot, "plugins/hello-world/manifest.json");
-  const manifest = await readManifest(manifestPath);
-  const entryPath = path.resolve(path.dirname(manifestPath), manifest.runtime.entry);
-
   const commandRegistry = new CommandRegistry();
   const pluginHost = new NodePluginHost({ commandRegistry });
   const manifestIndex = new ManifestIndex();
 
-  manifestIndex.addPluginManifest({
-    manifest,
-    manifestPath,
-    entryPath,
+  await scanPluginDirectory({
+    pluginsRoot: options.pluginsRoot,
+    manifestIndex,
   });
 
   return {
@@ -70,9 +58,18 @@ const mainCommand = defineCommand({
           description: "Command id to run.",
           valueHint: "command",
         },
+        plugins: {
+          type: "string",
+          default: "./plugins",
+          description: "Plugin directory to scan.",
+          valueHint: "path",
+        },
       },
       async run({ args }) {
-        const { pluginManager, pluginHost } = await createPluginManager();
+        const pluginsRoot = path.resolve(workspaceRoot, args.plugins);
+        const { pluginManager, pluginHost } = await createPluginManager({
+          pluginsRoot,
+        });
 
         try {
           const result = await pluginManager.runCommand({
