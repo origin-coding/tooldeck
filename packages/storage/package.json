@@ -1,0 +1,21 @@
+{
+  "name": "@tooldeck/storage",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SQLite storage layer for Tooldeck.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tooldeck/protocol": "workspace:*",
+    "drizzle-orm": "1.0.0-rc.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
+  }
+}
