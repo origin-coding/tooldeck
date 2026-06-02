@@ -82,6 +82,25 @@ importers:
         specifier: workspace:*
         version: link:../../packages/sdk
 
+  tests/integration:
+    dependencies:
+      '@tooldeck/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@tooldeck/hello-world':
+        specifier: workspace:*
+        version: link:../../plugins/hello-world
+      '@tooldeck/host-node':
+        specifier: workspace:*
+        version: link:../../packages/host-node
+      '@tooldeck/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+
 packages:
 
   '@emnapi/core@1.10.0':
