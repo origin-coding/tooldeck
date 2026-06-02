@@ -27,7 +27,11 @@ describe("ManifestIndex", () => {
     const index = new ManifestIndex();
     const manifest = createManifest("dev.example.json-tools", ["json.format", "json.validate"]);
 
-    index.addPluginManifest(manifest, "plugins/json-tools/manifest.json");
+    index.addPluginManifest({
+      manifest,
+      manifestPath: "plugins/json-tools/manifest.json",
+      entryPath: "plugins/json-tools/dist/index.js",
+    });
 
     expect(index.hasPlugin("dev.example.json-tools")).toBe(true);
     expect(index.listPlugins()).toHaveLength(1);
@@ -38,6 +42,7 @@ describe("ManifestIndex", () => {
       id: "json.format",
       pluginId: "dev.example.json-tools",
       manifestPath: "plugins/json-tools/manifest.json",
+      entryPath: "plugins/json-tools/dist/index.js",
     });
   });
 
@@ -45,7 +50,11 @@ describe("ManifestIndex", () => {
     const index = new ManifestIndex();
     const manifest = createManifest("dev.example.empty");
 
-    index.addPluginManifest(manifest);
+    index.addPluginManifest({
+      manifest,
+      manifestPath: "plugins/empty/manifest.json",
+      entryPath: "plugins/empty/dist/index.js",
+    });
 
     expect(index.hasPlugin("dev.example.empty")).toBe(true);
     expect(index.listCommands()).toHaveLength(0);
@@ -55,20 +64,36 @@ describe("ManifestIndex", () => {
     const index = new ManifestIndex();
     const manifest = createManifest("dev.example.json-tools", ["json.format"]);
 
-    index.addPluginManifest(manifest);
+    index.addPluginManifest({
+      manifest,
+      manifestPath: "plugins/json-tools/manifest.json",
+      entryPath: "plugins/json-tools/dist/index.js",
+    });
 
-    expect(() => index.addPluginManifest(createManifest("dev.example.json-tools"))).toThrow(
-      "Plugin manifest is already indexed: dev.example.json-tools",
-    );
+    expect(() =>
+      index.addPluginManifest({
+        manifest: createManifest("dev.example.json-tools"),
+        manifestPath: "plugins/json-tools-copy/manifest.json",
+        entryPath: "plugins/json-tools-copy/dist/index.js",
+      }),
+    ).toThrow("Plugin manifest is already indexed: dev.example.json-tools");
   });
 
   it("throws when indexing duplicate command ids across plugins", () => {
     const index = new ManifestIndex();
 
-    index.addPluginManifest(createManifest("dev.example.json-tools", ["json.format"]));
+    index.addPluginManifest({
+      manifest: createManifest("dev.example.json-tools", ["json.format"]),
+      manifestPath: "plugins/json-tools/manifest.json",
+      entryPath: "plugins/json-tools/dist/index.js",
+    });
 
     expect(() =>
-      index.addPluginManifest(createManifest("dev.example.other-json-tools", ["json.format"])),
+      index.addPluginManifest({
+        manifest: createManifest("dev.example.other-json-tools", ["json.format"]),
+        manifestPath: "plugins/other-json-tools/manifest.json",
+        entryPath: "plugins/other-json-tools/dist/index.js",
+      }),
     ).toThrow("Command id conflict: json.format");
   });
 });

@@ -4,21 +4,31 @@ import { TooldeckError } from "@tooldeck/shared";
 export interface IndexedPlugin {
   id: string;
   manifest: PluginManifest;
-  manifestPath?: string;
+  manifestPath: string;
+  entryPath: string;
 }
 
 export interface IndexedCommand {
   id: string;
   pluginId: string;
   definition: CommandDefinition;
-  manifestPath?: string;
+  manifestPath: string;
+  entryPath: string;
+}
+
+export interface AddPluginManifestOptions {
+  manifest: PluginManifest;
+  manifestPath: string;
+  entryPath: string;
 }
 
 export class ManifestIndex {
   private readonly plugins = new Map<string, IndexedPlugin>();
   private readonly commands = new Map<string, IndexedCommand>();
 
-  addPluginManifest(manifest: PluginManifest, manifestPath?: string): void {
+  addPluginManifest(options: AddPluginManifestOptions): void {
+    const { manifest, manifestPath, entryPath } = options;
+
     if (this.plugins.has(manifest.id)) {
       throw new TooldeckError({
         code: "ERR_ALREADY_EXISTS",
@@ -48,6 +58,7 @@ export class ManifestIndex {
       id: manifest.id,
       manifest,
       manifestPath,
+      entryPath,
     });
 
     for (const command of commands) {
@@ -56,6 +67,7 @@ export class ManifestIndex {
         pluginId: manifest.id,
         definition: command,
         manifestPath,
+        entryPath,
       });
     }
   }
