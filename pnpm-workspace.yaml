@@ -3,3 +3,5 @@ packages:
   - "packages/*"
   - "plugins/*"
   - "tests/*"
+allowBuilds:
+  esbuild: true
