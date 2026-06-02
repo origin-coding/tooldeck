@@ -1,0 +1,6 @@
+{
+  "plugin.name": "Hello World",
+  "plugin.description": "用于测试命令激活的最小 Tooldeck 插件。",
+  "commands.helloWorld.title": "Hello World",
+  "commands.helloWorld.description": "返回一条友好的问候。"
+}

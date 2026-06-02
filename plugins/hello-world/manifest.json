@@ -1,0 +1,38 @@
+{
+  "$schema": "../../packages/protocol/schema/manifest-v1.schema.json",
+  "schemaVersion": "1.0",
+  "id": "dev.tooldeck.hello-world",
+  "name": {
+    "key": "plugin.name",
+    "default": "Hello World"
+  },
+  "description": {
+    "key": "plugin.description",
+    "default": "A minimal Tooldeck plugin for testing command activation."
+  },
+  "version": "0.0.0",
+  "runtime": {
+    "kind": "node",
+    "entry": "./dist/index.js"
+  },
+  "defaultLocale": "en",
+  "locales": {
+    "en": "./locales/en.json",
+    "zh-CN": "./locales/zh-CN.json"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "hello.world",
+        "title": {
+          "key": "commands.helloWorld.title",
+          "default": "Hello World"
+        },
+        "description": {
+          "key": "commands.helloWorld.description",
+          "default": "Return a friendly greeting."
+        }
+      }
+    ]
+  }
+}

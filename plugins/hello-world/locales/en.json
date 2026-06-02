@@ -1,0 +1,6 @@
+{
+  "plugin.name": "Hello World",
+  "plugin.description": "A minimal Tooldeck plugin for testing command activation.",
+  "commands.helloWorld.title": "Hello World",
+  "commands.helloWorld.description": "Return a friendly greeting."
+}

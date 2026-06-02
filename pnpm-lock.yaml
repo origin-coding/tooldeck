@@ -76,6 +76,12 @@ importers:
 
   packages/shared: {}
 
+  plugins/hello-world:
+    dependencies:
+      '@tooldeck/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+
 packages:
 
   '@emnapi/core@1.10.0':

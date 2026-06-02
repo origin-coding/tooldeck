@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema",
+  "$id": "https://tooldeck.dev/schemas/manifest-v1.schema.json",
+  "title": "Tooldeck Plugin Manifest v1",
+  "description": "Manifest schema for Tooldeck Plugin Protocol v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "name", "version", "runtime"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference used by editors."
+    },
+    "schemaVersion": {
+      "const": "1.0",
+      "description": "Tooldeck Plugin Protocol manifest version."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "description": "Globally unique plugin id. Use lowercase ASCII dot-separated segments. Each segment may contain lowercase letters, digits, and hyphens."
+    },
+    "name": {
+      "$ref": "#/definitions/localizedString"
+    },
+    "description": {
+      "$ref": "#/definitions/localizedString"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Plugin version."
+    },
+    "runtime": {
+      "$ref": "#/definitions/runtime"
+    },
+    "defaultLocale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "locales": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "contributes": {
+      "$ref": "#/definitions/contributes"
+    }
+  },
+  "definitions": {
+    "localizedString": {
+      "description": "Display text, either plain or localized by key.",
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["key", "default"],
+          "properties": {
+            "key": {
+              "type": "string",
+              "minLength": 1
+            },
+            "default": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "entry"],
+      "properties": {
+        "kind": {
+          "const": "node"
+        },
+        "entry": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Plugin runtime entry path, relative to the manifest file."
+        }
+      }
+    },
+    "contributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/command"
+          }
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+          "description": "Globally unique command id. Use lowercase ASCII dot-separated segments. Each segment may contain lowercase letters, digits, and hyphens."
+        },
+        "title": {
+          "$ref": "#/definitions/localizedString"
+        },
+        "description": {
+          "$ref": "#/definitions/localizedString"
+        },
+        "inputSchema": {
+          "$ref": "#/definitions/tooldeckJsonSchema"
+        }
+      }
+    },
+    "tooldeckJsonSchema": {
+      "allOf": [
+        {
+          "$ref": "https://json-schema.org/draft-07/schema"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x-i18n": {
+              "$ref": "#/definitions/jsonSchemaI18n"
+            }
+          }
+        }
+      ]
+    },
+    "jsonSchemaI18n": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

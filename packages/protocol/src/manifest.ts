@@ -2,6 +2,7 @@ import type { CommandDefinitionV1 } from "./command";
 import type { LocaleCode, LocaleResourceMap, LocalizedString } from "./i18n";
 
 export interface PluginManifestV1 {
+  $schema?: string;
   schemaVersion: "1.0";
   id: string;
   name: LocalizedString;
