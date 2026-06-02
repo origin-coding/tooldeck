@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 
 import { CommandRegistry } from "@tooldeck/core";
 import { describe, expect, it } from "vitest";
+
 import { NodePluginHost } from "../src";
 
 function createHost(): NodePluginHost {

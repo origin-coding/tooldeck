@@ -6,6 +6,7 @@ import type { CommandResult } from "@tooldeck/protocol";
 import { defineCommand } from "citty";
 import type { CommandDef } from "citty";
 import { consola } from "consola";
+
 import { scanPluginDirectory } from "./plugin-scanner";
 
 export interface CreateCliCommandOptions {
@@ -83,11 +84,10 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
         },
         async run({ args }) {
           const pluginsRoot = path.resolve(options.workspaceRoot, args.plugins);
-          const { pluginManager, pluginHost, pluginCount, commandCount } = await createPluginManager(
-            {
+          const { pluginManager, pluginHost, pluginCount, commandCount } =
+            await createPluginManager({
               pluginsRoot,
-            },
-          );
+            });
 
           try {
             if (pluginCount === 0) {

@@ -1,6 +1,7 @@
 import type { CommandResult } from "@tooldeck/protocol";
 import type { CommandInput } from "@tooldeck/sdk";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
+
 import type { CommandRegistry, CommandRunResult } from "./command-registry";
 import type { ManifestIndex } from "./manifest-index";
 

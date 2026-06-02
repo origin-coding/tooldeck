@@ -2,6 +2,7 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
+
 import { createPluginManager } from "../src/cli";
 
 describe("CLI command support", () => {

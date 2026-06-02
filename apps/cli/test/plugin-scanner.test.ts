@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { ManifestIndex } from "@tooldeck/core";
 import { describe, expect, it } from "vitest";
+
 import { scanPluginDirectory } from "../src/plugin-scanner";
 
 describe("scanPluginDirectory", () => {

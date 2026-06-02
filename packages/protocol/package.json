@@ -2,8 +2,8 @@
   "name": "@tooldeck/protocol",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
   "description": "Toolbox Plugin Protocol types for Tooldeck.",
+  "type": "module",
   "exports": {
     ".": "./src/index.ts",
     "./schema/manifest-v1.schema.json": "./schema/manifest-v1.schema.json"

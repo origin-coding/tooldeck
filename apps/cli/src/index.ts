@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { runMain } from "citty";
 import { consola } from "consola";
+
 import { createCliCommand } from "./cli";
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
