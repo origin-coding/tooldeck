@@ -86,6 +86,127 @@ describe("PluginManager", () => {
     ]);
   });
 
+  it("normalizes command input from the contributed command schema", async () => {
+    const manifestIndex = new ManifestIndex();
+    const commandRegistry = new CommandRegistry();
+
+    manifestIndex.addPluginManifest({
+      manifest: {
+        schemaVersion: "1.0",
+        id: "dev.example.json-tools",
+        name: "JSON Tools",
+        version: "0.0.0",
+        runtime: {
+          kind: "node",
+          entry: "./dist/index.js",
+        },
+        contributes: {
+          commands: [
+            {
+              id: "json.format",
+              title: "Format JSON",
+              inputSchema: {
+                type: "object",
+                required: ["text"],
+                additionalProperties: false,
+                properties: {
+                  text: {
+                    type: "string",
+                  },
+                  indent: {
+                    type: "integer",
+                    default: 2,
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+      manifestPath: "plugins/json-tools/manifest.json",
+      entryPath: "plugins/json-tools/dist/index.js",
+    });
+
+    const pluginHost = new TestPluginHost(() => {
+      commandRegistry.register("json.format", (input) => ({
+        status: "success",
+        blocks: [{ type: "text", text: JSON.stringify(input) }],
+      }));
+    });
+
+    const manager = new PluginManager({
+      manifestIndex,
+      commandRegistry,
+      pluginHost,
+    });
+
+    await expect(
+      manager.runCommand({
+        commandId: "json.format",
+        input: { text: "{}" },
+      }),
+    ).resolves.toEqual({
+      status: "success",
+      blocks: [{ type: "text", text: JSON.stringify({ text: "{}", indent: 2 }) }],
+    });
+  });
+
+  it("rejects invalid input before activating the plugin", async () => {
+    const manifestIndex = new ManifestIndex();
+    const commandRegistry = new CommandRegistry();
+
+    manifestIndex.addPluginManifest({
+      manifest: {
+        schemaVersion: "1.0",
+        id: "dev.example.json-tools",
+        name: "JSON Tools",
+        version: "0.0.0",
+        runtime: {
+          kind: "node",
+          entry: "./dist/index.js",
+        },
+        contributes: {
+          commands: [
+            {
+              id: "json.format",
+              title: "Format JSON",
+              inputSchema: {
+                type: "object",
+                required: ["text"],
+                additionalProperties: false,
+                properties: {
+                  text: {
+                    type: "string",
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+      manifestPath: "plugins/json-tools/manifest.json",
+      entryPath: "plugins/json-tools/dist/index.js",
+    });
+
+    const pluginHost = new TestPluginHost(() => {
+      throw new Error("Should not activate");
+    });
+
+    const manager = new PluginManager({
+      manifestIndex,
+      commandRegistry,
+      pluginHost,
+    });
+
+    await expect(
+      manager.runCommand({
+        commandId: "json.format",
+        input: { text: "{}", extra: true },
+      }),
+    ).rejects.toThrow("Unknown command input argument: --extra");
+    expect(pluginHost.activations).toEqual([]);
+  });
+
   it("does not activate a plugin when the command is already registered", async () => {
     const manifestIndex = new ManifestIndex();
     const commandRegistry = new CommandRegistry();

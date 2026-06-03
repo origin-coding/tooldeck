@@ -3,9 +3,10 @@ import path from "node:path";
 import { performance } from "node:perf_hooks";
 
 import {
+  CommandService,
   CommandRegistry,
   ManifestIndex,
-  parseCommandInputFromCliArgs,
+  parseRawCommandInputFromCliArgs,
   PluginManager,
 } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
@@ -36,6 +37,7 @@ export interface CreatePluginManagerOptions {
 
 export interface CreatedPluginManager {
   pluginManager: PluginManager;
+  commandService: CommandService;
   pluginHost: NodePluginHost;
   manifestIndex: ManifestIndex;
   pluginCount: number;
@@ -54,15 +56,20 @@ export async function createPluginManager(
     manifestIndex,
   });
 
+  const pluginManager = new PluginManager({
+    manifestIndex,
+    commandRegistry,
+    pluginHost,
+  });
+
   return {
     pluginHost,
     manifestIndex,
     pluginCount: scanResult.pluginCount,
     commandCount: scanResult.commandCount,
-    pluginManager: new PluginManager({
-      manifestIndex,
-      commandRegistry,
-      pluginHost,
+    pluginManager,
+    commandService: new CommandService({
+      pluginManager,
     }),
   };
 }
@@ -89,29 +96,28 @@ export async function runCliCommandWithStorage(
 
     assertPluginsAvailable(created, options.pluginsRoot);
 
-    input ??= parseCommandInputFromCliArgs({
+    input ??= parseRawCommandInputFromCliArgs({
       rawArgs: options.rawArgs ?? [],
       commandId: options.commandId,
-      inputSchema: created.manifestIndex.getCommand(options.commandId)?.definition.inputSchema,
       ignoredOptions: ["plugins", "storage"],
     });
-
-    const result = await created.pluginManager.runCommand({
+    const run = await created.commandService.runCommand({
       commandId: options.commandId,
       input,
     });
+    input = run.input;
 
     commandRuns.create({
       commandId: options.commandId,
       pluginId,
       source: "cli",
-      status: result.status,
+      status: run.result.status,
       input,
-      output: result,
+      output: run.result,
       durationMs: elapsedMilliseconds(startedAt),
     });
 
-    return result;
+    return run.result;
   } catch (error) {
     commandRuns.create({
       commandId: options.commandId,

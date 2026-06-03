@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { ManifestIndex } from "@tooldeck/core";
+import { parsePluginManifestText, type ManifestIndex } from "@tooldeck/core";
 import type { PluginManifest } from "@tooldeck/protocol";
 import { consola } from "consola";
 
@@ -78,7 +78,10 @@ async function tryReadManifest(manifestPath: string): Promise<PluginManifest | u
     throw error;
   }
 
-  return JSON.parse(text) as PluginManifest;
+  return parsePluginManifestText({
+    text,
+    manifestPath,
+  });
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

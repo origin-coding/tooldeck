@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeCommandInput, parseCommandInputFromCliArgs } from "../src";
+import {
+  normalizeCommandInput,
+  parseCommandInputFromCliArgs,
+  parseRawCommandInputFromCliArgs,
+} from "../src";
 
 describe("command input normalization", () => {
   it("parses CLI args and applies JSON Schema defaults", () => {
@@ -59,9 +63,22 @@ describe("command input normalization", () => {
     });
   });
 
+  it("parses raw CLI args without applying schema defaults", () => {
+    expect(
+      parseRawCommandInputFromCliArgs({
+        commandId: "json.format",
+        rawArgs: ["json.format", "--text", '{"a":1}', "--storage", "test.sqlite"],
+        ignoredOptions: ["storage"],
+      }),
+    ).toEqual({
+      text: '{"a":1}',
+    });
+  });
+
   it("throws when required inputs are missing", () => {
     expect(() =>
       normalizeCommandInput({
+        commandId: "json.format",
         input: {},
         inputSchema: {
           type: "object",
@@ -74,11 +91,38 @@ describe("command input normalization", () => {
         },
       }),
     ).toThrow("Missing required command input: --text");
+
+    try {
+      normalizeCommandInput({
+        commandId: "json.format",
+        input: {},
+        inputSchema: {
+          type: "object",
+          required: ["text"],
+          properties: {
+            text: {
+              type: "string",
+            },
+          },
+        },
+      });
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: "ERR_INVALID_ARGUMENT",
+        details: {
+          issue: "missing_required",
+          commandId: "json.format",
+          propertyPath: "text",
+          schemaKeyword: "required",
+        },
+      });
+    }
   });
 
   it("rejects additional properties when JSON Schema disallows them", () => {
     expect(() =>
       normalizeCommandInput({
+        commandId: "json.format",
         input: {
           text: "{}",
           extra: true,

@@ -3,7 +3,8 @@ import type { CommandInput } from "@tooldeck/sdk";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 import type { CommandRegistry, CommandRunResult } from "./command-registry";
-import type { ManifestIndex } from "./manifest-index";
+import { normalizeCommandInput } from "./command-input";
+import type { IndexedCommand, ManifestIndex } from "./manifest-index";
 
 export interface PluginHostActivateOptions {
   pluginId: string;
@@ -38,11 +39,14 @@ export class PluginManager {
   }
 
   async runCommand(options: RunPluginCommandOptions): Promise<CommandResult> {
-    await this.ensureCommandPluginActivated(options.commandId);
+    const indexedCommand = this.getIndexedCommandOrThrow(options.commandId);
+    const input = this.normalizeCommandInput(options);
+
+    await this.ensureCommandPluginActivated(indexedCommand);
 
     return this.commandRegistry.run({
       commandId: options.commandId,
-      input: options.input,
+      input,
     });
   }
 
@@ -71,7 +75,16 @@ export class PluginManager {
     }
   }
 
-  private async ensureCommandPluginActivated(commandId: string): Promise<void> {
+  normalizeCommandInput(options: RunPluginCommandOptions): CommandInput {
+    const indexedCommand = this.getIndexedCommandOrThrow(options.commandId);
+
+    return normalizeCommandInput({
+      input: options.input,
+      inputSchema: indexedCommand.definition.inputSchema,
+    });
+  }
+
+  private getIndexedCommandOrThrow(commandId: string): IndexedCommand {
     const indexedCommand = this.manifestIndex.getCommand(commandId);
 
     if (!indexedCommand) {
@@ -80,6 +93,12 @@ export class PluginManager {
         message: `Command is not contributed by any plugin: ${commandId}`,
       });
     }
+
+    return indexedCommand;
+  }
+
+  private async ensureCommandPluginActivated(indexedCommand: IndexedCommand): Promise<void> {
+    const commandId = indexedCommand.id;
 
     if (this.commandRegistry.has(commandId)) {
       return;

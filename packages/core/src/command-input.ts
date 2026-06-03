@@ -1,9 +1,11 @@
 import type { TooldeckJsonSchema } from "@tooldeck/protocol";
+import { TooldeckError } from "@tooldeck/shared";
 import type { JsonObject, JsonValue } from "@tooldeck/shared";
 
 export interface NormalizeCommandInputOptions {
   input?: Record<string, unknown>;
   inputSchema?: TooldeckJsonSchema;
+  commandId?: string;
 }
 
 export interface ParseCommandInputFromCliArgsOptions {
@@ -13,7 +15,26 @@ export interface ParseCommandInputFromCliArgsOptions {
   ignoredOptions?: string[];
 }
 
+export interface ParseRawCommandInputFromCliArgsOptions {
+  rawArgs: string[];
+  commandId: string;
+  ignoredOptions?: string[];
+}
+
 type RawCliOptionValue = string | boolean;
+type CommandInputIssue =
+  | "unknown_property"
+  | "missing_required"
+  | "invalid_type"
+  | "below_minimum"
+  | "above_maximum"
+  | "below_exclusive_minimum"
+  | "above_exclusive_maximum"
+  | "below_min_length"
+  | "above_max_length"
+  | "pattern_mismatch"
+  | "invalid_enum"
+  | "not_json_serializable";
 
 export function parseCommandInputFromCliArgs(
   options: ParseCommandInputFromCliArgsOptions,
@@ -25,7 +46,20 @@ export function parseCommandInputFromCliArgs(
       ignoredOptions: options.ignoredOptions ?? [],
     }),
     inputSchema: options.inputSchema,
+    commandId: options.commandId,
   });
+}
+
+export function parseRawCommandInputFromCliArgs(
+  options: ParseRawCommandInputFromCliArgsOptions,
+): JsonObject {
+  return toJsonObject(
+    parseRawCliInputOptions({
+      rawArgs: options.rawArgs,
+      commandId: options.commandId,
+      ignoredOptions: options.ignoredOptions ?? [],
+    }),
+  );
 }
 
 export function normalizeCommandInput(options: NormalizeCommandInputOptions): JsonObject {
@@ -44,12 +78,20 @@ export function normalizeCommandInput(options: NormalizeCommandInputOptions): Js
     const propertySchema = properties[propertyName];
 
     if (propertySchema) {
-      normalized[propertyName] = normalizeCommandInputValue(propertyName, value, propertySchema);
+      normalized[propertyName] = normalizeCommandInputValue(propertyName, value, propertySchema, {
+        commandId: options.commandId,
+      });
       continue;
     }
 
     if (additionalProperties === false) {
-      throw new Error(`Unknown command input argument: --${propertyName}`);
+      throwCommandInputError({
+        issue: "unknown_property",
+        message: `Unknown command input argument: --${propertyName}`,
+        commandId: options.commandId,
+        propertyPath: propertyName,
+        schemaKeyword: "additionalProperties",
+      });
     }
 
     const additionalPropertySchema = normalizeJsonSchemaProperty(additionalProperties);
@@ -59,11 +101,16 @@ export function normalizeCommandInput(options: NormalizeCommandInputOptions): Js
         propertyName,
         value,
         additionalPropertySchema,
+        {
+          commandId: options.commandId,
+        },
       );
       continue;
     }
 
-    normalized[propertyName] = toJsonValue(propertyName, value);
+    normalized[propertyName] = toJsonValue(propertyName, value, {
+      commandId: options.commandId,
+    });
   }
 
   const required = new Set(inputSchema.required ?? []);
@@ -79,7 +126,13 @@ export function normalizeCommandInput(options: NormalizeCommandInputOptions): Js
     }
 
     if (required.has(propertyName)) {
-      throw new Error(`Missing required command input: --${propertyName}`);
+      throwCommandInputError({
+        issue: "missing_required",
+        message: `Missing required command input: --${propertyName}`,
+        commandId: options.commandId,
+        propertyPath: propertyName,
+        schemaKeyword: "required",
+      });
     }
   }
 
@@ -177,67 +230,80 @@ function normalizeCommandInputValue(
   propertyName: string,
   value: unknown,
   schema: TooldeckJsonSchema,
+  context: CommandInputErrorContext,
 ): JsonValue {
   const type = getJsonSchemaType(schema);
   let normalized: JsonValue;
 
   if (type === "integer") {
-    normalized = normalizeIntegerValue(propertyName, value);
-    validateNumberRange(propertyName, normalized, schema);
+    normalized = normalizeIntegerValue(propertyName, value, context);
+    validateNumberRange(propertyName, normalized, schema, context);
   } else if (type === "number") {
-    normalized = normalizeNumberValue(propertyName, value);
-    validateNumberRange(propertyName, normalized, schema);
+    normalized = normalizeNumberValue(propertyName, value, context);
+    validateNumberRange(propertyName, normalized, schema, context);
   } else if (type === "boolean") {
-    normalized = normalizeBooleanValue(propertyName, value);
+    normalized = normalizeBooleanValue(propertyName, value, context);
   } else if (type === "string") {
-    normalized = normalizeStringValue(propertyName, value);
-    validateString(propertyName, normalized, schema);
+    normalized = normalizeStringValue(propertyName, value, context);
+    validateString(propertyName, normalized, schema, context);
   } else {
-    normalized = toJsonValue(propertyName, value);
+    normalized = toJsonValue(propertyName, value, context);
   }
 
-  validateEnum(propertyName, normalized, schema);
+  validateEnum(propertyName, normalized, schema, context);
 
   return normalized;
 }
 
-function normalizeIntegerValue(propertyName: string, value: unknown): number {
+function normalizeIntegerValue(
+  propertyName: string,
+  value: unknown,
+  context: CommandInputErrorContext,
+): number {
   if (typeof value === "number" && Number.isInteger(value)) {
     return value;
   }
 
   if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(`Expected integer for command input: --${propertyName}`);
+    throwExpectedTypeError(propertyName, "integer", value, context);
   }
 
   const parsed = Number(value);
 
   if (!Number.isInteger(parsed)) {
-    throw new Error(`Expected integer for command input: --${propertyName}`);
+    throwExpectedTypeError(propertyName, "integer", value, context);
   }
 
   return parsed;
 }
 
-function normalizeNumberValue(propertyName: string, value: unknown): number {
+function normalizeNumberValue(
+  propertyName: string,
+  value: unknown,
+  context: CommandInputErrorContext,
+): number {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
   }
 
   if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(`Expected number for command input: --${propertyName}`);
+    throwExpectedTypeError(propertyName, "number", value, context);
   }
 
   const parsed = Number(value);
 
   if (!Number.isFinite(parsed)) {
-    throw new Error(`Expected number for command input: --${propertyName}`);
+    throwExpectedTypeError(propertyName, "number", value, context);
   }
 
   return parsed;
 }
 
-function normalizeBooleanValue(propertyName: string, value: unknown): boolean {
+function normalizeBooleanValue(
+  propertyName: string,
+  value: unknown,
+  context: CommandInputErrorContext,
+): boolean {
   if (typeof value === "boolean") {
     return value;
   }
@@ -250,60 +316,139 @@ function normalizeBooleanValue(propertyName: string, value: unknown): boolean {
     return false;
   }
 
-  throw new Error(`Expected boolean for command input: --${propertyName}`);
+  throwExpectedTypeError(propertyName, "boolean", value, context);
 }
 
-function normalizeStringValue(propertyName: string, value: unknown): string {
+function normalizeStringValue(
+  propertyName: string,
+  value: unknown,
+  context: CommandInputErrorContext,
+): string {
   if (typeof value === "string") {
     return value;
   }
 
-  throw new Error(`Expected string for command input: --${propertyName}`);
+  throwExpectedTypeError(propertyName, "string", value, context);
 }
 
 function validateNumberRange(
   propertyName: string,
   value: number,
   schema: TooldeckJsonSchema,
+  context: CommandInputErrorContext,
 ): void {
   if (typeof schema.minimum === "number" && value < schema.minimum) {
-    throw new Error(`Command input is below minimum: --${propertyName}`);
+    throwCommandInputError({
+      issue: "below_minimum",
+      message: `Command input is below minimum: --${propertyName}`,
+      commandId: context.commandId,
+      propertyPath: propertyName,
+      schemaKeyword: "minimum",
+      expected: schema.minimum,
+      actual: value,
+    });
   }
 
   if (typeof schema.maximum === "number" && value > schema.maximum) {
-    throw new Error(`Command input is above maximum: --${propertyName}`);
+    throwCommandInputError({
+      issue: "above_maximum",
+      message: `Command input is above maximum: --${propertyName}`,
+      commandId: context.commandId,
+      propertyPath: propertyName,
+      schemaKeyword: "maximum",
+      expected: schema.maximum,
+      actual: value,
+    });
   }
 
   if (typeof schema.exclusiveMinimum === "number" && value <= schema.exclusiveMinimum) {
-    throw new Error(`Command input must be greater than exclusiveMinimum: --${propertyName}`);
+    throwCommandInputError({
+      issue: "below_exclusive_minimum",
+      message: `Command input must be greater than exclusiveMinimum: --${propertyName}`,
+      commandId: context.commandId,
+      propertyPath: propertyName,
+      schemaKeyword: "exclusiveMinimum",
+      expected: schema.exclusiveMinimum,
+      actual: value,
+    });
   }
 
   if (typeof schema.exclusiveMaximum === "number" && value >= schema.exclusiveMaximum) {
-    throw new Error(`Command input must be less than exclusiveMaximum: --${propertyName}`);
+    throwCommandInputError({
+      issue: "above_exclusive_maximum",
+      message: `Command input must be less than exclusiveMaximum: --${propertyName}`,
+      commandId: context.commandId,
+      propertyPath: propertyName,
+      schemaKeyword: "exclusiveMaximum",
+      expected: schema.exclusiveMaximum,
+      actual: value,
+    });
   }
 }
 
-function validateString(propertyName: string, value: string, schema: TooldeckJsonSchema): void {
+function validateString(
+  propertyName: string,
+  value: string,
+  schema: TooldeckJsonSchema,
+  context: CommandInputErrorContext,
+): void {
   if (typeof schema.minLength === "number" && value.length < schema.minLength) {
-    throw new Error(`Command input is shorter than minLength: --${propertyName}`);
+    throwCommandInputError({
+      issue: "below_min_length",
+      message: `Command input is shorter than minLength: --${propertyName}`,
+      commandId: context.commandId,
+      propertyPath: propertyName,
+      schemaKeyword: "minLength",
+      expected: schema.minLength,
+      actual: value.length,
+    });
   }
 
   if (typeof schema.maxLength === "number" && value.length > schema.maxLength) {
-    throw new Error(`Command input is longer than maxLength: --${propertyName}`);
+    throwCommandInputError({
+      issue: "above_max_length",
+      message: `Command input is longer than maxLength: --${propertyName}`,
+      commandId: context.commandId,
+      propertyPath: propertyName,
+      schemaKeyword: "maxLength",
+      expected: schema.maxLength,
+      actual: value.length,
+    });
   }
 
   if (typeof schema.pattern === "string" && !new RegExp(schema.pattern).test(value)) {
-    throw new Error(`Command input does not match pattern: --${propertyName}`);
+    throwCommandInputError({
+      issue: "pattern_mismatch",
+      message: `Command input does not match pattern: --${propertyName}`,
+      commandId: context.commandId,
+      propertyPath: propertyName,
+      schemaKeyword: "pattern",
+      expected: schema.pattern,
+      actual: value,
+    });
   }
 }
 
-function validateEnum(propertyName: string, value: JsonValue, schema: TooldeckJsonSchema): void {
+function validateEnum(
+  propertyName: string,
+  value: JsonValue,
+  schema: TooldeckJsonSchema,
+  context: CommandInputErrorContext,
+): void {
   if (!schema.enum) {
     return;
   }
 
   if (!schema.enum.some((item) => item === value)) {
-    throw new Error(`Invalid value for command input: --${propertyName}`);
+    throwCommandInputError({
+      issue: "invalid_enum",
+      message: `Invalid value for command input: --${propertyName}`,
+      commandId: context.commandId,
+      propertyPath: propertyName,
+      schemaKeyword: "enum",
+      expected: schema.enum,
+      actual: value,
+    });
   }
 }
 
@@ -319,18 +464,27 @@ function toJsonObject(input: Record<string, unknown>): JsonObject {
   const output: JsonObject = {};
 
   for (const [propertyName, value] of Object.entries(input)) {
-    output[propertyName] = toJsonValue(propertyName, value);
+    output[propertyName] = toJsonValue(propertyName, value, {});
   }
 
   return output;
 }
 
-function toJsonValue(propertyName: string, value: unknown): JsonValue {
+function toJsonValue(
+  propertyName: string,
+  value: unknown,
+  context: CommandInputErrorContext,
+): JsonValue {
   if (isJsonValue(value)) {
     return value;
   }
 
-  throw new Error(`Command input is not JSON serializable: --${propertyName}`);
+  throwCommandInputError({
+    issue: "not_json_serializable",
+    message: `Command input is not JSON serializable: --${propertyName}`,
+    commandId: context.commandId,
+    propertyPath: propertyName,
+  });
 }
 
 function isJsonValue(value: unknown): value is JsonValue {
@@ -356,4 +510,60 @@ function isJsonValue(value: unknown): value is JsonValue {
 
 function toCamelCase(value: string): string {
   return value.replace(/-([a-z])/g, (_, character: string) => character.toUpperCase());
+}
+
+interface CommandInputErrorContext {
+  commandId?: string;
+}
+
+function throwExpectedTypeError(
+  propertyName: string,
+  expectedType: string,
+  value: unknown,
+  context: CommandInputErrorContext,
+): never {
+  throwCommandInputError({
+    issue: "invalid_type",
+    message: `Expected ${expectedType} for command input: --${propertyName}`,
+    commandId: context.commandId,
+    propertyPath: propertyName,
+    schemaKeyword: "type",
+    expected: expectedType,
+    actual: describeActualValue(value),
+  });
+}
+
+function throwCommandInputError(options: {
+  issue: CommandInputIssue;
+  message: string;
+  commandId?: string;
+  propertyPath?: string;
+  schemaKeyword?: string;
+  expected?: JsonValue | JsonValue[];
+  actual?: JsonValue;
+}): never {
+  throw new TooldeckError({
+    code: "ERR_INVALID_ARGUMENT",
+    message: options.message,
+    details: {
+      issue: options.issue,
+      commandId: options.commandId ?? null,
+      propertyPath: options.propertyPath ?? null,
+      schemaKeyword: options.schemaKeyword ?? null,
+      expected: options.expected ?? null,
+      actual: options.actual ?? null,
+    },
+  });
+}
+
+function describeActualValue(value: unknown): JsonValue {
+  if (value === null) {
+    return "null";
+  }
+
+  if (Array.isArray(value)) {
+    return "array";
+  }
+
+  return typeof value;
 }
