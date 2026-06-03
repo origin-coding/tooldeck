@@ -35,6 +35,23 @@ describe("CommandRegistry", () => {
     });
   });
 
+  it("throws when a handler returns an invalid command result", async () => {
+    const registry = new CommandRegistry();
+
+    registry.register(
+      "json.bad-result",
+      () =>
+        ({
+          status: "success",
+          blocks: [{ type: "text", text: 1 }],
+        }) as never,
+    );
+
+    await expect(registry.run({ commandId: "json.bad-result" })).rejects.toThrow(
+      "Invalid command result for json.bad-result: --blocks[0].text",
+    );
+  });
+
   it("throws when registering a duplicate command", () => {
     const registry = new CommandRegistry();
 
@@ -150,6 +167,35 @@ describe("CommandRegistry", () => {
         error: {
           code: "ERR_UNKNOWN",
           message: "Invalid JSON",
+        },
+      },
+    });
+  });
+
+  it("wraps invalid command results with tryRun", async () => {
+    const registry = new CommandRegistry();
+
+    registry.register(
+      "json.bad-result",
+      () =>
+        ({
+          status: "success",
+          blocks: [{ type: "unknown" }],
+        }) as never,
+    );
+
+    await expect(registry.tryRun({ commandId: "json.bad-result" })).resolves.toMatchObject({
+      ok: false,
+      error: {
+        code: "ERR_COMMAND_FAILED",
+        message: "Invalid command result for json.bad-result: --blocks[0].type",
+      },
+      result: {
+        status: "error",
+        blocks: [],
+        error: {
+          code: "ERR_COMMAND_FAILED",
+          message: "Invalid command result for json.bad-result: --blocks[0].type",
         },
       },
     });

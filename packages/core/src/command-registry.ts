@@ -7,6 +7,8 @@ import type {
 } from "@tooldeck/sdk";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
+import { validateCommandResult } from "./command-result-validation";
+
 export interface RegisteredCommand {
   id: string;
   handler: CommandHandler;
@@ -73,7 +75,10 @@ export class CommandRegistry implements SdkCommandRegistry<Record<string, Comman
       });
     }
 
-    return command.handler(options.input ?? {});
+    return validateCommandResult({
+      commandId: options.commandId,
+      result: await command.handler(options.input ?? {}),
+    });
   }
 
   async tryRun(options: RunCommandOptions): Promise<CommandRunResult> {

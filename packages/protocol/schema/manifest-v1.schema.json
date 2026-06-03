@@ -118,6 +118,9 @@
         },
         "inputSchema": {
           "$ref": "#/definitions/tooldeckJsonSchema"
+        },
+        "outputSchema": {
+          "$ref": "#/definitions/tooldeckJsonSchema"
         }
       }
     },

@@ -21,6 +21,18 @@ describe("manifest validation", () => {
               {
                 id: "hello.world",
                 title: "Hello World",
+                outputSchema: {
+                  type: "object",
+                  required: ["status", "blocks"],
+                  properties: {
+                    status: {
+                      enum: ["success", "error"],
+                    },
+                    blocks: {
+                      type: "array",
+                    },
+                  },
+                },
               },
             ],
           },

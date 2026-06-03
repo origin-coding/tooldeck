@@ -8,6 +8,7 @@ export interface CommandDefinitionV1 {
   title: LocalizedString;
   description?: LocalizedString;
   inputSchema?: TooldeckJsonSchema;
+  outputSchema?: TooldeckJsonSchema;
 }
 
 export type CommandStatusV1 = "success" | "error";

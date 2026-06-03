@@ -2,8 +2,9 @@ import type { CommandResult } from "@tooldeck/protocol";
 import type { CommandInput } from "@tooldeck/sdk";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
-import type { CommandRegistry, CommandRunResult } from "./command-registry";
 import { normalizeCommandInput, type CommandInputCoercion } from "./command-input";
+import type { CommandRegistry, CommandRunResult } from "./command-registry";
+import { validateCommandOutputSchema } from "./command-result-validation";
 import type { IndexedCommand, ManifestIndex } from "./manifest-index";
 
 export interface PluginHostActivateOptions {
@@ -45,10 +46,18 @@ export class PluginManager {
 
     await this.ensureCommandPluginActivated(indexedCommand);
 
-    return this.commandRegistry.run({
+    const result = await this.commandRegistry.run({
       commandId: options.commandId,
       input,
     });
+
+    validateCommandOutputSchema({
+      commandId: options.commandId,
+      outputSchema: indexedCommand.definition.outputSchema,
+      result,
+    });
+
+    return result;
   }
 
   async tryRunCommand(options: RunPluginCommandOptions): Promise<CommandRunResult> {
