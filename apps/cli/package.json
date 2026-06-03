@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "vite build",
-    "smoke:built": "node dist/index.js run json.format --text [] --storage ./.tmp/smoke/tooldeck.sqlite",
+    "smoke:built": "node scripts/smoke-built.mjs",
     "typecheck": "tsc --noEmit",
     "pretest": "pnpm --filter @tooldeck/hello-world --filter @tooldeck/json-tools build",
     "test": "vitest run test"
