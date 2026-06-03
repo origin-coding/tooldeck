@@ -132,3 +132,29 @@ The first vertical slice should prove:
 ```text
 manifest scan -> command list -> lazy activation -> json.format execution -> ContentBlock output -> SQLite command history
 ```
+
+## Commit Message Style
+
+When asked to generate a commit message, first inspect recent commit history with `git log` and match the repository's existing style.
+
+Use Conventional Commit titles:
+
+```text
+feat(scope): short summary
+fix(scope): short summary
+test(scope): short summary
+docs(scope): short summary
+```
+
+Prefer the current project format:
+
+```text
+feat(scope): short summary
+
+- Add the primary behavior or package change
+- Describe related integration or API updates
+- Mention example/plugin/test updates when relevant
+- Mention documentation updates when relevant
+```
+
+Keep the title concise and use the body for concrete bullets. Do not invent a body style without checking recent commits first.
