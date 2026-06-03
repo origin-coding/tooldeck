@@ -70,6 +70,7 @@ export async function createPluginManager(
     pluginManager,
     commandService: new CommandService({
       pluginManager,
+      coercion: "cli",
     }),
   };
 }

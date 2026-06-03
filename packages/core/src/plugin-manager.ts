@@ -3,7 +3,7 @@ import type { CommandInput } from "@tooldeck/sdk";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 import type { CommandRegistry, CommandRunResult } from "./command-registry";
-import { normalizeCommandInput } from "./command-input";
+import { normalizeCommandInput, type CommandInputCoercion } from "./command-input";
 import type { IndexedCommand, ManifestIndex } from "./manifest-index";
 
 export interface PluginHostActivateOptions {
@@ -25,6 +25,7 @@ export interface PluginManagerOptions {
 export interface RunPluginCommandOptions {
   commandId: string;
   input?: CommandInput;
+  coercion?: CommandInputCoercion;
 }
 
 export class PluginManager {
@@ -81,6 +82,8 @@ export class PluginManager {
     return normalizeCommandInput({
       input: options.input,
       inputSchema: indexedCommand.definition.inputSchema,
+      commandId: options.commandId,
+      coercion: options.coercion ?? "none",
     });
   }
 

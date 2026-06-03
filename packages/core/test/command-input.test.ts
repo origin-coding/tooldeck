@@ -75,6 +75,52 @@ describe("command input normalization", () => {
     });
   });
 
+  it("does not coerce string values by default", () => {
+    expect(() =>
+      normalizeCommandInput({
+        commandId: "json.format",
+        input: {
+          indent: "2",
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            indent: {
+              type: "integer",
+            },
+          },
+        },
+      }),
+    ).toThrow("Expected integer for command input: --indent");
+  });
+
+  it("coerces CLI string values when CLI coercion is enabled", () => {
+    expect(
+      normalizeCommandInput({
+        commandId: "json.format",
+        coercion: "cli",
+        input: {
+          indent: "2",
+          pretty: "true",
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            indent: {
+              type: "integer",
+            },
+            pretty: {
+              type: "boolean",
+            },
+          },
+        },
+      }),
+    ).toEqual({
+      indent: 2,
+      pretty: true,
+    });
+  });
+
   it("throws when required inputs are missing", () => {
     expect(() =>
       normalizeCommandInput({

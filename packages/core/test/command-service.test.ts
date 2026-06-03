@@ -71,6 +71,7 @@ describe("CommandService", () => {
       }));
     });
     const service = new CommandService({
+      coercion: "cli",
       pluginManager: new PluginManager({
         manifestIndex,
         commandRegistry,
@@ -81,7 +82,7 @@ describe("CommandService", () => {
     await expect(
       service.runCommand({
         commandId: "json.format",
-        input: { text: "{}" },
+        input: { text: "{}", indent: "2" },
       }),
     ).resolves.toEqual({
       commandId: "json.format",

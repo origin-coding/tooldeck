@@ -6,6 +6,7 @@ export interface NormalizeCommandInputOptions {
   input?: Record<string, unknown>;
   inputSchema?: TooldeckJsonSchema;
   commandId?: string;
+  coercion?: CommandInputCoercion;
 }
 
 export interface ParseCommandInputFromCliArgsOptions {
@@ -22,6 +23,7 @@ export interface ParseRawCommandInputFromCliArgsOptions {
 }
 
 type RawCliOptionValue = string | boolean;
+export type CommandInputCoercion = "none" | "cli";
 type CommandInputIssue =
   | "unknown_property"
   | "missing_required"
@@ -47,6 +49,7 @@ export function parseCommandInputFromCliArgs(
     }),
     inputSchema: options.inputSchema,
     commandId: options.commandId,
+    coercion: "cli",
   });
 }
 
@@ -80,6 +83,7 @@ export function normalizeCommandInput(options: NormalizeCommandInputOptions): Js
     if (propertySchema) {
       normalized[propertyName] = normalizeCommandInputValue(propertyName, value, propertySchema, {
         commandId: options.commandId,
+        coercion: options.coercion ?? "none",
       });
       continue;
     }
@@ -103,6 +107,7 @@ export function normalizeCommandInput(options: NormalizeCommandInputOptions): Js
         additionalPropertySchema,
         {
           commandId: options.commandId,
+          coercion: options.coercion ?? "none",
         },
       );
       continue;
@@ -110,6 +115,7 @@ export function normalizeCommandInput(options: NormalizeCommandInputOptions): Js
 
     normalized[propertyName] = toJsonValue(propertyName, value, {
       commandId: options.commandId,
+      coercion: options.coercion ?? "none",
     });
   }
 
@@ -264,6 +270,10 @@ function normalizeIntegerValue(
     return value;
   }
 
+  if (context.coercion !== "cli") {
+    throwExpectedTypeError(propertyName, "integer", value, context);
+  }
+
   if (typeof value !== "string" || value.trim() === "") {
     throwExpectedTypeError(propertyName, "integer", value, context);
   }
@@ -286,6 +296,10 @@ function normalizeNumberValue(
     return value;
   }
 
+  if (context.coercion !== "cli") {
+    throwExpectedTypeError(propertyName, "number", value, context);
+  }
+
   if (typeof value !== "string" || value.trim() === "") {
     throwExpectedTypeError(propertyName, "number", value, context);
   }
@@ -306,6 +320,10 @@ function normalizeBooleanValue(
 ): boolean {
   if (typeof value === "boolean") {
     return value;
+  }
+
+  if (context.coercion !== "cli") {
+    throwExpectedTypeError(propertyName, "boolean", value, context);
   }
 
   if (value === "true" || value === "1") {
@@ -514,6 +532,7 @@ function toCamelCase(value: string): string {
 
 interface CommandInputErrorContext {
   commandId?: string;
+  coercion?: CommandInputCoercion;
 }
 
 function throwExpectedTypeError(

@@ -207,6 +207,57 @@ describe("PluginManager", () => {
     expect(pluginHost.activations).toEqual([]);
   });
 
+  it("does not coerce CLI-style string input by default", async () => {
+    const manifestIndex = new ManifestIndex();
+    const commandRegistry = new CommandRegistry();
+
+    manifestIndex.addPluginManifest({
+      manifest: {
+        schemaVersion: "1.0",
+        id: "dev.example.json-tools",
+        name: "JSON Tools",
+        version: "0.0.0",
+        runtime: {
+          kind: "node",
+          entry: "./dist/index.js",
+        },
+        contributes: {
+          commands: [
+            {
+              id: "json.format",
+              title: "Format JSON",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  indent: {
+                    type: "integer",
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+      manifestPath: "plugins/json-tools/manifest.json",
+      entryPath: "plugins/json-tools/dist/index.js",
+    });
+
+    const manager = new PluginManager({
+      manifestIndex,
+      commandRegistry,
+      pluginHost: new TestPluginHost(() => {
+        throw new Error("Should not activate");
+      }),
+    });
+
+    await expect(
+      manager.runCommand({
+        commandId: "json.format",
+        input: { indent: "2" },
+      }),
+    ).rejects.toThrow("Expected integer for command input: --indent");
+  });
+
   it("does not activate a plugin when the command is already registered", async () => {
     const manifestIndex = new ManifestIndex();
     const commandRegistry = new CommandRegistry();
