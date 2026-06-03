@@ -1,61 +1,60 @@
-import { definePlugin } from "@tooldeck/sdk";
+import type {CommandHandler} from "@tooldeck/sdk";
+import {definePlugin} from "@tooldeck/sdk";
 
-import type { PluginCommandInputs } from "./generated/commands";
+import type {JsonFormatInput, PluginCommandInputs} from "./generated/commands";
 
-export default definePlugin<PluginCommandInputs>({
-  activate(ctx) {
-    ctx.subscriptions.push(
-      ctx.commands.register("json.format", async (input) => {
-        if (typeof input.text !== "string") {
-          return {
-            status: "error",
-            blocks: [
-              {
-                type: "text",
-                text: "json.format requires a text string.",
-              },
-            ],
-            error: {
-              code: "ERR_INVALID_INPUT",
-              message: "json.format requires a text string.",
-            },
-          };
-        }
-
-        try {
-          const value = JSON.parse(input.text);
-          const indent = normalizeIndent(input.indent);
-
-          return {
-            status: "success",
-            blocks: [
-              {
-                type: "text",
-                text: JSON.stringify(value, null, indent),
-              },
-            ],
-          };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-
-          return {
-            status: "error",
-            blocks: [
-              {
-                type: "text",
-                text: `Invalid JSON: ${message}`,
-              },
-            ],
-            error: {
-              code: "ERR_INVALID_JSON",
-              message,
-            },
-          };
-        }
-      }),
-    );
-  },
+export default definePlugin<PluginCommandInputs>((plugin) => {
+  plugin.command("json.format", formatJson);
 });
+
+const formatJson: CommandHandler<JsonFormatInput> = async (input) => {
+  if (typeof input.text !== "string") {
+    return {
+      status: "error",
+      blocks: [
+        {
+          type: "text",
+          text: "json.format requires a text string.",
+        },
+      ],
+      error: {
+        code: "ERR_INVALID_INPUT",
+        message: "json.format requires a text string.",
+      },
+    };
+  }
+
+  try {
+    const value = JSON.parse(input.text);
+    const indent = normalizeIndent(input.indent);
+
+    return {
+      status: "success",
+      blocks: [
+        {
+          type: "text",
+          text: JSON.stringify(value, null, indent),
+        },
+      ],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    return {
+      status: "error",
+      blocks: [
+        {
+          type: "text",
+          text: `Invalid JSON: ${message}`,
+        },
+      ],
+      error: {
+        code: "ERR_INVALID_JSON",
+        message,
+      },
+    };
+  }
+};
 
 function normalizeIndent(value: number | undefined): number {
   if (value === undefined) {
