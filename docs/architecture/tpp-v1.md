@@ -1,5 +1,7 @@
 # tooldeck 项目设计文档
 
+当前短期 MVP 已收敛为 CLI-first、commands-only 的可信本地插件纵向切片。实现和验收边界以 [CLI-first TPP MVP](./cli-first-mvp.md) 为准；本文档保留完整 TPP v1 的长期协议和架构方向。
+
 ## 1. 项目定位
 
 项目名：`tooldeck`
