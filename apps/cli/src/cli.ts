@@ -13,7 +13,12 @@ import {
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { CommandResult } from "@tooldeck/protocol";
 import type { JsonObject } from "@tooldeck/shared";
-import { CommandRunRepository, openTooldeckDatabase, PluginRepository } from "@tooldeck/storage";
+import {
+  CommandRunRepository,
+  openTooldeckDatabase,
+  PluginKvRepository,
+  PluginRepository,
+} from "@tooldeck/storage";
 import { defineCommand } from "citty";
 import type { CommandDef } from "citty";
 import { consola } from "consola";
@@ -32,6 +37,7 @@ export interface RunCliCommandOptions {
 
 export interface CreatePluginManagerOptions {
   pluginsRoot: string;
+  createPluginStorage?: ConstructorParameters<typeof NodePluginHost>[0]["createPluginStorage"];
 }
 
 export interface CreatedPluginManager {
@@ -47,7 +53,10 @@ export async function createPluginManager(
   options: CreatePluginManagerOptions,
 ): Promise<CreatedPluginManager> {
   const commandRegistry = new CommandRegistry();
-  const pluginHost = new NodePluginHost({ commandRegistry });
+  const pluginHost = new NodePluginHost({
+    commandRegistry,
+    createPluginStorage: options.createPluginStorage,
+  });
   const manifestIndex = new ManifestIndex();
 
   const scanResult = await scanPluginDirectory({
@@ -82,6 +91,7 @@ export async function runCliCommandWithStorage(
   const database = openTooldeckDatabase({ path: options.storagePath });
   const commandRuns = new CommandRunRepository(database.db);
   const plugins = new PluginRepository(database.db);
+  const pluginKv = new PluginKvRepository(database.db);
   const startedAt = performance.now();
   let pluginHost: NodePluginHost | undefined;
   let pluginId: string | undefined;
@@ -90,6 +100,23 @@ export async function runCliCommandWithStorage(
   try {
     const created = await createPluginManager({
       pluginsRoot: options.pluginsRoot,
+      createPluginStorage(pluginId) {
+        return {
+          async get(key) {
+            return pluginKv.get(pluginId, key);
+          },
+          async set(key, value) {
+            pluginKv.set({
+              pluginId,
+              key,
+              value,
+            });
+          },
+          async delete(key) {
+            pluginKv.delete(pluginId, key);
+          },
+        };
+      },
     });
 
     pluginHost = created.pluginHost;

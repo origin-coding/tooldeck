@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { openTooldeckDatabase } from "../src";
 import { CommandRunRepository } from "../src";
+import { PluginKvRepository } from "../src";
 import { PluginRepository } from "../src";
 
 const tempDirs: string[] = [];
@@ -27,17 +28,25 @@ describe("storage", () => {
       const pluginsTable = database.sqlite
         .prepare("select name from sqlite_master where type = 'table' and name = ?")
         .get("plugins");
+      const pluginKvTable = database.sqlite
+        .prepare("select name from sqlite_master where type = 'table' and name = ?")
+        .get("plugin_kv");
       const migration = database.sqlite
         .prepare("select id from schema_migrations where id = ?")
         .get("0001_initial");
       const pluginRegistryMigration = database.sqlite
         .prepare("select id from schema_migrations where id = ?")
         .get("0002_plugin_registry");
+      const pluginKvMigration = database.sqlite
+        .prepare("select id from schema_migrations where id = ?")
+        .get("0003_plugin_kv");
 
       expect(commandRunsTable).toMatchObject({ name: "command_runs" });
       expect(pluginsTable).toMatchObject({ name: "plugins" });
+      expect(pluginKvTable).toMatchObject({ name: "plugin_kv" });
       expect(migration).toMatchObject({ id: "0001_initial" });
       expect(pluginRegistryMigration).toMatchObject({ id: "0002_plugin_registry" });
+      expect(pluginKvMigration).toMatchObject({ id: "0003_plugin_kv" });
     } finally {
       database.close();
     }
@@ -151,6 +160,69 @@ describe("storage", () => {
       });
       expect(repository.listEnabled()).toHaveLength(0);
       expect(repository.list()).toHaveLength(1);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("stores plugin KV values scoped by plugin id", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PluginKvRepository(database.db);
+
+      repository.set({
+        pluginId: "dev.tooldeck.json-tools",
+        key: "indent",
+        value: 2,
+        now: 1000,
+      });
+      repository.set({
+        pluginId: "dev.tooldeck.other",
+        key: "indent",
+        value: 4,
+        now: 1000,
+      });
+      const updated = repository.set({
+        pluginId: "dev.tooldeck.json-tools",
+        key: "indent",
+        value: {
+          size: 8,
+        },
+        now: 2000,
+      });
+
+      expect(repository.get("dev.tooldeck.json-tools", "indent")).toEqual({ size: 8 });
+      expect(repository.get("dev.tooldeck.other", "indent")).toBe(4);
+      expect(updated).toMatchObject({
+        pluginId: "dev.tooldeck.json-tools",
+        key: "indent",
+        valueJson: JSON.stringify({ size: 8 }),
+        updatedAt: 2000,
+      });
+
+      repository.delete("dev.tooldeck.json-tools", "indent");
+
+      expect(repository.get("dev.tooldeck.json-tools", "indent")).toBeUndefined();
+      expect(repository.get("dev.tooldeck.other", "indent")).toBe(4);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("rejects plugin KV values that are not JSON serializable", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PluginKvRepository(database.db);
+
+      expect(() =>
+        repository.set({
+          pluginId: "dev.tooldeck.json-tools",
+          key: "invalid",
+          value: undefined,
+        }),
+      ).toThrow("Plugin KV value must be JSON serializable");
     } finally {
       database.close();
     }

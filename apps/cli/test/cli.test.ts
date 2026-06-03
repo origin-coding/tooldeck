@@ -1,9 +1,14 @@
 import { mkdtempSync, rmSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { CommandRunRepository, openTooldeckDatabase, PluginRepository } from "@tooldeck/storage";
+import {
+  CommandRunRepository,
+  openTooldeckDatabase,
+  PluginKvRepository,
+  PluginRepository,
+} from "@tooldeck/storage";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createPluginManager, runCliCommandWithStorage } from "../src/cli";
@@ -161,6 +166,80 @@ describe("CLI command support", () => {
     });
   });
 
+  it("backs plugin ctx.storage with SQLite plugin KV", async () => {
+    const pluginsRoot = path.join(createTempDir(), "plugins");
+    const pluginRoot = path.join(pluginsRoot, "kv-test");
+    const storagePath = createDatabasePath();
+
+    await mkdir(pluginRoot, { recursive: true });
+    await writeFile(
+      path.join(pluginRoot, "manifest.json"),
+      JSON.stringify({
+        schemaVersion: "1.0",
+        id: "dev.tooldeck.kv-test",
+        name: "KV Test",
+        version: "0.0.0",
+        runtime: {
+          kind: "node",
+          entry: "./index.mjs",
+        },
+        contributes: {
+          commands: [
+            {
+              id: "kv.increment",
+              title: "Increment KV",
+            },
+          ],
+        },
+      }),
+      "utf8",
+    );
+    await writeFile(
+      path.join(pluginRoot, "index.mjs"),
+      `
+        export default {
+          activate(ctx) {
+            ctx.subscriptions.push(
+              ctx.commands.register("kv.increment", async () => {
+                const current = (await ctx.storage.get("count")) ?? 0;
+                const next = current + 1;
+
+                await ctx.storage.set("count", next);
+
+                return {
+                  status: "success",
+                  blocks: [{ type: "text", text: String(next) }],
+                };
+              }),
+            );
+          },
+        };
+      `,
+      "utf8",
+    );
+
+    await expect(
+      runCliCommandWithStorage({
+        commandId: "kv.increment",
+        pluginsRoot,
+        storagePath,
+      }),
+    ).resolves.toMatchObject({
+      blocks: [{ text: "1" }],
+    });
+    await expect(
+      runCliCommandWithStorage({
+        commandId: "kv.increment",
+        pluginsRoot,
+        storagePath,
+      }),
+    ).resolves.toMatchObject({
+      blocks: [{ text: "2" }],
+    });
+
+    expect(readPluginKvValue(storagePath, "dev.tooldeck.kv-test", "count")).toBe(2);
+  });
+
   it("stores json.format error results in SQLite", async () => {
     const pluginsRoot = path.resolve("../..", "plugins");
     const storagePath = createDatabasePath();
@@ -192,9 +271,15 @@ describe("CLI command support", () => {
 });
 
 function createDatabasePath(): string {
+  return path.join(createTempDir(), "test.sqlite");
+}
+
+function createTempDir(): string {
   const dir = mkdtempSync(path.join(tmpdir(), "tooldeck-cli-"));
+
   tempDirs.push(dir);
-  return path.join(dir, "test.sqlite");
+
+  return dir;
 }
 
 function readCommandRuns(storagePath: string) {
@@ -214,6 +299,17 @@ function readPlugins(storagePath: string) {
 
   try {
     return repository.list();
+  } finally {
+    database.close();
+  }
+}
+
+function readPluginKvValue(storagePath: string, pluginId: string, key: string) {
+  const database = openTooldeckDatabase({ path: storagePath });
+  const repository = new PluginKvRepository(database.db);
+
+  try {
+    return repository.get(pluginId, key);
   } finally {
     database.close();
   }

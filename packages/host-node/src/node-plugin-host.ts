@@ -2,11 +2,12 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import type { CommandRegistry } from "@tooldeck/core";
-import type { PluginContextV1, ToolboxPluginV1 } from "@tooldeck/sdk";
+import type { PluginContextV1, PluginStorage, ToolboxPluginV1 } from "@tooldeck/sdk";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 export interface NodePluginHostOptions {
   commandRegistry: CommandRegistry;
+  createPluginStorage?: (pluginId: string) => PluginStorage;
 }
 
 export interface ActivateNodePluginOptions {
@@ -23,10 +24,12 @@ export interface ActiveNodePlugin {
 
 export class NodePluginHost {
   private readonly commandRegistry: CommandRegistry;
+  private readonly createPluginStorage: (pluginId: string) => PluginStorage;
   private readonly activePlugins = new Map<string, ActiveNodePlugin>();
 
   constructor(options: NodePluginHostOptions) {
     this.commandRegistry = options.commandRegistry;
+    this.createPluginStorage = options.createPluginStorage ?? createMemoryPluginStorage;
   }
 
   hasPlugin(pluginId: string): boolean {
@@ -62,6 +65,7 @@ export class NodePluginHost {
       pluginId: options.pluginId,
       subscriptions: [],
       commands: this.commandRegistry,
+      storage: this.createPluginStorage(options.pluginId),
     };
 
     try {
@@ -199,4 +203,20 @@ export class NodePluginHost {
       await subscription.dispose();
     }
   }
+}
+
+function createMemoryPluginStorage(): PluginStorage {
+  const values = new Map<string, unknown>();
+
+  return {
+    async get(key) {
+      return values.get(key);
+    },
+    async set(key, value) {
+      values.set(key, value);
+    },
+    async delete(key) {
+      values.delete(key);
+    },
+  };
 }

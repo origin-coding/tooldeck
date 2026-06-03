@@ -51,6 +51,21 @@ export const migrations: Migration[] = [
         on plugins(enabled);
     `,
   },
+  {
+    id: "0003_plugin_kv",
+    sql: `
+      create table if not exists plugin_kv (
+        plugin_id text not null,
+        key text not null,
+        value_json text not null,
+        updated_at integer not null,
+        primary key(plugin_id, key)
+      );
+
+      create index if not exists plugin_kv_plugin_id_idx
+        on plugin_kv(plugin_id);
+    `,
+  },
 ];
 
 export function runMigrations(sqlite: DatabaseSync, migrationList = migrations): void {

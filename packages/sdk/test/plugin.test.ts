@@ -37,6 +37,13 @@ function createContext(): PluginContextV1<TestCommandInputs> {
     pluginId: "dev.tooldeck.test",
     subscriptions: [],
     commands: new TestCommandRegistry(),
+    storage: {
+      async get() {
+        return undefined;
+      },
+      async set() {},
+      async delete() {},
+    },
   };
 }
 

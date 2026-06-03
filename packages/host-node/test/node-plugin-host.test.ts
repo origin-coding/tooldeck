@@ -37,6 +37,45 @@ describe("NodePluginHost", () => {
     expect(module.calls).toEqual(["activate:dev.example.valid"]);
   });
 
+  it("injects plugin-scoped storage during activation", async () => {
+    const values = new Map<string, unknown>();
+    const host = new NodePluginHost({
+      commandRegistry: new CommandRegistry(),
+      createPluginStorage(pluginId) {
+        return {
+          async get(key) {
+            return values.get(`${pluginId}:${key}`);
+          },
+          async set(key, value) {
+            values.set(`${pluginId}:${key}`, value);
+          },
+          async delete(key) {
+            values.delete(`${pluginId}:${key}`);
+          },
+        };
+      },
+    });
+    const module = await import(new URL("./fixtures/storage-plugin.mjs", import.meta.url).href);
+
+    module.calls.length = 0;
+
+    await host.activatePlugin({
+      pluginId: "dev.example.storage-a",
+      entryPath: fixturePath("storage-plugin.mjs"),
+    });
+    await host.activatePlugin({
+      pluginId: "dev.example.storage-b",
+      entryPath: fixturePath("storage-plugin.mjs"),
+    });
+
+    expect(values.get("dev.example.storage-a:activated")).toBe("dev.example.storage-a");
+    expect(values.get("dev.example.storage-b:activated")).toBe("dev.example.storage-b");
+    expect(module.calls).toEqual([
+      "storage:dev.example.storage-a",
+      "storage:dev.example.storage-b",
+    ]);
+  });
+
   it("throws when activating the same plugin twice", async () => {
     const host = createHost();
     const entryPath = fixturePath("valid-plugin.mjs");
