@@ -10,7 +10,11 @@
       "outputs": []
     },
     "test": {
-      "dependsOn": ["^test"],
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "smoke:built": {
+      "dependsOn": ["build"],
       "outputs": []
     },
     "dev": {

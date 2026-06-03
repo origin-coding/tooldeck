@@ -7,8 +7,9 @@
     "tooldeck-plugin-types": "./dist/generate-command-types.js"
   },
   "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
