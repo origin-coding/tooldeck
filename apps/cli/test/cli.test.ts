@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -11,7 +11,7 @@ import {
 } from "@tooldeck/storage";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createPluginManager, runCliCommandWithStorage } from "../src/cli";
+import { createPluginManager, listCliCommands, runCliCommandWithStorage } from "../src/cli";
 
 const tempDirs: string[] = [];
 
@@ -61,6 +61,78 @@ describe("CLI command support", () => {
     } finally {
       await pluginHost.disposeAll();
     }
+  });
+
+  it("lists no commands for an empty plugin directory", async () => {
+    const pluginsRoot = path.join(createTempDir(), "plugins");
+
+    await mkdir(pluginsRoot, { recursive: true });
+
+    await expect(listCliCommands({ pluginsRoot })).resolves.toEqual([]);
+  });
+
+  it("lists manifest commands without activating plugin code", async () => {
+    const pluginsRoot = path.join(createTempDir(), "plugins");
+    const pluginRoot = path.join(pluginsRoot, "list-test");
+    const activationMarkerPath = path.join(pluginRoot, "activated.txt");
+
+    await mkdir(pluginRoot, { recursive: true });
+    await writeFile(
+      path.join(pluginRoot, "manifest.json"),
+      JSON.stringify({
+        schemaVersion: "1.0",
+        id: "dev.tooldeck.list-test",
+        name: "List Test",
+        version: "0.0.0",
+        runtime: {
+          kind: "node",
+          entry: "./index.mjs",
+        },
+        contributes: {
+          commands: [
+            {
+              id: "list.localized",
+              title: {
+                key: "commands.localized.title",
+                default: "Localized Command",
+              },
+            },
+            {
+              id: "list.string",
+              title: "String Command",
+            },
+          ],
+        },
+      }),
+      "utf8",
+    );
+    await writeFile(
+      path.join(pluginRoot, "index.mjs"),
+      `
+        import { writeFile } from "node:fs/promises";
+
+        await writeFile(${JSON.stringify(activationMarkerPath)}, "activated", "utf8");
+
+        export default {
+          activate() {},
+        };
+      `,
+      "utf8",
+    );
+
+    await expect(listCliCommands({ pluginsRoot })).resolves.toEqual([
+      {
+        id: "list.localized",
+        pluginId: "dev.tooldeck.list-test",
+        title: "Localized Command",
+      },
+      {
+        id: "list.string",
+        pluginId: "dev.tooldeck.list-test",
+        title: "String Command",
+      },
+    ]);
+    expect(existsSync(activationMarkerPath)).toBe(false);
   });
 
   it("stores successful command runs in SQLite", async () => {

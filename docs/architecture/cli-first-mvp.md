@@ -43,6 +43,15 @@ tooldeck run json.format --text '{"a":1}'
 
 期望结果是成功返回 `ContentBlock`，其中包含格式化后的 JSON。
 
+CLI command list：
+
+```text
+tooldeck list
+tooldeck list commands
+```
+
+两条命令都列出 manifest 声明的 commands，输出至少包含 command id、plugin id、title。当前 CLI 入口会静态加载 storage；因为 storage 暂时使用 Node 的实验性 `node:sqlite`，运行 CLI 时可能看到 `SQLite is an experimental feature` 的 `ExperimentalWarning`。这是 Node 对实验 API 的提示，不代表命令执行失败。后续如果迁移到 `better-sqlite3`，该 warning 会消失。
+
 ## 协议范围
 
 MVP manifest 保持严格模式，并且只允许 commands。

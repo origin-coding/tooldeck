@@ -5,13 +5,14 @@ import { performance } from "node:perf_hooks";
 import {
   CommandService,
   CommandRegistry,
+  type IndexedCommand,
   ManifestIndex,
   parseRawCommandInputFromCliArgs,
   PluginManager,
   scanPluginDirectory,
 } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
-import type { CommandResult } from "@tooldeck/protocol";
+import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
 import type { JsonObject } from "@tooldeck/shared";
 import {
   CommandRunRepository,
@@ -33,6 +34,16 @@ export interface RunCliCommandOptions {
   storagePath: string;
   input?: JsonObject;
   rawArgs?: string[];
+}
+
+export interface ListCliCommandsOptions {
+  pluginsRoot: string;
+}
+
+export interface ListedCliCommand {
+  id: string;
+  pluginId: string;
+  title: string;
 }
 
 export interface CreatePluginManagerOptions {
@@ -81,6 +92,19 @@ export async function createPluginManager(
       coercion: "cli",
     }),
   };
+}
+
+export async function listCliCommands(
+  options: ListCliCommandsOptions,
+): Promise<ListedCliCommand[]> {
+  const manifestIndex = new ManifestIndex();
+
+  await scanPluginDirectory({
+    pluginsRoot: options.pluginsRoot,
+    manifestIndex,
+  });
+
+  return manifestIndex.listCommands().map(formatListedCommand);
 }
 
 export async function runCliCommandWithStorage(
@@ -178,6 +202,14 @@ export function printTextBlocks(result: CommandResult): void {
   }
 }
 
+export function printCommandList(commands: ListedCliCommand[]): void {
+  consola.log("command id\tplugin id\ttitle");
+
+  for (const command of commands) {
+    consola.log(`${command.id}\t${command.pluginId}\t${command.title}`);
+  }
+}
+
 export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
   return defineCommand({
     meta: {
@@ -185,6 +217,36 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
       description: "Command-line interface for Tooldeck.",
     },
     subCommands: {
+      list: defineCommand({
+        meta: {
+          name: "list",
+          description: "List Tooldeck resources.",
+        },
+        args: {
+          resource: {
+            type: "positional",
+            required: false,
+            description: "Resource type to list.",
+            valueHint: "commands",
+          },
+          plugins: {
+            type: "string",
+            default: "./plugins",
+            description: "Plugin directory to scan.",
+            valueHint: "path",
+          },
+        },
+        async run({ args }) {
+          if (args.resource !== undefined && args.resource !== "commands") {
+            throw new Error(`Unsupported list resource: ${args.resource}`);
+          }
+
+          const pluginsRoot = path.resolve(options.workspaceRoot, args.plugins);
+          const commands = await listCliCommands({ pluginsRoot });
+
+          printCommandList(commands);
+        },
+      }),
       run: defineCommand({
         meta: {
           name: "run",
@@ -225,6 +287,22 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
       }),
     },
   });
+}
+
+function formatListedCommand(command: IndexedCommand): ListedCliCommand {
+  return {
+    id: command.id,
+    pluginId: command.pluginId,
+    title: resolveLocalizedString(command.definition.title),
+  };
+}
+
+function resolveLocalizedString(value: LocalizedString): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.default;
 }
 
 function elapsedMilliseconds(startedAt: number): number {
