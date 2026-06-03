@@ -34,6 +34,23 @@ export const migrations: Migration[] = [
         on command_runs(command_id);
     `,
   },
+  {
+    id: "0002_plugin_registry",
+    sql: `
+      create table if not exists plugins (
+        id text primary key,
+        name_json text not null,
+        version text not null,
+        manifest_path text not null,
+        enabled integer not null default 1,
+        installed_at integer not null,
+        updated_at integer not null
+      );
+
+      create index if not exists plugins_enabled_idx
+        on plugins(enabled);
+    `,
+  },
 ];
 
 export function runMigrations(sqlite: DatabaseSync, migrationList = migrations): void {

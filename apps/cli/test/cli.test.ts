@@ -3,7 +3,7 @@ import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { CommandRunRepository, openTooldeckDatabase } from "@tooldeck/storage";
+import { CommandRunRepository, openTooldeckDatabase, PluginRepository } from "@tooldeck/storage";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createPluginManager, runCliCommandWithStorage } from "../src/cli";
@@ -89,6 +89,11 @@ describe("CLI command support", () => {
     });
     expect(runs[0]?.durationMs).toEqual(expect.any(Number));
     expect(runs[0]?.outputJson).toContain("Hello, world!");
+
+    const plugins = readPlugins(storagePath);
+
+    expect(plugins.some((plugin) => plugin.id === "dev.tooldeck.hello-world")).toBe(true);
+    expect(plugins.some((plugin) => plugin.id === "dev.tooldeck.json-tools")).toBe(true);
   });
 
   it("stores failed command runs in SQLite", async () => {
@@ -198,6 +203,17 @@ function readCommandRuns(storagePath: string) {
 
   try {
     return repository.listRecent();
+  } finally {
+    database.close();
+  }
+}
+
+function readPlugins(storagePath: string) {
+  const database = openTooldeckDatabase({ path: storagePath });
+  const repository = new PluginRepository(database.db);
+
+  try {
+    return repository.list();
   } finally {
     database.close();
   }

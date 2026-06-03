@@ -1,9 +1,10 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { parsePluginManifestText, type ManifestIndex } from "@tooldeck/core";
 import type { PluginManifest } from "@tooldeck/protocol";
-import { consola } from "consola";
+
+import { parsePluginManifestText } from "./manifest-validation";
+import type { ManifestIndex } from "./manifest-index";
 
 export interface ScanPluginDirectoryOptions {
   pluginsRoot: string;
@@ -42,7 +43,6 @@ export async function scanPluginDirectory(
     const manifest = await tryReadManifest(manifestPath);
 
     if (!manifest) {
-      consola.warn(`Skipping plugin directory without manifest: ${path.dirname(manifestPath)}`);
       continue;
     }
 

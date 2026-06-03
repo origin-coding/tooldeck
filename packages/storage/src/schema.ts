@@ -18,5 +18,17 @@ export const commandRuns = sqliteTable("command_runs", {
   createdAt: integer("created_at").notNull(),
 });
 
+export const plugins = sqliteTable("plugins", {
+  id: text("id").primaryKey(),
+  nameJson: text("name_json").notNull(),
+  version: text("version").notNull(),
+  manifestPath: text("manifest_path").notNull(),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  installedAt: integer("installed_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 export type CommandRunRow = typeof commandRuns.$inferSelect;
 export type InsertCommandRunRow = typeof commandRuns.$inferInsert;
+export type PluginRow = typeof plugins.$inferSelect;
+export type InsertPluginRow = typeof plugins.$inferInsert;

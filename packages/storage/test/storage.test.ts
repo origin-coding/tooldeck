@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { openTooldeckDatabase } from "../src";
 import { CommandRunRepository } from "../src";
+import { PluginRepository } from "../src";
 
 const tempDirs: string[] = [];
 
@@ -23,12 +24,20 @@ describe("storage", () => {
       const commandRunsTable = database.sqlite
         .prepare("select name from sqlite_master where type = 'table' and name = ?")
         .get("command_runs");
+      const pluginsTable = database.sqlite
+        .prepare("select name from sqlite_master where type = 'table' and name = ?")
+        .get("plugins");
       const migration = database.sqlite
         .prepare("select id from schema_migrations where id = ?")
         .get("0001_initial");
+      const pluginRegistryMigration = database.sqlite
+        .prepare("select id from schema_migrations where id = ?")
+        .get("0002_plugin_registry");
 
       expect(commandRunsTable).toMatchObject({ name: "command_runs" });
+      expect(pluginsTable).toMatchObject({ name: "plugins" });
       expect(migration).toMatchObject({ id: "0001_initial" });
+      expect(pluginRegistryMigration).toMatchObject({ id: "0002_plugin_registry" });
     } finally {
       database.close();
     }
@@ -87,6 +96,64 @@ describe("storage", () => {
     database.close();
 
     expect(() => database.sqlite.prepare("select 1")).toThrow();
+  });
+
+  it("upserts scanned plugins and preserves enabled state", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PluginRepository(database.db);
+
+      repository.upsertScannedPlugin({
+        manifest: {
+          schemaVersion: "1.0",
+          id: "dev.tooldeck.json-tools",
+          name: "JSON Tools",
+          version: "0.0.1",
+          runtime: {
+            kind: "node",
+            entry: "./dist/index.js",
+          },
+        },
+        manifestPath: "plugins/json-tools/manifest.json",
+        now: 1000,
+      });
+      repository.setEnabled("dev.tooldeck.json-tools", false, 1500);
+      const updated = repository.upsertScannedPlugin({
+        manifest: {
+          schemaVersion: "1.0",
+          id: "dev.tooldeck.json-tools",
+          name: {
+            key: "plugin.name",
+            default: "JSON Tools",
+          },
+          version: "0.0.2",
+          runtime: {
+            kind: "node",
+            entry: "./dist/index.js",
+          },
+        },
+        manifestPath: "plugins/json-tools/manifest.json",
+        now: 2000,
+      });
+
+      expect(updated).toMatchObject({
+        id: "dev.tooldeck.json-tools",
+        nameJson: JSON.stringify({
+          key: "plugin.name",
+          default: "JSON Tools",
+        }),
+        version: "0.0.2",
+        manifestPath: "plugins/json-tools/manifest.json",
+        enabled: false,
+        installedAt: 1000,
+        updatedAt: 2000,
+      });
+      expect(repository.listEnabled()).toHaveLength(0);
+      expect(repository.list()).toHaveLength(1);
+    } finally {
+      database.close();
+    }
   });
 });
 

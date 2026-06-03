@@ -21,5 +21,8 @@
     "@tooldeck/sdk": "workspace:*",
     "@tooldeck/shared": "workspace:*",
     "ajv": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
   }
 }

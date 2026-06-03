@@ -1,14 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { ManifestIndex } from "@tooldeck/core";
 import { describe, expect, it } from "vitest";
 
-import { scanPluginDirectory } from "../src/plugin-scanner";
+import { ManifestIndex, scanPluginDirectory } from "../src";
 
 describe("scanPluginDirectory", () => {
   it("indexes plugin manifests from child directories", async ({ task }) => {
-    const pluginsRoot = path.join(".tmp", "cli-tests", task.id, "plugins");
+    const pluginsRoot = path.join(".tmp", "core-tests", task.id, "plugins");
     const pluginRoot = path.join(pluginsRoot, "hello-world");
     const manifestPath = path.join(pluginRoot, "manifest.json");
     const manifestIndex = new ManifestIndex();
@@ -53,7 +52,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("throws a clear error when the plugin directory does not exist", async () => {
-    const pluginsRoot = path.join(".tmp", "cli-tests", "missing", "plugins");
+    const pluginsRoot = path.join(".tmp", "core-tests", "missing", "plugins");
 
     await expect(
       scanPluginDirectory({
@@ -64,7 +63,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("throws a clear error for malformed plugin manifests", async ({ task }) => {
-    const pluginsRoot = path.join(".tmp", "cli-tests", task.id, "plugins");
+    const pluginsRoot = path.join(".tmp", "core-tests", task.id, "plugins");
     const pluginRoot = path.join(pluginsRoot, "bad-plugin");
     const manifestPath = path.join(pluginRoot, "manifest.json");
 
@@ -80,7 +79,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("throws a clear error for invalid plugin manifests", async ({ task }) => {
-    const pluginsRoot = path.join(".tmp", "cli-tests", task.id, "plugins");
+    const pluginsRoot = path.join(".tmp", "core-tests", task.id, "plugins");
     const pluginRoot = path.join(pluginsRoot, "bad-plugin");
     const manifestPath = path.join(pluginRoot, "manifest.json");
 
@@ -109,7 +108,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("indexes valid manifests without checking that runtime entries exist", async ({ task }) => {
-    const pluginsRoot = path.join(".tmp", "cli-tests", task.id, "plugins");
+    const pluginsRoot = path.join(".tmp", "core-tests", task.id, "plugins");
     const pluginRoot = path.join(pluginsRoot, "missing-entry");
     const manifestPath = path.join(pluginRoot, "manifest.json");
     const manifestIndex = new ManifestIndex();

@@ -8,16 +8,15 @@ import {
   ManifestIndex,
   parseRawCommandInputFromCliArgs,
   PluginManager,
+  scanPluginDirectory,
 } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { CommandResult } from "@tooldeck/protocol";
 import type { JsonObject } from "@tooldeck/shared";
-import { CommandRunRepository, openTooldeckDatabase } from "@tooldeck/storage";
+import { CommandRunRepository, openTooldeckDatabase, PluginRepository } from "@tooldeck/storage";
 import { defineCommand } from "citty";
 import type { CommandDef } from "citty";
 import { consola } from "consola";
-
-import { scanPluginDirectory } from "./plugin-scanner";
 
 export interface CreateCliCommandOptions {
   workspaceRoot: string;
@@ -82,6 +81,7 @@ export async function runCliCommandWithStorage(
 
   const database = openTooldeckDatabase({ path: options.storagePath });
   const commandRuns = new CommandRunRepository(database.db);
+  const plugins = new PluginRepository(database.db);
   const startedAt = performance.now();
   let pluginHost: NodePluginHost | undefined;
   let pluginId: string | undefined;
@@ -96,6 +96,12 @@ export async function runCliCommandWithStorage(
     pluginId = created.manifestIndex.getCommandOwner(options.commandId);
 
     assertPluginsAvailable(created, options.pluginsRoot);
+    for (const plugin of created.manifestIndex.listPlugins()) {
+      plugins.upsertScannedPlugin({
+        manifest: plugin.manifest,
+        manifestPath: plugin.manifestPath,
+      });
+    }
 
     input ??= parseRawCommandInputFromCliArgs({
       rawArgs: options.rawArgs ?? [],
