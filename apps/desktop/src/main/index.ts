@@ -14,7 +14,7 @@ let service: TooldeckDesktopService | undefined;
 let isShuttingDown = false;
 
 async function createWindow(): Promise<void> {
-  service = new TooldeckDesktopService();
+  service = new TooldeckDesktopService(createServiceOptions());
   await service.start();
   disposeIpc = registerTooldeckIpc(service);
 
@@ -39,6 +39,17 @@ async function createWindow(): Promise<void> {
   } else {
     await mainWindow.loadFile(path.join(currentDirectory, "../renderer/index.html"));
   }
+}
+
+function createServiceOptions(): ConstructorParameters<typeof TooldeckDesktopService>[0] {
+  if (!app.isPackaged) {
+    return {};
+  }
+
+  return {
+    pluginsRoot: path.join(process.resourcesPath, "plugins"),
+    storagePath: path.join(app.getPath("userData"), "tooldeck.sqlite"),
+  };
 }
 
 app.whenReady().then(() => {

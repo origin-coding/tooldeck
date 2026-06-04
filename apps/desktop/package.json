@@ -11,17 +11,15 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
-    "dist": "pnpm build && electron-builder",
+    "dist": "pnpm --dir ../.. --filter @tooldeck/hello-world --filter @tooldeck/json-tools build && pnpm build && electron-builder",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
+  "devDependencies": {
     "@tooldeck/core": "workspace:*",
     "@tooldeck/host-node": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/shared": "workspace:*",
-    "@tooldeck/storage": "workspace:*"
-  },
-  "devDependencies": {
+    "@tooldeck/storage": "workspace:*",
     "@types/node": "^25.9.1",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
@@ -41,6 +39,28 @@
       ".vite/build/**",
       ".vite/renderer/**",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../plugins/hello-world",
+        "to": "plugins/hello-world",
+        "filter": [
+          "manifest.json",
+          "package.json",
+          "dist/**",
+          "locales/**"
+        ]
+      },
+      {
+        "from": "../../plugins/json-tools",
+        "to": "plugins/json-tools",
+        "filter": [
+          "manifest.json",
+          "package.json",
+          "dist/**",
+          "locales/**"
+        ]
+      }
     ],
     "asar": true
   }

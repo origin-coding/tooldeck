@@ -65,7 +65,7 @@ importers:
         version: 25.9.1
 
   apps/desktop:
-    dependencies:
+    devDependencies:
       '@tooldeck/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -81,7 +81,6 @@ importers:
       '@tooldeck/storage':
         specifier: workspace:*
         version: link:../../packages/storage
-    devDependencies:
       '@types/node':
         specifier: ^25.9.1
         version: 25.9.1
