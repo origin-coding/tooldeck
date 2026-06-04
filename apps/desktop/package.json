@@ -1,0 +1,47 @@
+{
+  "name": "@tooldeck/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Electron desktop app for Tooldeck.",
+  "type": "module",
+  "main": ".vite/build/main.js",
+  "author": {
+    "name": "origin-coding"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs",
+    "dist": "pnpm build && electron-builder",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tooldeck/core": "workspace:*",
+    "@tooldeck/host-node": "workspace:*",
+    "@tooldeck/protocol": "workspace:*",
+    "@tooldeck/shared": "workspace:*",
+    "@tooldeck/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
+    "electron": "^42.3.0",
+    "electron-builder": "^26.8.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "wait-on": "^9.0.10"
+  },
+  "build": {
+    "appId": "dev.tooldeck.desktop",
+    "productName": "Tooldeck",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      ".vite/build/**",
+      ".vite/renderer/**",
+      "package.json"
+    ],
+    "asar": true
+  }
+}

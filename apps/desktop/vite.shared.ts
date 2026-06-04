@@ -1,0 +1,18 @@
+import type { UserConfig } from "vite";
+
+export const mainProcessExternal = [
+  "electron",
+  /^node:/,
+  // "@tooldeck/core",
+  // "@tooldeck/host-node",
+  // "@tooldeck/protocol",
+  // "@tooldeck/shared",
+  // "@tooldeck/storage",
+];
+
+export const nodeTarget = "node22";
+
+export const sourcemapBuild: UserConfig["build"] = {
+  sourcemap: true,
+  minify: false,
+};
