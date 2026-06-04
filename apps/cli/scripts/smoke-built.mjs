@@ -4,15 +4,7 @@ import path from "node:path";
 
 const smokeDir = path.resolve(".tmp", "smoke");
 const storagePath = path.join(smokeDir, `tooldeck-${Date.now()}.sqlite`);
-const args = [
-  "dist/index.js",
-  "run",
-  "json.format",
-  "--text",
-  '{"a":1}',
-  "--storage",
-  storagePath,
-];
+const args = ["dist/index.js", "run", "json.format", "--text", '{"a":1}', "--storage", storagePath];
 
 mkdirSync(smokeDir, { recursive: true });
 console.log(`tooldeck run json.format --text '{"a":1}'`);

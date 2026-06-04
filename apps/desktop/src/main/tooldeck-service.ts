@@ -44,7 +44,8 @@ export class TooldeckDesktopService {
   constructor(options: TooldeckDesktopServiceOptions = {}) {
     this.workspaceRoot = options.workspaceRoot ?? findWorkspaceRoot();
     this.pluginsRoot = options.pluginsRoot ?? path.join(this.workspaceRoot, "plugins");
-    this.storagePath = options.storagePath ?? path.join(this.workspaceRoot, ".data", "tooldeck.sqlite");
+    this.storagePath =
+      options.storagePath ?? path.join(this.workspaceRoot, ".data", "tooldeck.sqlite");
   }
 
   async start(): Promise<void> {
@@ -101,18 +102,20 @@ export class TooldeckDesktopService {
   }
 
   listCommandRuns(limit = 50): CommandRunRecord[] {
-    return this.requireCommandRuns().listRecent(limit).map((row) => ({
-      id: row.id,
-      commandId: row.commandId,
-      pluginId: row.pluginId ?? undefined,
-      source: row.source,
-      status: row.status as CommandResult["status"],
-      input: parseJson(row.inputJson),
-      output: parseJson(row.outputJson) as CommandResult | undefined,
-      error: parseJson(row.errorJson),
-      durationMs: row.durationMs ?? undefined,
-      createdAt: row.createdAt,
-    }));
+    return this.requireCommandRuns()
+      .listRecent(limit)
+      .map((row) => ({
+        id: row.id,
+        commandId: row.commandId,
+        pluginId: row.pluginId ?? undefined,
+        source: row.source,
+        status: row.status as CommandResult["status"],
+        input: parseJson(row.inputJson),
+        output: parseJson(row.outputJson) as CommandResult | undefined,
+        error: parseJson(row.errorJson),
+        durationMs: row.durationMs ?? undefined,
+        createdAt: row.createdAt,
+      }));
   }
 
   async dispose(): Promise<void> {

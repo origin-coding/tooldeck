@@ -1,5 +1,5 @@
-import manifestSchema from "@tooldeck/protocol/schema/manifest-v1.schema.json";
 import type { PluginManifest } from "@tooldeck/protocol";
+import manifestSchema from "@tooldeck/protocol/schema/manifest-v1.schema.json";
 import { TooldeckError } from "@tooldeck/shared";
 import Ajv, { type ErrorObject } from "ajv";
 
@@ -29,7 +29,10 @@ export function parsePluginManifestText(options: ParsePluginManifestTextOptions)
   } catch (error) {
     throw new TooldeckError({
       code: "ERR_INVALID_ARGUMENT",
-      message: formatManifestErrorMessage("Plugin manifest is not valid JSON", options.manifestPath),
+      message: formatManifestErrorMessage(
+        "Plugin manifest is not valid JSON",
+        options.manifestPath,
+      ),
       cause: error,
       details: {
         manifestPath: options.manifestPath ?? null,
@@ -94,7 +97,8 @@ function createRuntimeManifestSchema(): object {
   if (schema.definitions) {
     schema.definitions.tooldeckJsonSchema = {
       type: "object",
-      description: "A JSON Schema object. Full JSON Schema validation is deferred to command input handling.",
+      description:
+        "A JSON Schema object. Full JSON Schema validation is deferred to command input handling.",
     };
   }
 

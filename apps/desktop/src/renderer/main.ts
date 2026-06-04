@@ -88,7 +88,9 @@ function render(): void {
 
 function renderAppNotice(): void {
   elements.appNotice.hidden = state.loadError === undefined;
-  elements.appNotice.textContent = state.loadError ? `Failed to load desktop data: ${state.loadError}` : "";
+  elements.appNotice.textContent = state.loadError
+    ? `Failed to load desktop data: ${state.loadError}`
+    : "";
 }
 
 function renderCommandList(): void {

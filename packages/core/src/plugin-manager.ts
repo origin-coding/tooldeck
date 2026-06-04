@@ -5,6 +5,11 @@ import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 import { normalizeCommandInput, type CommandInputCoercion } from "./command-input";
 import type { CommandRegistry, CommandRunResult } from "./command-registry";
 import { validateCommandOutputSchema } from "./command-result-validation";
+import {
+  initialPluginRuntimeState,
+  PluginRuntimeLifecycleMachine,
+  type PluginRuntimeState,
+} from "./lifecycle/plugin-runtime-lifecycle";
 import type { IndexedCommand, ManifestIndex } from "./manifest-index";
 
 export interface PluginHostActivateOptions {
@@ -33,6 +38,7 @@ export class PluginManager {
   private readonly manifestIndex: ManifestIndex;
   private readonly commandRegistry: CommandRegistry;
   private readonly pluginHost: PluginHost;
+  private readonly pluginLifecycles = new Map<string, PluginRuntimeLifecycleMachine>();
 
   constructor(options: PluginManagerOptions) {
     this.manifestIndex = options.manifestIndex;
@@ -96,6 +102,10 @@ export class PluginManager {
     });
   }
 
+  getPluginRuntimeState(pluginId: string): PluginRuntimeState {
+    return this.pluginLifecycles.get(pluginId)?.state ?? initialPluginRuntimeState;
+  }
+
   private getIndexedCommandOrThrow(commandId: string): IndexedCommand {
     const indexedCommand = this.manifestIndex.getCommand(commandId);
 
@@ -126,10 +136,20 @@ export class PluginManager {
     }
 
     if (!this.pluginHost.hasPlugin(plugin.id)) {
-      await this.pluginHost.activatePlugin({
-        pluginId: plugin.id,
-        entryPath: plugin.entryPath,
-      });
+      const lifecycle = this.getPluginLifecycle(plugin.id);
+
+      lifecycle.dispatch("activationRequested");
+
+      try {
+        await this.pluginHost.activatePlugin({
+          pluginId: plugin.id,
+          entryPath: plugin.entryPath,
+        });
+        lifecycle.dispatch("activated");
+      } catch (error) {
+        lifecycle.dispatch("activationFailed");
+        throw error;
+      }
     }
 
     if (!this.commandRegistry.has(commandId)) {
@@ -142,5 +162,16 @@ export class PluginManager {
         },
       });
     }
+  }
+
+  private getPluginLifecycle(pluginId: string): PluginRuntimeLifecycleMachine {
+    let lifecycle = this.pluginLifecycles.get(pluginId);
+
+    if (!lifecycle) {
+      lifecycle = new PluginRuntimeLifecycleMachine();
+      this.pluginLifecycles.set(pluginId, lifecycle);
+    }
+
+    return lifecycle;
   }
 }

@@ -48,6 +48,16 @@ class TestPluginHost implements PluginHost {
   }
 }
 
+class FailingPluginHost implements PluginHost {
+  hasPlugin(): boolean {
+    return false;
+  }
+
+  async activatePlugin(): Promise<void> {
+    throw new Error("Activation failed");
+  }
+}
+
 describe("PluginManager", () => {
   it("activates the owning plugin before running a contributed command", async () => {
     const manifestIndex = new ManifestIndex();
@@ -84,6 +94,7 @@ describe("PluginManager", () => {
         entryPath: "plugins/dev.example.json-tools/dist/index.js",
       },
     ]);
+    expect(manager.getPluginRuntimeState("dev.example.json-tools")).toBe("active");
   });
 
   it("normalizes command input from the contributed command schema", async () => {
@@ -480,5 +491,26 @@ describe("PluginManager", () => {
         },
       },
     });
+  });
+
+  it("tracks failed plugin runtime state when lazy activation throws", async () => {
+    const manifestIndex = new ManifestIndex();
+    const commandRegistry = new CommandRegistry();
+
+    addManifest(manifestIndex, createManifest("dev.example.json-tools", ["json.format"]));
+
+    const manager = new PluginManager({
+      manifestIndex,
+      commandRegistry,
+      pluginHost: new FailingPluginHost(),
+    });
+
+    expect(manager.getPluginRuntimeState("dev.example.json-tools")).toBe("inactive");
+
+    await expect(manager.runCommand({ commandId: "json.format" })).rejects.toThrow(
+      "Activation failed",
+    );
+
+    expect(manager.getPluginRuntimeState("dev.example.json-tools")).toBe("failed");
   });
 });

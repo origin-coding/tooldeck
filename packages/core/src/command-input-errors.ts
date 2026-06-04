@@ -74,14 +74,20 @@ function convertAjvError(error: ErrorObject): {
       const additionalProperty = readStringParam(error, "additionalProperty");
       return {
         issue: "unknown_property",
-        propertyPath: appendProperty(jsonPointerToPropertyPath(error.instancePath), additionalProperty),
+        propertyPath: appendProperty(
+          jsonPointerToPropertyPath(error.instancePath),
+          additionalProperty,
+        ),
       };
     }
     case "required": {
       const missingProperty = readStringParam(error, "missingProperty");
       return {
         issue: "missing_required",
-        propertyPath: appendProperty(jsonPointerToPropertyPath(error.instancePath), missingProperty),
+        propertyPath: appendProperty(
+          jsonPointerToPropertyPath(error.instancePath),
+          missingProperty,
+        ),
       };
     }
     case "type":
@@ -257,7 +263,10 @@ function jsonPointerToPropertyPath(pointer: string): string {
     .slice(1)
     .split("/")
     .map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"))
-    .reduce((path, part) => (/^\d+$/.test(part) ? `${path}[${part}]` : appendProperty(path, part)), "");
+    .reduce(
+      (path, part) => (/^\d+$/.test(part) ? `${path}[${part}]` : appendProperty(path, part)),
+      "",
+    );
 }
 
 function appendProperty(parentPath: string, propertyName: string): string {

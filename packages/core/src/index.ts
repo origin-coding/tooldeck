@@ -5,3 +5,7 @@ export * from "./manifest-validation";
 export * from "./manifest-index";
 export * from "./plugin-scanner";
 export * from "./plugin-manager";
+export * from "./lifecycle/state-machine";
+export * from "./lifecycle/plugin-registry-lifecycle";
+export * from "./lifecycle/plugin-runtime-lifecycle";
+export * from "./lifecycle/capability-invocation-lifecycle";

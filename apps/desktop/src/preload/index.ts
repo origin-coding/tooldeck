@@ -1,10 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-import {
-  desktopIpcChannels,
-  type DesktopApi,
-  type RunCommandRequest,
-} from "../shared/desktop-api";
+import { desktopIpcChannels, type DesktopApi, type RunCommandRequest } from "../shared/desktop-api";
 
 const api: DesktopApi = {
   listCommands() {

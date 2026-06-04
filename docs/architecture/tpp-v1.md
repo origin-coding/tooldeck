@@ -2,6 +2,8 @@
 
 当前短期 MVP 已收敛为 CLI-first、commands-only 的可信本地插件纵向切片。实现和验收边界以 [CLI-first TPP MVP](./cli-first-mvp.md) 为准；本文档保留完整 TPP v1 的长期协议和架构方向。
 
+关于短调用 `Capability`、长任务 `Task / Job`、交互式 `View` 和有状态 `Session` 的边界备忘录，见 [TPP Capability、Task 与有状态能力备忘录](./capability-task-state-model.md)。
+
 ## 1. 项目定位
 
 项目名：`tooldeck`
