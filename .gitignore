@@ -9,6 +9,8 @@ node_modules/
 dist/
 build/
 out/
+.vite/
+apps/desktop/release/
 .pnpm-store/
 .turbo/
 .tmp/

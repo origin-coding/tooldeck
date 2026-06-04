@@ -15,7 +15,7 @@ export default defineConfig({
     outDir: "dist",
     sourcemap: true,
     ssr: "src/index.ts",
-    target: "node24",
+    target: "node22",
     rollupOptions: {
       external: (id) => nodeBuiltins.has(id) || id.startsWith("node:"),
       output: {

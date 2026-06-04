@@ -14,13 +14,16 @@ export default defineConfig({
     minify: false,
     outDir: "dist",
     sourcemap: true,
-    ssr: "src/index.ts",
-    target: "node24",
+    ssr: true,
+    target: "node22",
     rollupOptions: {
       external: (id) => nodeBuiltins.has(id) || id.startsWith("node:"),
+      input: {
+        index: "src/index.ts",
+        "generate-command-types": "src/generate-command-types.ts",
+      },
       output: {
-        codeSplitting: false,
-        entryFileNames: "index.js",
+        entryFileNames: "[name].js",
         format: "es",
       },
     },
