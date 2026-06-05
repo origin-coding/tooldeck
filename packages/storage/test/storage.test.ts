@@ -165,6 +165,76 @@ describe("storage", () => {
     }
   });
 
+  it("syncs scanned plugins without deleting previously registered plugins", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PluginRepository(database.db);
+
+      repository.upsertScannedPlugin({
+        manifest: createPluginManifest("dev.tooldeck.old-plugin", "Old Plugin", "0.0.1"),
+        manifestPath: "plugins/old-plugin/manifest.json",
+        now: 1000,
+      });
+      repository.setEnabled("dev.tooldeck.old-plugin", false, 1100);
+
+      const synced = repository.syncScannedPlugins({
+        now: 2000,
+        plugins: [
+          {
+            manifest: createPluginManifest("dev.tooldeck.json-tools", "JSON Tools", "0.0.1"),
+            manifestPath: "plugins/json-tools/manifest.json",
+          },
+          {
+            manifest: createPluginManifest("dev.tooldeck.hello-world", "Hello World", "0.0.1"),
+            manifestPath: "plugins/hello-world/manifest.json",
+          },
+        ],
+      });
+
+      expect(synced.map((plugin) => plugin.id)).toEqual([
+        "dev.tooldeck.json-tools",
+        "dev.tooldeck.hello-world",
+      ]);
+      expect(repository.list().map((plugin) => plugin.id)).toEqual([
+        "dev.tooldeck.hello-world",
+        "dev.tooldeck.json-tools",
+        "dev.tooldeck.old-plugin",
+      ]);
+      expect(repository.getById("dev.tooldeck.old-plugin")).toMatchObject({
+        enabled: false,
+        installedAt: 1000,
+        updatedAt: 1100,
+      });
+    } finally {
+      database.close();
+    }
+  });
+
+  it("updates plugin enabled state by id", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PluginRepository(database.db);
+
+      repository.upsertScannedPlugin({
+        manifest: createPluginManifest("dev.tooldeck.json-tools", "JSON Tools", "0.0.1"),
+        manifestPath: "plugins/json-tools/manifest.json",
+        now: 1000,
+      });
+
+      expect(repository.setEnabled("dev.tooldeck.json-tools", false, 2000)).toMatchObject({
+        id: "dev.tooldeck.json-tools",
+        enabled: false,
+        installedAt: 1000,
+        updatedAt: 2000,
+      });
+      expect(repository.setEnabled("dev.tooldeck.missing", true, 3000)).toBeUndefined();
+    } finally {
+      database.close();
+    }
+  });
+
   it("stores plugin KV values scoped by plugin id", () => {
     const database = openTooldeckDatabase({ path: createDatabasePath() });
 
@@ -233,4 +303,17 @@ function createDatabasePath(): string {
   const dir = mkdtempSync(join(tmpdir(), "tooldeck-storage-"));
   tempDirs.push(dir);
   return join(dir, "test.sqlite");
+}
+
+function createPluginManifest(id: string, name: string, version: string) {
+  return {
+    schemaVersion: "1.0" as const,
+    id,
+    name,
+    version,
+    runtime: {
+      kind: "node" as const,
+      entry: "./dist/index.js",
+    },
+  };
 }

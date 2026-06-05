@@ -1,5 +1,5 @@
 import type { PluginManifest } from "@tooldeck/protocol";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 import type { TooldeckDrizzleDatabase } from "../database";
 import { plugins, type PluginRow } from "../schema";
@@ -11,8 +11,22 @@ export interface UpsertPluginInput {
   now?: number;
 }
 
+export interface SyncScannedPluginsInput {
+  plugins: UpsertPluginInput[];
+  now?: number;
+}
+
 export class PluginRepository {
   constructor(private readonly db: TooldeckDrizzleDatabase) {}
+
+  syncScannedPlugins(input: SyncScannedPluginsInput): PluginRow[] {
+    return input.plugins.map((plugin) =>
+      this.upsertScannedPlugin({
+        ...plugin,
+        now: plugin.now ?? input.now,
+      }),
+    );
+  }
 
   upsertScannedPlugin(input: UpsertPluginInput): PluginRow {
     const now = input.now ?? Date.now();
@@ -47,11 +61,16 @@ export class PluginRepository {
   }
 
   list(): PluginRow[] {
-    return this.db.select().from(plugins).all();
+    return this.db.select().from(plugins).orderBy(asc(plugins.id)).all();
   }
 
   listEnabled(): PluginRow[] {
-    return this.db.select().from(plugins).where(eq(plugins.enabled, true)).all();
+    return this.db
+      .select()
+      .from(plugins)
+      .where(eq(plugins.enabled, true))
+      .orderBy(asc(plugins.id))
+      .all();
   }
 
   setEnabled(pluginId: string, enabled: boolean, now = Date.now()): PluginRow | undefined {
