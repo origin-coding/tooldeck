@@ -11,7 +11,12 @@ import {
 } from "@tooldeck/storage";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { createPluginManager, listCliCommands, runCliCommandWithStorage } from "../src/cli";
+import {
+  createPluginManager,
+  listCliCommands,
+  resolveCliRuntimePaths,
+  runCliCommandWithStorage,
+} from "../src/cli";
 
 const tempDirs: string[] = [];
 
@@ -22,6 +27,43 @@ afterEach(() => {
 });
 
 describe("CLI command support", () => {
+  it("resolves default CLI runtime paths from Tooldeck paths", () => {
+    const workspaceRoot = path.resolve("workspace");
+    const paths = resolveCliRuntimePaths({
+      workspaceRoot,
+    });
+
+    expect(paths.pluginsRoot).toBe(path.join(workspaceRoot, "plugins"));
+    expect(paths.storagePath).toContain("tooldeck.sqlite");
+    expect(paths.storagePath).not.toBe(path.join(workspaceRoot, ".data", "tooldeck.sqlite"));
+  });
+
+  it("resolves relative CLI path overrides against the workspace root", () => {
+    const workspaceRoot = path.resolve("workspace");
+    const paths = resolveCliRuntimePaths({
+      workspaceRoot,
+      plugins: "./fixtures/plugins",
+      storage: "./.data/test.sqlite",
+    });
+
+    expect(paths.pluginsRoot).toBe(path.join(workspaceRoot, "fixtures", "plugins"));
+    expect(paths.storagePath).toBe(path.join(workspaceRoot, ".data", "test.sqlite"));
+  });
+
+  it("preserves absolute CLI path overrides", () => {
+    const workspaceRoot = path.resolve("workspace");
+    const pluginsRoot = path.resolve("external", "plugins");
+    const storagePath = path.resolve("external", "data", "tooldeck.sqlite");
+    const paths = resolveCliRuntimePaths({
+      workspaceRoot,
+      plugins: pluginsRoot,
+      storage: storagePath,
+    });
+
+    expect(paths.pluginsRoot).toBe(pluginsRoot);
+    expect(paths.storagePath).toBe(storagePath);
+  });
+
   it("runs hello.world from the default plugin directory shape", async () => {
     const pluginsRoot = path.resolve("../..", "plugins");
     const { pluginManager, pluginHost, pluginCount, commandCount } = await createPluginManager({

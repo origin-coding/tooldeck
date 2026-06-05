@@ -9,7 +9,10 @@ import {
   ManifestIndex,
   parseRawCommandInputFromCliArgs,
   PluginManager,
+  resolveTooldeckPaths,
   scanPluginDirectory,
+  type TooldeckPaths,
+  type TooldeckRuntimeMode,
 } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
@@ -26,6 +29,19 @@ import { consola } from "consola";
 
 export interface CreateCliCommandOptions {
   workspaceRoot: string;
+}
+
+export interface ResolveCliRuntimePathsOptions {
+  workspaceRoot: string;
+  mode?: TooldeckRuntimeMode;
+  plugins?: string;
+  storage?: string;
+}
+
+export interface CliRuntimePaths {
+  tooldeckPaths: TooldeckPaths;
+  pluginsRoot: string;
+  storagePath: string;
 }
 
 export interface RunCliCommandOptions {
@@ -91,6 +107,22 @@ export async function createPluginManager(
       pluginManager,
       coercion: "cli",
     }),
+  };
+}
+
+export function resolveCliRuntimePaths(options: ResolveCliRuntimePathsOptions): CliRuntimePaths {
+  const tooldeckPaths = resolveTooldeckPaths({
+    mode: options.mode ?? "development",
+    workspaceRoot: options.workspaceRoot,
+  });
+
+  return {
+    tooldeckPaths,
+    pluginsRoot:
+      resolveCliPathOverride(options.workspaceRoot, options.plugins) ??
+      tooldeckPaths.builtinPluginsDir,
+    storagePath:
+      resolveCliPathOverride(options.workspaceRoot, options.storage) ?? tooldeckPaths.databasePath,
   };
 }
 
@@ -210,6 +242,25 @@ export function printCommandList(commands: ListedCliCommand[]): void {
   }
 }
 
+export function printTooldeckPaths(paths: TooldeckPaths): void {
+  const entries = [
+    ["appInstallDir", paths.appInstallDir ?? ""],
+    ["builtinPluginsDir", paths.builtinPluginsDir],
+    ["userConfigDir", paths.userConfigDir],
+    ["userDataDir", paths.userDataDir],
+    ["databasePath", paths.databasePath],
+    ["userPluginsDir", paths.userPluginsDir],
+    ["pluginDataDir", paths.pluginDataDir],
+    ["cacheDir", paths.cacheDir],
+    ["logsDir", paths.logsDir],
+    ["tempDir", paths.tempDir],
+  ];
+
+  for (const [key, value] of entries) {
+    consola.log(`${key}\t${value}`);
+  }
+}
+
 export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
   return defineCommand({
     meta: {
@@ -231,8 +282,7 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
           },
           plugins: {
             type: "string",
-            default: "./plugins",
-            description: "Plugin directory to scan.",
+            description: "Plugin directory to scan. Defaults to the resolved builtin plugin path.",
             valueHint: "path",
           },
         },
@@ -241,7 +291,10 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
             throw new Error(`Unsupported list resource: ${args.resource}`);
           }
 
-          const pluginsRoot = path.resolve(options.workspaceRoot, args.plugins);
+          const { pluginsRoot } = resolveCliRuntimePaths({
+            workspaceRoot: options.workspaceRoot,
+            plugins: args.plugins,
+          });
           const commands = await listCliCommands({ pluginsRoot });
 
           printCommandList(commands);
@@ -261,20 +314,21 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
           },
           plugins: {
             type: "string",
-            default: "./plugins",
-            description: "Plugin directory to scan.",
+            description: "Plugin directory to scan. Defaults to the resolved builtin plugin path.",
             valueHint: "path",
           },
           storage: {
             type: "string",
-            default: "./.data/tooldeck.sqlite",
             description: "SQLite database path for command history.",
             valueHint: "path",
           },
         },
         async run({ args, rawArgs }) {
-          const pluginsRoot = path.resolve(options.workspaceRoot, args.plugins);
-          const storagePath = path.resolve(options.workspaceRoot, args.storage);
+          const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+            workspaceRoot: options.workspaceRoot,
+            plugins: args.plugins,
+            storage: args.storage,
+          });
           const result = await runCliCommandWithStorage({
             commandId: args.commandId,
             pluginsRoot,
@@ -283,6 +337,37 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
           });
 
           printTextBlocks(result);
+        },
+      }),
+      paths: defineCommand({
+        meta: {
+          name: "paths",
+          description: "Print resolved Tooldeck paths.",
+        },
+        args: {
+          plugins: {
+            type: "string",
+            description: "Plugin directory override to show.",
+            valueHint: "path",
+          },
+          storage: {
+            type: "string",
+            description: "SQLite database path override to show.",
+            valueHint: "path",
+          },
+        },
+        run({ args }) {
+          const { tooldeckPaths, pluginsRoot, storagePath } = resolveCliRuntimePaths({
+            workspaceRoot: options.workspaceRoot,
+            plugins: args.plugins,
+            storage: args.storage,
+          });
+
+          printTooldeckPaths({
+            ...tooldeckPaths,
+            builtinPluginsDir: pluginsRoot,
+            databasePath: storagePath,
+          });
         },
       }),
     },
@@ -307,6 +392,14 @@ function resolveLocalizedString(value: LocalizedString): string {
 
 function elapsedMilliseconds(startedAt: number): number {
   return Math.max(0, Math.round(performance.now() - startedAt));
+}
+
+function resolveCliPathOverride(workspaceRoot: string, value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  return path.isAbsolute(value) ? value : path.resolve(workspaceRoot, value);
 }
 
 function assertPluginsAvailable(created: CreatedPluginManager, pluginsRoot: string): void {
