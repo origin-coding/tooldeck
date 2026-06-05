@@ -10,6 +10,7 @@ import {
   PluginManager,
   scanPluginDirectory,
   type IndexedCommand,
+  type IndexedPlugin,
 } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
@@ -18,10 +19,17 @@ import {
   openTooldeckDatabase,
   PluginKvRepository,
   PluginRepository,
+  type PluginRow,
   type TooldeckDatabase,
 } from "@tooldeck/storage";
 
-import type { CommandRunRecord, DesktopCommand, RunCommandRequest } from "../shared/desktop-api";
+import type {
+  CommandRunRecord,
+  DesktopCommand,
+  DesktopPlugin,
+  RunCommandRequest,
+  SetPluginEnabledRequest,
+} from "@/shared/desktop-api";
 
 export interface TooldeckDesktopServiceOptions {
   workspaceRoot?: string;
@@ -38,6 +46,7 @@ export class TooldeckDesktopService {
   private plugins?: PluginRepository;
   private pluginKv?: PluginKvRepository;
   private pluginHost?: NodePluginHost;
+  private pluginManager?: PluginManager;
   private commandService?: CommandService;
   private manifestIndex?: ManifestIndex;
 
@@ -60,7 +69,77 @@ export class TooldeckDesktopService {
   }
 
   listCommands(): DesktopCommand[] {
-    return this.requireManifestIndex().listCommands().map(formatDesktopCommand);
+    const plugins = this.requirePlugins();
+    const pluginManager = this.requirePluginManager();
+
+    return this.requireManifestIndex()
+      .listCommands()
+      .map((command) =>
+        formatDesktopCommand({
+          command,
+          plugin: plugins.getById(command.pluginId),
+          pluginManager,
+        }),
+      );
+  }
+
+  listPlugins(): DesktopPlugin[] {
+    const manifestIndex = this.requireManifestIndex();
+    const pluginManager = this.requirePluginManager();
+
+    return this.requirePlugins()
+      .list()
+      .map((plugin) =>
+        formatDesktopPlugin({
+          plugin,
+          indexedPlugin: manifestIndex.getPlugin(plugin.id),
+          commandCount: manifestIndex
+            .listCommands()
+            .filter((command) => command.pluginId === plugin.id).length,
+          pluginManager,
+        }),
+      );
+  }
+
+  async rescanPlugins(): Promise<{
+    commands: DesktopCommand[];
+    plugins: DesktopPlugin[];
+  }> {
+    await this.scanAndCreateRuntime();
+
+    return {
+      commands: this.listCommands(),
+      plugins: this.listPlugins(),
+    };
+  }
+
+  async setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin> {
+    await this.syncScannedPlugins();
+
+    const plugin = this.requirePlugins().setEnabled(request.pluginId, request.enabled);
+
+    if (!plugin) {
+      throw new Error(`Plugin is not registered: ${request.pluginId}`);
+    }
+
+    await this.scanAndCreateRuntime();
+
+    const updatedPlugin = this.requirePlugins().getById(request.pluginId);
+
+    if (!updatedPlugin) {
+      throw new Error(`Plugin is not registered: ${request.pluginId}`);
+    }
+
+    const manifestIndex = this.requireManifestIndex();
+
+    return formatDesktopPlugin({
+      plugin: updatedPlugin,
+      indexedPlugin: manifestIndex.getPlugin(updatedPlugin.id),
+      commandCount: manifestIndex
+        .listCommands()
+        .filter((command) => command.pluginId === updatedPlugin.id).length,
+      pluginManager: this.requirePluginManager(),
+    });
   }
 
   async runCommand(request: RunCommandRequest): Promise<CommandResult> {
@@ -70,6 +149,8 @@ export class TooldeckDesktopService {
     const pluginId = manifestIndex.getCommandOwner(request.commandId);
 
     try {
+      this.assertCommandPluginEnabled(request.commandId, pluginId);
+
       const run = await this.requireCommandService().runCommand({
         commandId: request.commandId,
         input: request.input,
@@ -127,6 +208,8 @@ export class TooldeckDesktopService {
   }
 
   private async scanAndCreateRuntime(): Promise<void> {
+    await this.pluginHost?.disposeAll();
+
     const commandRegistry = new CommandRegistry();
     const manifestIndex = new ManifestIndex();
     const pluginKv = this.requirePluginKv();
@@ -156,13 +239,7 @@ export class TooldeckDesktopService {
       pluginsRoot: this.pluginsRoot,
       manifestIndex,
     });
-
-    for (const plugin of manifestIndex.listPlugins()) {
-      this.requirePlugins().upsertScannedPlugin({
-        manifest: plugin.manifest,
-        manifestPath: plugin.manifestPath,
-      });
-    }
+    this.syncScannedPluginIndex(manifestIndex);
 
     const pluginManager = new PluginManager({
       manifestIndex,
@@ -171,11 +248,45 @@ export class TooldeckDesktopService {
     });
 
     this.pluginHost = pluginHost;
+    this.pluginManager = pluginManager;
     this.manifestIndex = manifestIndex;
     this.commandService = new CommandService({
       pluginManager,
       coercion: "none",
     });
+  }
+
+  private async syncScannedPlugins(): Promise<ManifestIndex> {
+    const manifestIndex = new ManifestIndex();
+
+    await scanPluginDirectory({
+      pluginsRoot: this.pluginsRoot,
+      manifestIndex,
+    });
+    this.syncScannedPluginIndex(manifestIndex);
+
+    return manifestIndex;
+  }
+
+  private syncScannedPluginIndex(manifestIndex: ManifestIndex): void {
+    this.requirePlugins().syncScannedPlugins({
+      plugins: manifestIndex.listPlugins().map((plugin) => ({
+        manifest: plugin.manifest,
+        manifestPath: plugin.manifestPath,
+      })),
+    });
+  }
+
+  private assertCommandPluginEnabled(commandId: string, pluginId: string | undefined): void {
+    if (!pluginId) {
+      return;
+    }
+
+    const plugin = this.requirePlugins().getById(pluginId);
+
+    if (!plugin?.enabled) {
+      throw new Error(`Plugin is disabled for command ${commandId}: ${pluginId}`);
+    }
   }
 
   private requireCommandService(): CommandService {
@@ -184,6 +295,14 @@ export class TooldeckDesktopService {
     }
 
     return this.commandService;
+  }
+
+  private requirePluginManager(): PluginManager {
+    if (!this.pluginManager) {
+      throw new Error("Tooldeck desktop service has not started.");
+    }
+
+    return this.pluginManager;
   }
 
   private requireManifestIndex(): ManifestIndex {
@@ -219,15 +338,43 @@ export class TooldeckDesktopService {
   }
 }
 
-function formatDesktopCommand(command: IndexedCommand): DesktopCommand {
+function formatDesktopCommand(options: {
+  command: IndexedCommand;
+  plugin: PluginRow | undefined;
+  pluginManager: PluginManager;
+}): DesktopCommand {
+  const { command, plugin, pluginManager } = options;
+
   return {
     id: command.id,
     pluginId: command.pluginId,
+    pluginEnabled: plugin?.enabled ?? false,
+    pluginRuntimeState: pluginManager.getPluginRuntimeState(command.pluginId),
     title: resolveLocalizedString(command.definition.title),
     description: command.definition.description
       ? resolveLocalizedString(command.definition.description)
       : undefined,
     inputSchema: command.definition.inputSchema,
+  };
+}
+
+function formatDesktopPlugin(options: {
+  plugin: PluginRow;
+  indexedPlugin: IndexedPlugin | undefined;
+  commandCount: number;
+  pluginManager: PluginManager;
+}): DesktopPlugin {
+  const { plugin, indexedPlugin, commandCount, pluginManager } = options;
+
+  return {
+    id: plugin.id,
+    name: resolveStoredLocalizedString(plugin.nameJson),
+    version: plugin.version,
+    manifestPath: plugin.manifestPath,
+    enabled: plugin.enabled,
+    runtimeState: indexedPlugin ? pluginManager.getPluginRuntimeState(plugin.id) : "inactive",
+    commandCount,
+    updatedAt: plugin.updatedAt,
   };
 }
 
@@ -237,6 +384,14 @@ function resolveLocalizedString(value: LocalizedString): string {
   }
 
   return value.default;
+}
+
+function resolveStoredLocalizedString(value: string): string {
+  try {
+    return resolveLocalizedString(JSON.parse(value) as LocalizedString);
+  } catch {
+    return value;
+  }
 }
 
 function elapsedMilliseconds(startedAt: number): number {

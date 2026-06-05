@@ -1,9 +1,10 @@
 import type { CommandResult, TooldeckJsonSchema } from "@tooldeck/protocol";
 import type { JsonObject } from "@tooldeck/shared";
-import { AlertCircle, Braces, History, Loader2, Play, RefreshCw } from "lucide-react";
+import { AlertCircle, Braces, History, Loader2, Play, Power, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { CommandRunRecord, DesktopCommand } from "@/shared/desktop-api";
+import type { CommandRunRecord, DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+
 import { Badge } from "./components/ui/badge";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
@@ -15,6 +16,7 @@ import { cn } from "./lib/utils";
 
 interface AppState {
   commands: DesktopCommand[];
+  plugins: DesktopPlugin[];
   selectedCommandId?: string;
   input: Record<string, string>;
   result?: CommandResult;
@@ -27,6 +29,7 @@ interface AppState {
 
 const initialState: AppState = {
   commands: [],
+  plugins: [],
   input: {},
   history: [],
   isLoadingData: false,
@@ -49,8 +52,9 @@ export function App() {
     }));
 
     try {
-      const [commands, history] = await Promise.all([
+      const [commands, plugins, history] = await Promise.all([
         window.tooldeck.listCommands(),
+        window.tooldeck.listPlugins(),
         window.tooldeck.listCommandRuns(25),
       ]);
 
@@ -61,6 +65,7 @@ export function App() {
         return {
           ...current,
           commands,
+          plugins,
           selectedCommandId,
           input: createInputState(selected, current.input),
           history,
@@ -79,6 +84,42 @@ export function App() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const rescanPlugins = useCallback(async () => {
+    setState((current) => ({
+      ...current,
+      isLoadingData: true,
+      loadError: undefined,
+    }));
+
+    try {
+      const [{ commands, plugins }, history] = await Promise.all([
+        window.tooldeck.rescanPlugins(),
+        window.tooldeck.listCommandRuns(25),
+      ]);
+
+      setState((current) => {
+        const selectedCommandId = resolveSelectedCommandId(commands, current.selectedCommandId);
+        const selected = commands.find((command) => command.id === selectedCommandId);
+
+        return {
+          ...current,
+          commands,
+          plugins,
+          selectedCommandId,
+          input: createInputState(selected, current.input),
+          history,
+          isLoadingData: false,
+        };
+      });
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        isLoadingData: false,
+        loadError: getErrorMessage(error),
+      }));
+    }
+  }, []);
 
   const selectCommand = useCallback((command: DesktopCommand) => {
     setState((current) => ({
@@ -101,7 +142,12 @@ export function App() {
   }, []);
 
   const runSelectedCommand = useCallback(async () => {
-    if (!selectedCommand || state.isLoadingData || state.isRunning) {
+    if (
+      !selectedCommand ||
+      !selectedCommand.pluginEnabled ||
+      state.isLoadingData ||
+      state.isRunning
+    ) {
       return;
     }
 
@@ -116,31 +162,86 @@ export function App() {
         commandId: selectedCommand.id,
         input: buildCommandInput(selectedCommand, state.input),
       });
-      const history = await window.tooldeck.listCommandRuns(25);
+      const [commands, plugins, history] = await Promise.all([
+        window.tooldeck.listCommands(),
+        window.tooldeck.listPlugins(),
+        window.tooldeck.listCommandRuns(25),
+      ]);
 
       setState((current) => ({
         ...current,
+        commands,
+        plugins,
         result,
         history,
         isRunning: false,
       }));
     } catch (error) {
       let history = state.history;
+      let commands = state.commands;
+      let plugins = state.plugins;
 
       try {
-        history = await window.tooldeck.listCommandRuns(25);
+        [commands, plugins, history] = await Promise.all([
+          window.tooldeck.listCommands(),
+          window.tooldeck.listPlugins(),
+          window.tooldeck.listCommandRuns(25),
+        ]);
       } catch {
         // Keep the existing history if refreshing failed after the run error.
       }
 
       setState((current) => ({
         ...current,
+        commands,
+        plugins,
         history,
         isRunning: false,
         runError: getErrorMessage(error),
       }));
     }
-  }, [selectedCommand, state.history, state.input, state.isLoadingData, state.isRunning]);
+  }, [
+    selectedCommand,
+    state.commands,
+    state.history,
+    state.input,
+    state.isLoadingData,
+    state.isRunning,
+    state.plugins,
+  ]);
+
+  const setPluginEnabled = useCallback(async (pluginId: string, enabled: boolean) => {
+    setState((current) => ({
+      ...current,
+      isLoadingData: true,
+      loadError: undefined,
+    }));
+
+    try {
+      await window.tooldeck.setPluginEnabled({
+        pluginId,
+        enabled,
+      });
+      const [commands, plugins] = await Promise.all([
+        window.tooldeck.listCommands(),
+        window.tooldeck.listPlugins(),
+      ]);
+
+      setState((current) => ({
+        ...current,
+        commands,
+        plugins,
+        selectedCommandId: resolveSelectedCommandId(commands, current.selectedCommandId),
+        isLoadingData: false,
+      }));
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        isLoadingData: false,
+        loadError: getErrorMessage(error),
+      }));
+    }
+  }, []);
 
   return (
     <main className="bg-background text-foreground grid min-h-screen grid-cols-[280px_minmax(0,1fr)] max-lg:grid-cols-1">
@@ -162,6 +263,15 @@ export function App() {
             onSelect={selectCommand}
           />
         </ScrollArea>
+        <Separator />
+        <div className="text-muted-foreground px-5 py-3 text-xs font-medium uppercase">Plugins</div>
+        <ScrollArea className="max-h-72 px-3 pb-4">
+          <PluginList
+            plugins={state.plugins}
+            isLoading={state.isLoadingData}
+            onSetEnabled={setPluginEnabled}
+          />
+        </ScrollArea>
       </aside>
 
       <section className="flex min-w-0 flex-col">
@@ -179,14 +289,19 @@ export function App() {
               type="button"
               variant="outline"
               disabled={state.isLoadingData}
-              onClick={() => void loadData()}
+              onClick={() => void rescanPlugins()}
             >
               <RefreshCw className={cn("size-4", state.isLoadingData && "animate-spin")} />
               Refresh
             </Button>
             <Button
               type="button"
-              disabled={!selectedCommand || state.isLoadingData || state.isRunning}
+              disabled={
+                !selectedCommand ||
+                !selectedCommand.pluginEnabled ||
+                state.isLoadingData ||
+                state.isRunning
+              }
               onClick={() => void runSelectedCommand()}
             >
               {state.isRunning ? (
@@ -204,7 +319,17 @@ export function App() {
 
           <div className="grid min-h-90 flex-1 grid-cols-2 gap-4 max-xl:grid-cols-1">
             <section className="border-border bg-card flex min-w-0 flex-col rounded-lg border">
-              <PanelHeader title="Input" trailing={selectedCommand?.id} />
+              <PanelHeader
+                title="Input"
+                trailing={
+                  selectedCommand ? (
+                    <div className="flex items-center gap-2">
+                      <StatusBadge status={selectedCommand.pluginRuntimeState} />
+                      <span>{selectedCommand.id}</span>
+                    </div>
+                  ) : undefined
+                }
+              />
               <CommandInputForm
                 command={selectedCommand}
                 input={state.input}
@@ -270,12 +395,67 @@ function CommandList({
           className={cn(
             "grid min-h-16 gap-1 rounded-md border border-transparent px-3 py-2.5 text-left transition-colors hover:bg-muted",
             command.id === selectedCommandId && "border-border bg-background shadow-xs",
+            !command.pluginEnabled && "opacity-55",
           )}
           onClick={() => onSelect(command)}
         >
-          <span className="truncate text-sm font-medium">{command.title}</span>
-          <span className="text-muted-foreground truncate text-xs">{command.id}</span>
+          <span className="flex min-w-0 items-center justify-between gap-2">
+            <span className="truncate text-sm font-medium">{command.title}</span>
+            {!command.pluginEnabled ? <Badge variant="outline">Disabled</Badge> : null}
+          </span>
+          <span className="text-muted-foreground truncate text-xs">
+            {command.id} · {command.pluginRuntimeState}
+          </span>
         </button>
+      ))}
+    </div>
+  );
+}
+
+function PluginList({
+  plugins,
+  isLoading,
+  onSetEnabled,
+}: {
+  plugins: DesktopPlugin[];
+  isLoading: boolean;
+  onSetEnabled(pluginId: string, enabled: boolean): void;
+}) {
+  if (plugins.length === 0) {
+    return <EmptyState text={isLoading ? "Loading plugins" : "No plugins"} />;
+  }
+
+  return (
+    <div className="grid gap-1.5">
+      {plugins.map((plugin) => (
+        <div
+          key={plugin.id}
+          className={cn(
+            "border-border bg-background grid gap-2 rounded-md border px-3 py-2.5",
+            !plugin.enabled && "opacity-65",
+          )}
+        >
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{plugin.name}</div>
+              <div className="text-muted-foreground truncate text-xs">{plugin.id}</div>
+            </div>
+            <Button
+              type="button"
+              variant={plugin.enabled ? "secondary" : "outline"}
+              size="icon-sm"
+              disabled={isLoading}
+              aria-label={plugin.enabled ? `Disable ${plugin.name}` : `Enable ${plugin.name}`}
+              onClick={() => onSetEnabled(plugin.id, !plugin.enabled)}
+            >
+              <Power className="size-4" />
+            </Button>
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <StatusBadge status={plugin.enabled ? plugin.runtimeState : "disabled"} />
+            <span className="text-muted-foreground text-xs">{plugin.commandCount} commands</span>
+          </div>
+        </div>
       ))}
     </div>
   );
@@ -414,12 +594,27 @@ function PanelHeader({
   );
 }
 
-function StatusBadge({ status }: { status: CommandResult["status"] | "idle" }) {
+type StatusBadgeStatus =
+  | CommandResult["status"]
+  | "idle"
+  | "inactive"
+  | "activating"
+  | "active"
+  | "deactivating"
+  | "failed"
+  | "disposed"
+  | "disabled";
+
+function StatusBadge({ status }: { status: StatusBadgeStatus }) {
+  const variant =
+    status === "error" || status === "failed"
+      ? "destructive"
+      : status === "success" || status === "active"
+        ? "secondary"
+        : "outline";
+
   return (
-    <Badge
-      variant={status === "error" ? "destructive" : status === "success" ? "secondary" : "outline"}
-      className="capitalize"
-    >
+    <Badge variant={variant} className="capitalize">
       {status}
     </Badge>
   );

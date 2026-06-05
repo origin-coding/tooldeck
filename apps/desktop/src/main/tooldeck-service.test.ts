@@ -25,13 +25,26 @@ describe("TooldeckDesktopService", () => {
 
     try {
       const commands = service.listCommands();
+      const plugins = service.listPlugins();
 
       expect(commands).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
             id: "json.format",
             pluginId: "dev.tooldeck.json-tools",
+            pluginEnabled: true,
+            pluginRuntimeState: "inactive",
             title: "Format JSON",
+          }),
+        ]),
+      );
+      expect(plugins).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "dev.tooldeck.json-tools",
+            enabled: true,
+            runtimeState: "inactive",
+            commandCount: expect.any(Number),
           }),
         ]),
       );
@@ -53,6 +66,15 @@ describe("TooldeckDesktopService", () => {
           },
         ],
       });
+      expect(service.listPlugins()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "dev.tooldeck.json-tools",
+            enabled: true,
+            runtimeState: "active",
+          }),
+        ]),
+      );
 
       expect(service.listCommandRuns()).toEqual([
         expect.objectContaining({
@@ -77,6 +99,80 @@ describe("TooldeckDesktopService", () => {
           createdAt: expect.any(Number),
         }),
       ]);
+    } finally {
+      await service.dispose();
+    }
+  });
+
+  it("persists plugin enabled state and blocks disabled desktop commands", async () => {
+    const service = new TooldeckDesktopService({
+      pluginsRoot: path.resolve("../..", "plugins"),
+      storagePath: createDatabasePath(),
+    });
+
+    await service.start();
+
+    try {
+      await expect(
+        service.setPluginEnabled({
+          pluginId: "dev.tooldeck.json-tools",
+          enabled: false,
+        }),
+      ).resolves.toMatchObject({
+        id: "dev.tooldeck.json-tools",
+        enabled: false,
+        runtimeState: "inactive",
+      });
+
+      expect(service.listCommands()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "json.format",
+            pluginEnabled: false,
+          }),
+        ]),
+      );
+      await expect(
+        service.runCommand({
+          commandId: "json.format",
+          input: {
+            text: '{"a":1}',
+            indent: 2,
+          },
+        }),
+      ).rejects.toThrow("Plugin is disabled for command json.format: dev.tooldeck.json-tools");
+      expect(service.listCommandRuns()).toEqual([
+        expect.objectContaining({
+          commandId: "json.format",
+          pluginId: "dev.tooldeck.json-tools",
+          source: "desktop",
+          status: "error",
+          error: expect.objectContaining({
+            message: "Plugin is disabled for command json.format: dev.tooldeck.json-tools",
+          }),
+        }),
+      ]);
+
+      await expect(
+        service.setPluginEnabled({
+          pluginId: "dev.tooldeck.json-tools",
+          enabled: true,
+        }),
+      ).resolves.toMatchObject({
+        id: "dev.tooldeck.json-tools",
+        enabled: true,
+      });
+      await expect(
+        service.runCommand({
+          commandId: "json.format",
+          input: {
+            text: '{"a":1}',
+            indent: 2,
+          },
+        }),
+      ).resolves.toMatchObject({
+        status: "success",
+      });
     } finally {
       await service.dispose();
     }
