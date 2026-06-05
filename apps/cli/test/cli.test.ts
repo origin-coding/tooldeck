@@ -323,8 +323,9 @@ describe("CLI command support", () => {
       status: "success",
       blocks: [
         {
-          type: "text",
+          type: "code",
           text: '{\n  "a": 1\n}',
+          language: "json",
         },
       ],
     });
@@ -343,6 +344,8 @@ describe("CLI command support", () => {
       blocks: [
         {
           text: '{\n  "a": 1\n}',
+          type: "code",
+          language: "json",
         },
       ],
     });

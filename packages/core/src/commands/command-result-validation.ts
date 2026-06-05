@@ -103,13 +103,33 @@ function validateContentBlock(options: {
     });
   }
 
-  if (options.block.type !== "text") {
+  if (
+    options.block.type !== "text" &&
+    options.block.type !== "code" &&
+    options.block.type !== "json"
+  ) {
     throwInvalidCommandResult({
       commandId: options.commandId,
       propertyPath: `${options.propertyPath}.type`,
-      expected: "text",
+      expected: "text | code | json",
       actual: describeActualValue(options.block.type),
     });
+  }
+
+  if (options.block.type === "json") {
+    if (!isJsonValue(options.block.value)) {
+      throwInvalidCommandResult({
+        commandId: options.commandId,
+        propertyPath: `${options.propertyPath}.value`,
+        expected: "JSON value",
+        actual: describeActualValue(options.block.value),
+      });
+    }
+
+    return {
+      type: "json",
+      value: options.block.value,
+    };
   }
 
   if (typeof options.block.text !== "string") {
@@ -119,6 +139,23 @@ function validateContentBlock(options: {
       expected: "string",
       actual: describeActualValue(options.block.text),
     });
+  }
+
+  if (options.block.type === "code") {
+    if (options.block.language !== undefined && typeof options.block.language !== "string") {
+      throwInvalidCommandResult({
+        commandId: options.commandId,
+        propertyPath: `${options.propertyPath}.language`,
+        expected: "string",
+        actual: describeActualValue(options.block.language),
+      });
+    }
+
+    return {
+      type: "code",
+      text: options.block.text,
+      ...(options.block.language === undefined ? {} : { language: options.block.language }),
+    };
   }
 
   return {

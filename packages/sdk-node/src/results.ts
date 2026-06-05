@@ -1,9 +1,31 @@
-import type { CommandResult, ContentBlock, TextContentBlock } from "@tooldeck/protocol";
+import type {
+  CodeContentBlock,
+  CommandResult,
+  ContentBlock,
+  JsonContentBlock,
+  TextContentBlock,
+} from "@tooldeck/protocol";
+import type { JsonValue } from "@tooldeck/shared";
 
 export function textBlock(text: string): TextContentBlock {
   return {
     type: "text",
     text,
+  };
+}
+
+export function codeBlock(text: string, language?: string): CodeContentBlock {
+  return {
+    type: "code",
+    text,
+    ...(language === undefined ? {} : { language }),
+  };
+}
+
+export function jsonBlock(value: JsonValue): JsonContentBlock {
+  return {
+    type: "json",
+    value,
   };
 }
 

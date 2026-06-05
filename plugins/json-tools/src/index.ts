@@ -1,5 +1,5 @@
 import type { CommandHandler } from "@tooldeck/sdk-node";
-import { definePlugin, failText, okText } from "@tooldeck/sdk-node";
+import { codeBlock, definePlugin, failText, ok } from "@tooldeck/sdk-node";
 
 import type { JsonFormatInput, PluginCommandInputs } from "./generated/commands";
 
@@ -18,7 +18,7 @@ const formatJson: CommandHandler<JsonFormatInput> = async (input) => {
     const value = JSON.parse(input.text);
     const indent = normalizeIndent(input.indent);
 
-    return okText(JSON.stringify(value, null, indent));
+    return ok([codeBlock(JSON.stringify(value, null, indent), "json")]);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 

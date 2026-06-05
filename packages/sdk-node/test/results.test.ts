@@ -1,4 +1,4 @@
-import { fail, failText, ok, okText, textBlock } from "@tooldeck/sdk-node";
+import { codeBlock, fail, failText, jsonBlock, ok, okText, textBlock } from "@tooldeck/sdk-node";
 import { describe, expect, it } from "vitest";
 
 describe("command result helpers", () => {
@@ -6,6 +6,23 @@ describe("command result helpers", () => {
     expect(textBlock("hello")).toEqual({
       type: "text",
       text: "hello",
+    });
+  });
+
+  it("creates code content blocks", () => {
+    expect(codeBlock('{"a":1}', "json")).toEqual({
+      type: "code",
+      text: '{"a":1}',
+      language: "json",
+    });
+  });
+
+  it("creates json content blocks", () => {
+    expect(jsonBlock({ a: 1 })).toEqual({
+      type: "json",
+      value: {
+        a: 1,
+      },
     });
   });
 

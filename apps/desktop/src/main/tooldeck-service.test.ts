@@ -61,8 +61,9 @@ describe("TooldeckDesktopService", () => {
         status: "success",
         blocks: [
           {
-            type: "text",
+            type: "code",
             text: '{\n  "a": 1\n}',
+            language: "json",
           },
         ],
       });
@@ -90,8 +91,9 @@ describe("TooldeckDesktopService", () => {
             status: "success",
             blocks: [
               {
-                type: "text",
+                type: "code",
                 text: '{\n  "a": 1\n}',
+                language: "json",
               },
             ],
           },

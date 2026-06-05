@@ -1,4 +1,4 @@
-import type { JsonObject } from "@tooldeck/shared";
+import type { JsonObject, JsonValue } from "@tooldeck/shared";
 
 import type { LocalizedString } from "./i18n";
 import type { TooldeckJsonSchema } from "./schema";
@@ -18,7 +18,18 @@ export interface TextContentBlockV1 {
   text: string;
 }
 
-export type ContentBlockV1 = TextContentBlockV1;
+export interface CodeContentBlockV1 {
+  type: "code";
+  text: string;
+  language?: string;
+}
+
+export interface JsonContentBlockV1 {
+  type: "json";
+  value: JsonValue;
+}
+
+export type ContentBlockV1 = TextContentBlockV1 | CodeContentBlockV1 | JsonContentBlockV1;
 
 export interface CommandErrorV1 {
   message: string;
@@ -35,6 +46,8 @@ export interface CommandResultV1 {
 export type CommandDefinition = CommandDefinitionV1;
 export type CommandStatus = CommandStatusV1;
 export type ContentBlock = ContentBlockV1;
+export type CodeContentBlock = CodeContentBlockV1;
+export type JsonContentBlock = JsonContentBlockV1;
 export type TextContentBlock = TextContentBlockV1;
 export type CommandError = CommandErrorV1;
 export type CommandResult = CommandResultV1;

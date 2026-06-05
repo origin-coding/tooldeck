@@ -701,20 +701,20 @@ interface PluginContext {
 命令不要返回 React/Vue 组件，而是返回结构化内容块。
 
 ```ts
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
 type ContentBlock =
   | { type: "text"; text: string }
-  | { type: "markdown"; text: string }
   | { type: "code"; language?: string; text: string }
-  | { type: "json"; value: unknown }
-  | { type: "table"; columns: TableColumn[]; rows: Record<string, unknown>[] }
-  | { type: "file"; name: string; mimeType?: string; uri: string };
+  | { type: "json"; value: JsonValue };
 
 interface CommandResult {
   status: "success" | "error";
   blocks: ContentBlock[];
-  metadata?: Record<string, unknown>;
 }
 ```
+
+`markdown`、`table`、`file` 等 block 会引入额外渲染、安全、数据建模或文件生命周期设计，v1 MVP 先不纳入 `ContentBlock` 联合类型。后续只有在对应设计明确后再作为显式协议扩展加入。
 
 不同宿主负责不同展示：
 

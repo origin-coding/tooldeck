@@ -1,4 +1,4 @@
-import type { CommandResult } from "@tooldeck/protocol";
+import type { CommandResult, ContentBlock } from "@tooldeck/protocol";
 
 export function CommandOutput({ result, hasError }: { result?: CommandResult; hasError: boolean }) {
   if (!result) {
@@ -16,9 +16,17 @@ export function CommandOutput({ result, hasError }: { result?: CommandResult; ha
           key={`${block.type}-${index}`}
           className="bg-muted min-h-0 overflow-auto rounded-md p-3 font-mono text-sm leading-6 whitespace-pre-wrap"
         >
-          {block.text}
+          {formatContentBlockText(block)}
         </pre>
       ))}
     </div>
   );
+}
+
+function formatContentBlockText(block: ContentBlock): string {
+  if (block.type === "json") {
+    return JSON.stringify(block.value, null, 2);
+  }
+
+  return block.text;
 }

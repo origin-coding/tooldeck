@@ -301,8 +301,10 @@ export async function runCliCommandWithStorage(
 
 export function printTextBlocks(result: CommandResult): void {
   for (const block of result.blocks) {
-    if (block.type === "text") {
+    if (block.type === "text" || block.type === "code") {
       consola.log(block.text);
+    } else if (block.type === "json") {
+      consola.log(JSON.stringify(block.value, null, 2));
     }
   }
 }

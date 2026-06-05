@@ -35,6 +35,44 @@ describe("CommandRegistry", () => {
     });
   });
 
+  it("runs commands that return code and json content blocks", async () => {
+    const registry = new CommandRegistry();
+
+    registry.register("json.inspect", () => ({
+      status: "success",
+      blocks: [
+        {
+          type: "code",
+          text: '{\n  "a": 1\n}',
+          language: "json",
+        },
+        {
+          type: "json",
+          value: {
+            a: 1,
+          },
+        },
+      ],
+    }));
+
+    await expect(registry.run({ commandId: "json.inspect" })).resolves.toEqual({
+      status: "success",
+      blocks: [
+        {
+          type: "code",
+          text: '{\n  "a": 1\n}',
+          language: "json",
+        },
+        {
+          type: "json",
+          value: {
+            a: 1,
+          },
+        },
+      ],
+    });
+  });
+
   it("throws when a handler returns an invalid command result", async () => {
     const registry = new CommandRegistry();
 
@@ -49,6 +87,23 @@ describe("CommandRegistry", () => {
 
     await expect(registry.run({ commandId: "json.bad-result" })).rejects.toThrow(
       "Invalid command result for json.bad-result: --blocks[0].text",
+    );
+  });
+
+  it("throws when a json content block value is not JSON-compatible", async () => {
+    const registry = new CommandRegistry();
+
+    registry.register(
+      "json.bad-value",
+      () =>
+        ({
+          status: "success",
+          blocks: [{ type: "json", value: undefined }],
+        }) as never,
+    );
+
+    await expect(registry.run({ commandId: "json.bad-value" })).rejects.toThrow(
+      "Invalid command result for json.bad-value: --blocks[0].value",
     );
   });
 
