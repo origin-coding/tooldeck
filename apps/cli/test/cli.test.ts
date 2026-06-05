@@ -340,7 +340,9 @@ describe("CLI command support", () => {
       status: "success",
     });
     expect(runs[0]?.inputJson).toBe(JSON.stringify({ text: '{"a":1}', indent: 2 }));
-    expect(JSON.parse(runs[0]?.outputJson ?? "")).toMatchObject({
+    expect(runs[0]?.errorJson).toBeNull();
+    expect(JSON.parse(runs[0]?.outputJson ?? "")).toEqual({
+      status: "success",
       blocks: [
         {
           text: '{\n  "a": 1\n}',
@@ -527,7 +529,20 @@ describe("CLI command support", () => {
       status: "error",
     });
     expect(runs[0]?.inputJson).toBe(JSON.stringify({ text: "{", indent: 2 }));
-    expect(runs[0]?.outputJson).toContain("ERR_INVALID_JSON");
+    expect(runs[0]?.errorJson).toBeNull();
+    expect(JSON.parse(runs[0]?.outputJson ?? "")).toMatchObject({
+      status: "error",
+      blocks: [
+        {
+          type: "text",
+          text: expect.stringContaining("Invalid JSON:"),
+        },
+      ],
+      error: {
+        code: "ERR_INVALID_JSON",
+        message: expect.any(String),
+      },
+    });
   });
 });
 
