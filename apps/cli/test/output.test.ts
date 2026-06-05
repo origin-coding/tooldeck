@@ -92,6 +92,9 @@ describe("CLI command output", () => {
   });
 });
 
+const ESC = String.fromCharCode(27);
+const ANSI_ESCAPE_REGEXP = new RegExp(`${ESC}\\[[0-?]*[ -/]*[@-~]`, "g");
+
 function stripAnsi(value: string): string {
-  return value.replace(/\u001B\[[0-?]*[ -/]*[@-~]/g, "");
+  return value.replace(ANSI_ESCAPE_REGEXP, "");
 }
