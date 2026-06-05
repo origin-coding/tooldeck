@@ -1,13 +1,19 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 
 const smokeDir = path.resolve(".tmp", "smoke");
 const storagePath = path.join(smokeDir, `tooldeck-${Date.now()}.sqlite`);
-const args = ["dist/index.js", "run", "json.format", "--text", '{"a":1}', "--storage", storagePath];
+const builtCliEntry = path.resolve("dist", "index.js");
+const args = [builtCliEntry, "run", "json.format", "--text", '{"a":1}', "--storage", storagePath];
 
 mkdirSync(smokeDir, { recursive: true });
-console.log(`tooldeck run json.format --text '{"a":1}'`);
+
+if (!existsSync(builtCliEntry)) {
+  throw new Error("Built CLI entry is missing. Run pnpm --filter @tooldeck/cli build first.");
+}
+
+console.log(`node dist/index.js run json.format --text '{"a":1}'`);
 
 const result = spawnSync(process.execPath, args, {
   cwd: process.cwd(),

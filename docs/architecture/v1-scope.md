@@ -90,6 +90,34 @@ V1 manifest schema 保持 commands-only strict。`activationEvents` 继续由 co
 - CLI smoke 使用 build 后的 package 验证。
 - CLI 不访问 Desktop renderer、Electron API 或插件内部实现。
 
+## CLI 用法
+
+从 workspace 运行开发态 CLI：
+
+```bash
+pnpm --filter @tooldeck/cli dev -- list
+pnpm --filter @tooldeck/cli dev -- list commands
+pnpm --filter @tooldeck/cli dev -- run json.format --text '{"a":1}'
+```
+
+运行 build 后的 CLI：
+
+```bash
+pnpm --filter @tooldeck/cli build
+node apps/cli/dist/index.js list
+node apps/cli/dist/index.js list commands
+node apps/cli/dist/index.js run json.format --text '{"a":1}'
+```
+
+指定插件目录和 SQLite 路径：
+
+```bash
+node apps/cli/dist/index.js list commands --plugins ./plugins --storage ./.data/tooldeck.sqlite
+node apps/cli/dist/index.js run json.format --text '{"a":1}' --plugins ./plugins --storage ./.data/tooldeck.sqlite
+```
+
+`--plugins` 接受要扫描的本地插件目录；`--storage` 接受 SQLite 数据库文件路径。相对路径按 workspace root 解析。
+
 ## Desktop 收口清单
 
 - Desktop renderer 不直接访问 SQLite。
