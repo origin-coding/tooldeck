@@ -14,8 +14,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   createPluginManager,
   listCliCommands,
+  listCliPlugins,
   resolveCliRuntimePaths,
   runCliCommandWithStorage,
+  setCliPluginEnabled,
 } from "../src/cli";
 
 const tempDirs: string[] = [];
@@ -175,6 +177,62 @@ describe("CLI command support", () => {
       },
     ]);
     expect(existsSync(activationMarkerPath)).toBe(false);
+  });
+
+  it("lists scanned plugins through the SQLite plugin registry", async () => {
+    const pluginsRoot = path.resolve("../..", "plugins");
+    const storagePath = createDatabasePath();
+
+    const plugins = await listCliPlugins({
+      pluginsRoot,
+      storagePath,
+    });
+
+    expect(plugins).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "dev.tooldeck.hello-world",
+          enabled: true,
+          name: "Hello World",
+        }),
+        expect.objectContaining({
+          id: "dev.tooldeck.json-tools",
+          enabled: true,
+          name: "JSON Tools",
+        }),
+      ]),
+    );
+    expect(readPlugins(storagePath).map((plugin) => plugin.id)).toEqual(
+      expect.arrayContaining(["dev.tooldeck.hello-world", "dev.tooldeck.json-tools"]),
+    );
+  });
+
+  it("enables and disables plugins in the SQLite plugin registry", async () => {
+    const pluginsRoot = path.resolve("../..", "plugins");
+    const storagePath = createDatabasePath();
+
+    await expect(
+      setCliPluginEnabled({
+        pluginId: "dev.tooldeck.hello-world",
+        enabled: false,
+        pluginsRoot,
+        storagePath,
+      }),
+    ).resolves.toMatchObject({
+      id: "dev.tooldeck.hello-world",
+      enabled: false,
+    });
+    await expect(
+      setCliPluginEnabled({
+        pluginId: "dev.tooldeck.hello-world",
+        enabled: true,
+        pluginsRoot,
+        storagePath,
+      }),
+    ).resolves.toMatchObject({
+      id: "dev.tooldeck.hello-world",
+      enabled: true,
+    });
   });
 
   it("stores successful command runs in SQLite", async () => {
@@ -352,6 +410,82 @@ describe("CLI command support", () => {
     });
 
     expect(readPluginKvValue(storagePath, "dev.tooldeck.kv-test", "count")).toBe(2);
+  });
+
+  it("does not activate disabled plugins when running commands", async () => {
+    const pluginsRoot = path.join(createTempDir(), "plugins");
+    const pluginRoot = path.join(pluginsRoot, "disabled-test");
+    const activationMarkerPath = path.join(pluginRoot, "activated.txt");
+    const storagePath = createDatabasePath();
+
+    await mkdir(pluginRoot, { recursive: true });
+    await writeFile(
+      path.join(pluginRoot, "manifest.json"),
+      JSON.stringify({
+        schemaVersion: "1.0",
+        id: "dev.tooldeck.disabled-test",
+        name: "Disabled Test",
+        version: "0.0.0",
+        runtime: {
+          kind: "node",
+          entry: "./index.mjs",
+        },
+        contributes: {
+          commands: [
+            {
+              id: "disabled.run",
+              title: "Disabled Run",
+            },
+          ],
+        },
+      }),
+      "utf8",
+    );
+    await writeFile(
+      path.join(pluginRoot, "index.mjs"),
+      `
+        import { writeFile } from "node:fs/promises";
+
+        export default {
+          async activate(ctx) {
+            await writeFile(${JSON.stringify(activationMarkerPath)}, "activated", "utf8");
+            ctx.subscriptions.push(
+              ctx.commands.register("disabled.run", () => ({
+                status: "success",
+                blocks: [{ type: "text", text: "should not run" }],
+              })),
+            );
+          },
+        };
+      `,
+      "utf8",
+    );
+
+    await setCliPluginEnabled({
+      pluginId: "dev.tooldeck.disabled-test",
+      enabled: false,
+      pluginsRoot,
+      storagePath,
+    });
+
+    await expect(
+      runCliCommandWithStorage({
+        commandId: "disabled.run",
+        pluginsRoot,
+        storagePath,
+      }),
+    ).rejects.toThrow("Plugin is disabled for command disabled.run: dev.tooldeck.disabled-test");
+    expect(existsSync(activationMarkerPath)).toBe(false);
+
+    const runs = readCommandRuns(storagePath);
+
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({
+      commandId: "disabled.run",
+      pluginId: "dev.tooldeck.disabled-test",
+      source: "cli",
+      status: "error",
+    });
   });
 
   it("stores json.format error results in SQLite", async () => {

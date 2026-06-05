@@ -22,6 +22,7 @@ import {
   openTooldeckDatabase,
   PluginKvRepository,
   PluginRepository,
+  type PluginRow,
 } from "@tooldeck/storage";
 import { defineCommand } from "citty";
 import type { CommandDef } from "citty";
@@ -56,10 +57,30 @@ export interface ListCliCommandsOptions {
   pluginsRoot: string;
 }
 
+export interface ListCliPluginsOptions {
+  pluginsRoot: string;
+  storagePath: string;
+}
+
+export interface SetCliPluginEnabledOptions {
+  pluginId: string;
+  enabled: boolean;
+  pluginsRoot: string;
+  storagePath: string;
+}
+
 export interface ListedCliCommand {
   id: string;
   pluginId: string;
   title: string;
+}
+
+export interface ListedCliPlugin {
+  id: string;
+  enabled: boolean;
+  version: string;
+  manifestPath: string;
+  name: string;
 }
 
 export interface CreatePluginManagerOptions {
@@ -139,6 +160,50 @@ export async function listCliCommands(
   return manifestIndex.listCommands().map(formatListedCommand);
 }
 
+export async function listCliPlugins(options: ListCliPluginsOptions): Promise<ListedCliPlugin[]> {
+  await mkdir(path.dirname(options.storagePath), { recursive: true });
+
+  const database = openTooldeckDatabase({ path: options.storagePath });
+  const plugins = new PluginRepository(database.db);
+
+  try {
+    await syncScannedPlugins({
+      pluginsRoot: options.pluginsRoot,
+      plugins,
+    });
+
+    return plugins.list().map(formatListedPlugin);
+  } finally {
+    database.close();
+  }
+}
+
+export async function setCliPluginEnabled(
+  options: SetCliPluginEnabledOptions,
+): Promise<ListedCliPlugin> {
+  await mkdir(path.dirname(options.storagePath), { recursive: true });
+
+  const database = openTooldeckDatabase({ path: options.storagePath });
+  const plugins = new PluginRepository(database.db);
+
+  try {
+    await syncScannedPlugins({
+      pluginsRoot: options.pluginsRoot,
+      plugins,
+    });
+
+    const plugin = plugins.setEnabled(options.pluginId, options.enabled);
+
+    if (!plugin) {
+      throw new Error(`Plugin is not registered: ${options.pluginId}`);
+    }
+
+    return formatListedPlugin(plugin);
+  } finally {
+    database.close();
+  }
+}
+
 export async function runCliCommandWithStorage(
   options: RunCliCommandOptions,
 ): Promise<CommandResult> {
@@ -179,12 +244,15 @@ export async function runCliCommandWithStorage(
     pluginId = created.manifestIndex.getCommandOwner(options.commandId);
 
     assertPluginsAvailable(created, options.pluginsRoot);
-    for (const plugin of created.manifestIndex.listPlugins()) {
-      plugins.upsertScannedPlugin({
-        manifest: plugin.manifest,
-        manifestPath: plugin.manifestPath,
-      });
-    }
+    syncScannedPluginIndex({
+      manifestIndex: created.manifestIndex,
+      plugins,
+    });
+    assertCommandPluginEnabled({
+      commandId: options.commandId,
+      pluginId,
+      plugins,
+    });
 
     input ??= parseRawCommandInputFromCliArgs({
       rawArgs: options.rawArgs ?? [],
@@ -239,6 +307,16 @@ export function printCommandList(commands: ListedCliCommand[]): void {
 
   for (const command of commands) {
     consola.log(`${command.id}\t${command.pluginId}\t${command.title}`);
+  }
+}
+
+export function printPluginList(plugins: ListedCliPlugin[]): void {
+  consola.log("plugin id\tenabled\tversion\tname\tmanifest path");
+
+  for (const plugin of plugins) {
+    consola.log(
+      `${plugin.id}\t${String(plugin.enabled)}\t${plugin.version}\t${plugin.name}\t${plugin.manifestPath}`,
+    );
   }
 }
 
@@ -339,6 +417,90 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
           printTextBlocks(result);
         },
       }),
+      plugin: defineCommand({
+        meta: {
+          name: "plugin",
+          description: "Manage Tooldeck plugins.",
+        },
+        subCommands: {
+          list: defineCommand({
+            meta: {
+              name: "list",
+              description: "List registered plugins.",
+            },
+            args: {
+              plugins: {
+                type: "string",
+                description:
+                  "Plugin directory to scan. Defaults to the resolved builtin plugin path.",
+                valueHint: "path",
+              },
+              storage: {
+                type: "string",
+                description: "SQLite database path for plugin registry.",
+                valueHint: "path",
+              },
+            },
+            async run({ args }) {
+              const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+                workspaceRoot: options.workspaceRoot,
+                plugins: args.plugins,
+                storage: args.storage,
+              });
+              const plugins = await listCliPlugins({
+                pluginsRoot,
+                storagePath,
+              });
+
+              printPluginList(plugins);
+            },
+          }),
+          enable: defineCommand({
+            meta: {
+              name: "enable",
+              description: "Enable a Tooldeck plugin.",
+            },
+            args: createPluginEnabledCommandArgs(),
+            async run({ args }) {
+              const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+                workspaceRoot: options.workspaceRoot,
+                plugins: args.plugins,
+                storage: args.storage,
+              });
+              const plugin = await setCliPluginEnabled({
+                pluginId: requireCliArgument(args.pluginId, "pluginId"),
+                enabled: true,
+                pluginsRoot,
+                storagePath,
+              });
+
+              printPluginList([plugin]);
+            },
+          }),
+          disable: defineCommand({
+            meta: {
+              name: "disable",
+              description: "Disable a Tooldeck plugin.",
+            },
+            args: createPluginEnabledCommandArgs(),
+            async run({ args }) {
+              const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+                workspaceRoot: options.workspaceRoot,
+                plugins: args.plugins,
+                storage: args.storage,
+              });
+              const plugin = await setCliPluginEnabled({
+                pluginId: requireCliArgument(args.pluginId, "pluginId"),
+                enabled: false,
+                pluginsRoot,
+                storagePath,
+              });
+
+              printPluginList([plugin]);
+            },
+          }),
+        },
+      }),
       paths: defineCommand({
         meta: {
           name: "paths",
@@ -382,12 +544,30 @@ function formatListedCommand(command: IndexedCommand): ListedCliCommand {
   };
 }
 
+function formatListedPlugin(plugin: PluginRow): ListedCliPlugin {
+  return {
+    id: plugin.id,
+    enabled: plugin.enabled,
+    version: plugin.version,
+    manifestPath: plugin.manifestPath,
+    name: resolveStoredLocalizedString(plugin.nameJson),
+  };
+}
+
 function resolveLocalizedString(value: LocalizedString): string {
   if (typeof value === "string") {
     return value;
   }
 
   return value.default;
+}
+
+function resolveStoredLocalizedString(value: string): string {
+  try {
+    return resolveLocalizedString(JSON.parse(value) as LocalizedString);
+  } catch {
+    return value;
+  }
 }
 
 function elapsedMilliseconds(startedAt: number): number {
@@ -400,6 +580,87 @@ function resolveCliPathOverride(workspaceRoot: string, value?: string): string |
   }
 
   return path.isAbsolute(value) ? value : path.resolve(workspaceRoot, value);
+}
+
+function requireCliArgument(value: string | undefined, name: string): string {
+  if (!value) {
+    throw new Error(`Missing required argument: ${name}`);
+  }
+
+  return value;
+}
+
+interface SyncScannedPluginsOptions {
+  pluginsRoot: string;
+  plugins: PluginRepository;
+}
+
+async function syncScannedPlugins(options: SyncScannedPluginsOptions): Promise<ManifestIndex> {
+  const manifestIndex = new ManifestIndex();
+
+  await scanPluginDirectory({
+    pluginsRoot: options.pluginsRoot,
+    manifestIndex,
+  });
+  syncScannedPluginIndex({
+    manifestIndex,
+    plugins: options.plugins,
+  });
+
+  return manifestIndex;
+}
+
+interface SyncScannedPluginIndexOptions {
+  manifestIndex: ManifestIndex;
+  plugins: PluginRepository;
+}
+
+function syncScannedPluginIndex(options: SyncScannedPluginIndexOptions): void {
+  options.plugins.syncScannedPlugins({
+    plugins: options.manifestIndex.listPlugins().map((plugin) => ({
+      manifest: plugin.manifest,
+      manifestPath: plugin.manifestPath,
+    })),
+  });
+}
+
+interface AssertCommandPluginEnabledOptions {
+  commandId: string;
+  pluginId?: string;
+  plugins: PluginRepository;
+}
+
+function assertCommandPluginEnabled(options: AssertCommandPluginEnabledOptions): void {
+  if (!options.pluginId) {
+    return;
+  }
+
+  const plugin = options.plugins.getById(options.pluginId);
+
+  if (!plugin?.enabled) {
+    throw new Error(`Plugin is disabled for command ${options.commandId}: ${options.pluginId}`);
+  }
+}
+
+function createPluginEnabledCommandArgs() {
+  return {
+    pluginId: {
+      type: "positional" as const,
+      required: true,
+      description: "Plugin id.",
+      valueHint: "plugin",
+    },
+    plugins: {
+      type: "string" as const,
+      description: "Plugin directory to scan. Defaults to the resolved builtin plugin path.",
+      valueHint: "path",
+    },
+    storage: {
+      type: "string" as const,
+      description: "SQLite database path for plugin registry.",
+      valueHint: "path",
+    },
+  };
 }
 
 function assertPluginsAvailable(created: CreatedPluginManager, pluginsRoot: string): void {
