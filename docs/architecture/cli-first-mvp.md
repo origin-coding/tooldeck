@@ -50,7 +50,7 @@ tooldeck list
 tooldeck list commands
 ```
 
-两条命令都列出 manifest 声明的 commands，输出至少包含 command id、plugin id、title。当前 CLI 入口会静态加载 storage；因为 storage 暂时使用 Node 的实验性 `node:sqlite`，运行 CLI 时可能看到 `SQLite is an experimental feature` 的 `ExperimentalWarning`。这是 Node 对实验 API 的提示，不代表命令执行失败。后续如果迁移到 `better-sqlite3`，该 warning 会消失。
+两条命令都列出 manifest 声明的 commands，输出至少包含 command id、plugin id、title。当前 CLI 入口会静态加载 storage；V1 明确使用 Node 内置的 `node:sqlite` 作为 SQLite driver，因此运行 CLI 时可能看到 `SQLite is an experimental feature` 的 `ExperimentalWarning`。这是当前 Node runtime 对实验 API 的提示，不代表命令执行失败，V1 暂不为消除该 warning 引入 `better-sqlite3`。
 
 ## 协议范围
 

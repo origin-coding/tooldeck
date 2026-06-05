@@ -74,7 +74,7 @@ electron-vite
 pnpm workspace
 SQLite
 Drizzle ORM
-better-sqlite3
+node:sqlite
 React
 ```
 
@@ -85,9 +85,16 @@ React
 插件运行时：Node Plugin Host
 数据库：SQLite
 ORM：Drizzle ORM
+SQLite driver：node:sqlite
 包管理：pnpm workspace
 项目结构：MonoRepo
 ```
+
+V1 明确使用 Node 内置的 `node:sqlite` 作为 SQLite driver，并通过 Drizzle 的
+`drizzle-orm/node-sqlite` adapter 访问数据库。当前 Node runtime 可能输出
+`SQLite is an experimental feature` warning；这是 V1 可接受的运行时提示，不作为迁移到
+`better-sqlite3` 的理由。后续只有在打包、性能或 Node 稳定性要求明确变化时再重新评估
+SQLite driver。
 
 后续可选增强：
 
@@ -934,8 +941,11 @@ UI 临时状态
 推荐：
 
 ```text
-Electron + SQLite + Drizzle ORM + better-sqlite3
+Electron + SQLite + Drizzle ORM + node:sqlite
 ```
+
+V1 的数据库 driver 固定为 `node:sqlite`。这样可以减少 native dependency 和安装脚本复杂度，
+同时让 CLI 与 Desktop 共享同一套 `packages/storage` 实现。
 
 数据流：
 

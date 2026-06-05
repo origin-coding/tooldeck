@@ -26,7 +26,7 @@ electron-vite
 pnpm workspace
 SQLite
 Drizzle ORM
-better-sqlite3
+node:sqlite
 ```
 
 The project should be a monorepo.
