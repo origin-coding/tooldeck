@@ -123,6 +123,7 @@ node apps/cli/dist/index.js run json.format --text '{"a":1}' --plugins ./plugins
 - Desktop renderer 不直接访问 SQLite。
 - Desktop renderer 不 import 或执行插件代码。
 - Preload / IPC 只暴露必要的 command、plugin 和 history API。
+- `pnpm check:desktop-boundaries` 用 `rg` 检查 renderer/preload/main 架构边界。
 - Desktop 可以 list plugins、list commands、run `json.format`。
 - Desktop command execution 写入 `source: "desktop"` 的 command history。
 - Desktop plugin enable/disable 状态写入 SQLite。
@@ -152,6 +153,7 @@ node apps/cli/dist/index.js run json.format --text '{"a":1}' --plugins ./plugins
 pnpm build
 pnpm typecheck
 pnpm test
+pnpm check:desktop-boundaries
 pnpm smoke:cli
 ```
 

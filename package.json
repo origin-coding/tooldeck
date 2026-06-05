@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
+    "check:desktop-boundaries": "pnpm --filter @tooldeck/desktop check:boundaries",
     "smoke:cli": "pnpm --filter @tooldeck/cli smoke:built",
     "dev": "turbo run dev",
     "typecheck": "turbo run typecheck",

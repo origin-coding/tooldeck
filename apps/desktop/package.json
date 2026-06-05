@@ -12,6 +12,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
     "dist": "pnpm --dir ../.. --filter @tooldeck/hello-world --filter @tooldeck/json-tools build && pnpm build && electron-builder",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
