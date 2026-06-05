@@ -1,7 +1,9 @@
 import path from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { consola } from "consola";
+import { describe, expect, it, vi } from "vitest";
 
+import { printContentBlocks } from "../src/cli";
 import { formatCommandList, formatPluginList } from "../src/output";
 
 describe("CLI list output", () => {
@@ -51,6 +53,42 @@ describe("CLI list output", () => {
   it("formats empty lists without table headers", () => {
     expect(stripAnsi(formatCommandList([]))).toBe("No commands found.");
     expect(stripAnsi(formatPluginList([]))).toBe("No plugins found.");
+  });
+});
+
+describe("CLI command output", () => {
+  it("prints text, code, and json content blocks", () => {
+    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
+
+    try {
+      printContentBlocks({
+        status: "success",
+        blocks: [
+          {
+            type: "text",
+            text: "plain output",
+          },
+          {
+            type: "code",
+            text: "const value = 1;",
+            language: "ts",
+          },
+          {
+            type: "json",
+            value: {
+              a: 1,
+            },
+          },
+        ],
+      });
+
+      expect(log).toHaveBeenCalledTimes(3);
+      expect(log).toHaveBeenNthCalledWith(1, "plain output");
+      expect(log).toHaveBeenNthCalledWith(2, "const value = 1;");
+      expect(log).toHaveBeenNthCalledWith(3, '{\n  "a": 1\n}');
+    } finally {
+      log.mockRestore();
+    }
   });
 });
 

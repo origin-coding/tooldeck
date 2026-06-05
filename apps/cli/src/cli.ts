@@ -299,7 +299,7 @@ export async function runCliCommandWithStorage(
   }
 }
 
-export function printTextBlocks(result: CommandResult): void {
+export function printContentBlocks(result: CommandResult): void {
   for (const block of result.blocks) {
     if (block.type === "text" || block.type === "code") {
       consola.log(block.text);
@@ -449,7 +449,7 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
             rawArgs,
           });
 
-          printTextBlocks(result);
+          printContentBlocks(result);
         },
       }),
       plugin: defineCommand({
