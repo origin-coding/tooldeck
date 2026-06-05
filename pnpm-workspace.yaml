@@ -4,6 +4,7 @@ packages:
   - "plugins/*"
   - "tests/*"
 allowBuilds:
+  electron: true
   electron-winstaller: true
   esbuild: true
   msw: true
