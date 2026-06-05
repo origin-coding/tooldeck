@@ -1,5 +1,7 @@
 # CLI 插件作者指南
 
+状态：待整理的早期作者指南。本文仍可作为 commands-only 本地插件写法参考，但当前 V1 已扩展到 Desktop + CLI 共享同一套可信本地插件模型；后续应改写为“本地插件作者指南”。当前 V1 范围以 [TPP V1 Scope](../architecture/v1-scope.md) 为准。
+
 本文覆盖当前可信本地插件 MVP 的 SDK 写法。当前阶段只支持
 commands-only 插件：插件在 `manifest.json` 静态声明 commands，通过 SDK
 注册 command handler，返回结构化 `ContentBlock` 结果，并能被 Tooldeck CLI

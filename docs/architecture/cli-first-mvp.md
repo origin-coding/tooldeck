@@ -1,6 +1,8 @@
 # CLI-first TPP MVP
 
-本文定义 `tooldeck` 当前阶段的短期 MVP。
+状态：历史阶段文档。本文记录最早的 CLI-first 纵向切片验收标准，仍可用于理解当前实现的来源，但不再作为完整 V1 收口范围。当前 V1 收口清单以 [TPP V1 Scope](./v1-scope.md) 为准。
+
+本文定义 `tooldeck` 早期阶段的短期 MVP。
 
 完整协议方向仍以 `docs/architecture/tpp-v1.md` 为准。本文只描述现阶段可交付的更小范围：CLI、commands-only manifest、Node plugin host、SDK 开发体验、`json-tools` 示例插件和 SQLite storage。
 
