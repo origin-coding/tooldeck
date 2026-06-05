@@ -1,8 +1,8 @@
 import type { CommandResult } from "@tooldeck/protocol";
 import type { CommandInput } from "@tooldeck/sdk";
 
+import type { PluginManager } from "../plugins/plugin-manager";
 import type { CommandInputCoercion } from "./command-input";
-import type { PluginManager } from "./plugin-manager";
 
 export interface CommandServiceOptions {
   pluginManager: PluginManager;

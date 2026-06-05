@@ -2,15 +2,15 @@ import type { CommandResult } from "@tooldeck/protocol";
 import type { CommandInput } from "@tooldeck/sdk";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
-import { normalizeCommandInput, type CommandInputCoercion } from "./command-input";
-import type { CommandRegistry, CommandRunResult } from "./command-registry";
-import { validateCommandOutputSchema } from "./command-result-validation";
+import { normalizeCommandInput, type CommandInputCoercion } from "../commands/command-input";
+import type { CommandRegistry, CommandRunResult } from "../commands/command-registry";
+import { validateCommandOutputSchema } from "../commands/command-result-validation";
 import {
   initialPluginRuntimeState,
   PluginRuntimeLifecycleMachine,
   type PluginRuntimeState,
-} from "./lifecycle/plugin-runtime-lifecycle";
-import type { IndexedCommand, ManifestIndex } from "./manifest-index";
+} from "../lifecycle/plugin-runtime-lifecycle";
+import type { IndexedCommand, ManifestIndex } from "../manifests/manifest-index";
 
 export interface PluginHostActivateOptions {
   pluginId: string;

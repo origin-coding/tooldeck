@@ -3,8 +3,8 @@ import path from "node:path";
 
 import type { PluginManifest } from "@tooldeck/protocol";
 
-import type { ManifestIndex } from "./manifest-index";
-import { parsePluginManifestText } from "./manifest-validation";
+import type { ManifestIndex } from "../manifests/manifest-index";
+import { parsePluginManifestText } from "../manifests/manifest-validation";
 
 export interface ScanPluginDirectoryOptions {
   pluginsRoot: string;
