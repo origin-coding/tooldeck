@@ -101,11 +101,7 @@ function formatPluginStatus(enabled: boolean): string {
 function formatManifestPath(manifestPath: string): string {
   const relativePath = path.relative(process.cwd(), manifestPath);
 
-  if (
-    relativePath &&
-    !path.isAbsolute(relativePath) &&
-    relativePath.length < manifestPath.length
-  ) {
+  if (relativePath && !path.isAbsolute(relativePath) && relativePath.length < manifestPath.length) {
     return relativePath;
   }
 

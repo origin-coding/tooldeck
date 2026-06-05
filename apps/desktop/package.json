@@ -15,6 +15,16 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.17.0",
+    "radix-ui": "^1.4.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "shadcn": "^4.10.0",
+    "tailwind-merge": "^3.6.0"
+  },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
     "@tooldeck/core": "workspace:*",
@@ -70,15 +80,5 @@
       }
     ],
     "asar": true
-  },
-  "dependencies": {
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.17.0",
-    "radix-ui": "^1.4.3",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "shadcn": "^4.10.0",
-    "tailwind-merge": "^3.6.0"
   }
 }

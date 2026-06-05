@@ -5,6 +5,7 @@ import {
   type RunCommandRequest,
   type SetPluginEnabledRequest,
 } from "@/shared/desktop-api";
+
 import type { TooldeckDesktopService } from "./tooldeck-service";
 
 export function registerTooldeckIpc(service: TooldeckDesktopService): () => void {
