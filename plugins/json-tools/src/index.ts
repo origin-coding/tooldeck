@@ -1,5 +1,5 @@
-import type { CommandHandler } from "@tooldeck/sdk";
-import { definePlugin, failText, okText } from "@tooldeck/sdk";
+import type { CommandHandler } from "@tooldeck/sdk-node";
+import { definePlugin, failText, okText } from "@tooldeck/sdk-node";
 
 import type { JsonFormatInput, PluginCommandInputs } from "./generated/commands";
 

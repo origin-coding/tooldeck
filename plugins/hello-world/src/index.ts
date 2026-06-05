@@ -1,4 +1,4 @@
-import { definePlugin } from "@tooldeck/sdk";
+import { definePlugin } from "@tooldeck/sdk-node";
 
 export default definePlugin((plugin) => {
   plugin.command("hello.world", async () => ({

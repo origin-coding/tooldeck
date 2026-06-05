@@ -14,6 +14,6 @@
   },
   "dependencies": {
     "@tooldeck/plugin-tools": "workspace:*",
-    "@tooldeck/sdk": "workspace:*"
+    "@tooldeck/sdk-node": "workspace:*"
   }
 }

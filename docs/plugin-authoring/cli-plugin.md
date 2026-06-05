@@ -110,7 +110,7 @@ activation events。
   },
   "dependencies": {
     "@tooldeck/plugin-tools": "workspace:*",
-    "@tooldeck/sdk": "workspace:*"
+    "@tooldeck/sdk-node": "workspace:*"
   }
 }
 ```
@@ -138,7 +138,7 @@ primitive values、array、nested object、enum 和 `additionalProperties`。
 类型：
 
 ```ts
-import { definePlugin, okText } from "@tooldeck/sdk";
+import { definePlugin, okText } from "@tooldeck/sdk-node";
 
 import type { PluginCommandInputs } from "./generated/commands";
 
@@ -155,7 +155,7 @@ Builder 会在插件激活时自动注册 command，并把 `ctx.commands.registe
 如果你更喜欢 command map 加生命周期 hook，可以使用对象写法：
 
 ```ts
-import { definePlugin, okText } from "@tooldeck/sdk";
+import { definePlugin, okText } from "@tooldeck/sdk-node";
 
 import type { PluginCommandInputs } from "./generated/commands";
 
@@ -173,7 +173,7 @@ export default definePlugin<PluginCommandInputs>({
 只有在需要直接控制注册或清理时，才使用底层 `activate(ctx)` 写法：
 
 ```ts
-import { definePlugin, okText } from "@tooldeck/sdk";
+import { definePlugin, okText } from "@tooldeck/sdk-node";
 
 import type { PluginCommandInputs } from "./generated/commands";
 
@@ -195,7 +195,7 @@ Command 返回结构化结果，不返回 UI 组件。当前 MVP 支持的 `Cont
 普通文本成功结果使用 `okText()`：
 
 ```ts
-import { okText } from "@tooldeck/sdk";
+import { okText } from "@tooldeck/sdk-node";
 
 return okText("Done");
 ```
@@ -203,7 +203,7 @@ return okText("Done");
 可预期的 command 失败使用 `failText()`：
 
 ```ts
-import { failText } from "@tooldeck/sdk";
+import { failText } from "@tooldeck/sdk-node";
 
 return failText("ERR_INVALID_INPUT", "Text is required.", "Text is required.");
 ```
@@ -225,7 +225,7 @@ Command handler 当前只接收 `input`。如果 handler 需要访问 storage，
 `activate(ctx)` 写法，并让 handler 闭包捕获 `ctx`：
 
 ```ts
-import { definePlugin, okText } from "@tooldeck/sdk";
+import { definePlugin, okText } from "@tooldeck/sdk-node";
 
 import type { PluginCommandInputs } from "./generated/commands";
 

@@ -1,4 +1,4 @@
-import { fail, failText, ok, okText, textBlock } from "@tooldeck/sdk";
+import { fail, failText, ok, okText, textBlock } from "@tooldeck/sdk-node";
 import { describe, expect, it } from "vitest";
 
 describe("command result helpers", () => {

@@ -209,7 +209,7 @@ json.format
 - `packages/protocol` 只定义协议类型和 schema。
 - `packages/core` 负责 manifest indexing、command orchestration、command result validation。
 - `packages/host-node` 负责 Node plugin loading。
-- `packages/sdk` 负责 plugin authoring APIs。
+- `packages/sdk-node` 负责 plugin authoring APIs。
 - `packages/storage` 负责 SQLite schema、migrations、repositories。
 - `apps/cli` 组合 core、host、storage 和本地插件。
 - 插件代码只能通过 `PluginContext` 使用 host 暴露的能力。

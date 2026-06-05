@@ -1,5 +1,5 @@
 import type { CommandResult } from "@tooldeck/protocol";
-import type { CommandInput } from "@tooldeck/sdk";
+import type { CommandInput } from "@tooldeck/sdk-node";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 import { normalizeCommandInput, type CommandInputCoercion } from "../commands/command-input";

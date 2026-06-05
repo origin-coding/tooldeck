@@ -19,7 +19,7 @@
   "dependencies": {
     "@tooldeck/core": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
-    "@tooldeck/sdk": "workspace:*",
+    "@tooldeck/sdk-node": "workspace:*",
     "@tooldeck/shared": "workspace:*"
   },
   "devDependencies": {

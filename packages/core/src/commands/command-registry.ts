@@ -4,7 +4,7 @@ import type {
   CommandInput,
   CommandRegistry as SdkCommandRegistry,
   Disposable,
-} from "@tooldeck/sdk";
+} from "@tooldeck/sdk-node";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 import { validateCommandResult } from "./command-result-validation";

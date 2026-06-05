@@ -12,6 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tooldeck/sdk": "workspace:*"
+    "@tooldeck/sdk-node": "workspace:*"
   }
 }

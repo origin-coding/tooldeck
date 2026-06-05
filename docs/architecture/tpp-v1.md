@@ -561,7 +561,7 @@ export function definePlugin(plugin: ToolboxPlugin): ToolboxPlugin {
 示例插件：
 
 ```ts
-import { definePlugin } from "@tooldeck/sdk";
+import { definePlugin } from "@tooldeck/sdk-node";
 
 interface JsonFormatInput {
   text: string;
@@ -1053,7 +1053,7 @@ tasks
 3. 创建 CLI app
 4. 创建 packages/protocol
 5. 创建 packages/core
-6. 创建 packages/sdk
+6. 创建 packages/sdk-node
 7. 创建 packages/host-node
 8. 创建 packages/storage
 9. 定义 Manifest 类型和 JSON Schema
@@ -1125,7 +1125,7 @@ npm scope：
 ```text
 @tooldeck/protocol
 @tooldeck/core
-@tooldeck/sdk
+@tooldeck/sdk-node
 @tooldeck/host-node
 @tooldeck/storage
 @tooldeck/shared
