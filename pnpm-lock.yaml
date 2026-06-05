@@ -35,15 +35,9 @@ importers:
       '@tooldeck/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@tooldeck/hello-world':
-        specifier: workspace:*
-        version: link:../../plugins/hello-world
       '@tooldeck/host-node':
         specifier: workspace:*
         version: link:../../packages/host-node
-      '@tooldeck/json-tools':
-        specifier: workspace:*
-        version: link:../../plugins/json-tools
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -66,6 +60,12 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
     devDependencies:
+      '@tooldeck/hello-world':
+        specifier: workspace:*
+        version: link:../../plugins/hello-world
+      '@tooldeck/json-tools':
+        specifier: workspace:*
+        version: link:../../plugins/json-tools
       '@types/node':
         specifier: ^25.9.1
         version: 25.9.1

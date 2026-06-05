@@ -20,9 +20,7 @@
   },
   "dependencies": {
     "@tooldeck/core": "workspace:*",
-    "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/host-node": "workspace:*",
-    "@tooldeck/json-tools": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/shared": "workspace:*",
     "@tooldeck/storage": "workspace:*",
@@ -32,6 +30,8 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
+    "@tooldeck/hello-world": "workspace:*",
+    "@tooldeck/json-tools": "workspace:*",
     "@types/node": "^25.9.1"
   }
 }
