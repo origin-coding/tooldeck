@@ -86,6 +86,8 @@ export interface ListedCliPlugin {
   name: string;
 }
 
+export type ListCliResource = "commands" | "plugins";
+
 export interface CreatePluginManagerOptions {
   pluginsRoot: string;
   createPluginStorage?: ConstructorParameters<typeof NodePluginHost>[0]["createPluginStorage"];
@@ -313,6 +315,24 @@ export function printPluginList(plugins: ListedCliPlugin[]): void {
   consola.log(formatPluginList(plugins));
 }
 
+export function printUnsupportedListResource(resource: string): void {
+  consola.error(
+    `Unsupported list resource: ${resource}\nSupported list resources: commands, plugins`,
+  );
+}
+
+export function normalizeListCliResource(resource?: string): ListCliResource | undefined {
+  if (resource === undefined || resource === "command" || resource === "commands") {
+    return "commands";
+  }
+
+  if (resource === "plugin" || resource === "plugins") {
+    return "plugins";
+  }
+
+  return undefined;
+}
+
 export function printTooldeckPaths(paths: TooldeckPaths): void {
   const entries = [
     ["appInstallDir", paths.appInstallDir ?? ""],
@@ -349,26 +369,46 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
             type: "positional",
             required: false,
             description: "Resource type to list.",
-            valueHint: "commands",
+            valueHint: "commands|plugins",
           },
           plugins: {
             type: "string",
             description: "Plugin directory to scan. Defaults to the resolved builtin plugin path.",
             valueHint: "path",
           },
+          storage: {
+            type: "string",
+            description: "SQLite database path for plugin registry.",
+            valueHint: "path",
+          },
         },
         async run({ args }) {
-          if (args.resource !== undefined && args.resource !== "commands") {
-            throw new Error(`Unsupported list resource: ${args.resource}`);
-          }
-
-          const { pluginsRoot } = resolveCliRuntimePaths({
+          const resource = normalizeListCliResource(args.resource);
+          const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
             workspaceRoot: options.workspaceRoot,
             plugins: args.plugins,
+            storage: args.storage,
           });
-          const commands = await listCliCommands({ pluginsRoot });
 
-          printCommandList(commands);
+          if (resource === "commands") {
+            const commands = await listCliCommands({ pluginsRoot });
+
+            printCommandList(commands);
+            return;
+          }
+
+          if (resource === "plugins" || resource === "plugin") {
+            const plugins = await listCliPlugins({
+              pluginsRoot,
+              storagePath,
+            });
+
+            printPluginList(plugins);
+            return;
+          }
+
+          printUnsupportedListResource(args.resource ?? "");
+          process.exitCode = 1;
         },
       }),
       run: defineCommand({

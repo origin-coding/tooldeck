@@ -15,6 +15,7 @@ import {
   createPluginManager,
   listCliCommands,
   listCliPlugins,
+  normalizeListCliResource,
   resolveCliRuntimePaths,
   runCliCommandWithStorage,
   setCliPluginEnabled,
@@ -113,6 +114,15 @@ describe("CLI command support", () => {
     await mkdir(pluginsRoot, { recursive: true });
 
     await expect(listCliCommands({ pluginsRoot })).resolves.toEqual([]);
+  });
+
+  it("normalizes list resources and rejects unsupported resources", () => {
+    expect(normalizeListCliResource()).toBe("commands");
+    expect(normalizeListCliResource("command")).toBe("commands");
+    expect(normalizeListCliResource("commands")).toBe("commands");
+    expect(normalizeListCliResource("plugin")).toBe("plugins");
+    expect(normalizeListCliResource("plugins")).toBe("plugins");
+    expect(normalizeListCliResource("documents")).toBeUndefined();
   });
 
   it("lists manifest commands without activating plugin code", async () => {
