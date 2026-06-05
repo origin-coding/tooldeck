@@ -9,3 +9,4 @@ export * from "./lifecycle/state-machine";
 export * from "./lifecycle/plugin-registry-lifecycle";
 export * from "./lifecycle/plugin-runtime-lifecycle";
 export * from "./lifecycle/capability-invocation-lifecycle";
+export * from "./paths/tooldeck-paths";
