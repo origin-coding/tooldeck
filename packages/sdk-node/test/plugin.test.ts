@@ -1,5 +1,10 @@
 import type { CommandResult } from "@tooldeck/protocol";
-import type { CommandInput, CommandRegistry, Disposable, PluginContextV1 } from "@tooldeck/sdk-node";
+import type {
+  CommandInput,
+  CommandRegistry,
+  Disposable,
+  PluginContextV1,
+} from "@tooldeck/sdk-node";
 import { definePlugin } from "@tooldeck/sdk-node";
 import { describe, expect, it } from "vitest";
 
