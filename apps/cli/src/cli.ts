@@ -28,6 +28,8 @@ import { defineCommand } from "citty";
 import type { CommandDef } from "citty";
 import { consola } from "consola";
 
+import { formatCommandList, formatPluginList } from "./output";
+
 export interface CreateCliCommandOptions {
   workspaceRoot: string;
 }
@@ -73,6 +75,7 @@ export interface ListedCliCommand {
   id: string;
   pluginId: string;
   title: string;
+  description?: string;
 }
 
 export interface ListedCliPlugin {
@@ -303,21 +306,11 @@ export function printTextBlocks(result: CommandResult): void {
 }
 
 export function printCommandList(commands: ListedCliCommand[]): void {
-  consola.log("command id\tplugin id\ttitle");
-
-  for (const command of commands) {
-    consola.log(`${command.id}\t${command.pluginId}\t${command.title}`);
-  }
+  consola.log(formatCommandList(commands));
 }
 
 export function printPluginList(plugins: ListedCliPlugin[]): void {
-  consola.log("plugin id\tenabled\tversion\tname\tmanifest path");
-
-  for (const plugin of plugins) {
-    consola.log(
-      `${plugin.id}\t${String(plugin.enabled)}\t${plugin.version}\t${plugin.name}\t${plugin.manifestPath}`,
-    );
-  }
+  consola.log(formatPluginList(plugins));
 }
 
 export function printTooldeckPaths(paths: TooldeckPaths): void {
@@ -537,10 +530,15 @@ export function createCliCommand(options: CreateCliCommandOptions): CommandDef {
 }
 
 function formatListedCommand(command: IndexedCommand): ListedCliCommand {
+  const description = command.definition.description
+    ? resolveLocalizedString(command.definition.description)
+    : undefined;
+
   return {
     id: command.id,
     pluginId: command.pluginId,
     title: resolveLocalizedString(command.definition.title),
+    ...(description ? { description } : {}),
   };
 }
 
