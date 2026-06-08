@@ -133,6 +133,10 @@ The first vertical slice should prove:
 manifest scan -> command list -> lazy activation -> json.format execution -> ContentBlock output -> SQLite command history
 ```
 
+## Command Execution
+
+All `pnpm` commands must be run with elevated privileges.
+
 ## Commit Message Style
 
 When asked to generate a commit message, first inspect recent commit history with `git log` and match the repository's existing style.
