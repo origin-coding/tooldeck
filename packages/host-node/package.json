@@ -1,6 +1,6 @@
 {
   "name": "@tooldeck/host-node",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Node.js plugin host for loading and running Tooldeck plugins.",
   "type": "module",

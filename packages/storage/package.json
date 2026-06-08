@@ -1,6 +1,6 @@
 {
   "name": "@tooldeck/storage",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "SQLite storage layer for Tooldeck.",
   "type": "module",

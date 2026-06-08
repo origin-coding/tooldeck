@@ -1,6 +1,6 @@
 # tooldeck 项目设计文档
 
-当前短期 MVP 已收敛为 CLI-first、commands-only 的可信本地插件纵向切片。实现和验收边界以 [CLI-first TPP MVP](./cli-first-mvp.md) 为准；本文档保留完整 TPP v1 的长期协议和架构方向。
+当前可发布 V1 已收敛为 Desktop + CLI、commands-only 的可信本地插件纵向切片。实现和验收边界以 [TPP V1 Scope](./v1-scope.md) 为准；早期 CLI-first 纵向切片记录见 [CLI-first TPP MVP](./cli-first-mvp.md)。本文档保留完整 TPP v1 的长期协议和架构方向，不作为当前 1.0 发布清单。
 
 关于短调用 `Capability`、长任务 `Task / Job`、交互式 `View` 和有状态 `Session` 的边界备忘录，见 [TPP Capability、Task 与有状态能力备忘录](./capability-task-state-model.md)。
 
@@ -211,22 +211,17 @@ tooldeck/
 
 ## 4. TPP v1 范围
 
-第一版 TPP 只实现核心机制。
+本节描述完整 TPP v1 的协议方向；当前 1.0 发布实现采用更小的 commands-only 收口，具体以 [TPP V1 Scope](./v1-scope.md) 为准。
 
-必须支持：
+当前 1.0 发布必须支持：
 
 ```text
 Manifest
 commands
-documents
-tables
-settings
-menus
-activationEvents
 activate / deactivate
 PluginContext
 Disposable
-Content Blocks
+Content Blocks: text / code / json
 LocalizedString
 SQLite plugin registry
 SQLite command history
@@ -235,9 +230,16 @@ Desktop 入口
 CLI 入口
 ```
 
-第一版暂不完整实现：
+完整 TPP v1 设计中预留、但当前 1.0 不实现的能力：
 
 ```text
+documents
+tables
+settings
+menus
+fileHandlers
+显式 activationEvents
+权限声明和持久化
 插件市场
 不可信插件沙箱
 WASM 插件
@@ -1202,10 +1204,11 @@ TPP 是一套面向工具箱应用的插件协议。
 并允许 Desktop / CLI / API 共享同一套插件核心。
 ```
 
-第一版目标：
+当前 1.0 目标：
 
 ```text
 先做一个可信插件的本地工具箱核心。
-跑通 Desktop + CLI + Command + Document + Table + SQLite 历史记录。
-不要一开始做成完整插件生态平台。
+跑通 Desktop + CLI + Command + SQLite 历史记录。
+documents / tables / views / permissions 等能力后续通过显式协议和实现扩展加入。
+不要把 1.0 做成完整插件生态平台。
 ```

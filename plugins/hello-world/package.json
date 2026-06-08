@@ -1,6 +1,6 @@
 {
   "name": "@tooldeck/hello-world",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Minimal Hello World plugin for Tooldeck.",
   "type": "module",

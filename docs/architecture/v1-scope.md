@@ -1,6 +1,6 @@
 # TPP V1 Scope
 
-本文定义 `tooldeck` 当前 V1 的收口范围。长期协议方向仍以 [TPP v1 设计文档](./tpp-v1.md) 为准；早期 CLI-first 纵向切片记录见 [CLI-first TPP MVP](./cli-first-mvp.md)。
+本文定义 `tooldeck` 当前 V1 / 1.0 发布的收口范围。长期协议方向仍以 [TPP v1 设计文档](./tpp-v1.md) 为准；早期 CLI-first 纵向切片记录见 [CLI-first TPP MVP](./cli-first-mvp.md)。
 
 ## V1 目标
 
@@ -130,6 +130,13 @@ node apps/cli/dist/index.js run json.format --text '{"a":1}' --plugins ./plugins
 - Disabled plugin 的 command 不能激活或执行。
 - Command output 展示支持 `text`、`code`、`json` blocks。
 - Desktop packaged app 可以找到 bundled plugins 并运行 `json.format`。
+
+## 1.0 发布检查
+
+- Workspace package、CLI、Desktop、示例插件 package 和插件 manifest 版本号应统一为 `1.0.0`。
+- Desktop installer 文件名应来自 `apps/desktop/package.json` 的 `1.0.0` 版本，而不是手工重命名产物。
+- 打包产物的 `resources/plugins` 必须包含 `json-tools` 的 `manifest.json`、`dist/index.js` 和 locales。
+- 发布前需要用打包产物目录验证 `json.format` 可以扫描 bundled plugin 并成功执行。
 
 ## 明确不做
 
