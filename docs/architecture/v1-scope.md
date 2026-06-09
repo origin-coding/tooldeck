@@ -46,6 +46,28 @@ node:sqlite
 
 V1 使用 Node 内置的 `node:sqlite` 作为 SQLite driver，并通过 Drizzle 的 `drizzle-orm/node-sqlite` adapter 访问数据库。`SQLite is an experimental feature` warning 是 V1 可接受的 Node runtime 提示。
 
+## Core 实现边界
+
+TPP 是语言无关协议；当前仓库的 `packages/core` 是 TPP core 的 TypeScript 实现，不是协议本身。
+
+V1 中 `packages/core` 负责宿主无关的实现逻辑：
+
+- manifest scanning / indexing。
+- command registry 和 command orchestration。
+- lazy plugin activation 协调。
+- command input / output validation。
+- lifecycle state machine。
+
+具体 runtime 由 adapter 包实现。V1 只实现 `packages/host-node`，用于加载可信本地 Node 插件。Desktop 和 CLI 在 app 层组合：
+
+```text
+packages/core
+  + packages/host-node
+  + packages/storage
+```
+
+`packages/core` 不应依赖 Electron renderer、React、SQLite repository、Node plugin loading 细节，或未来的 WASM / Python / HTTP runtime 细节。
+
 ## ContentBlock 范围
 
 V1 只支持这些 `ContentBlock` 类型：

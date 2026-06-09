@@ -61,6 +61,34 @@ Plugin
 | 插件配置   | Settings                 | 可声明配置项  |
 | 插件入口   | Menus / Commands / Views | 宿主挂载点    |
 
+### 1.1 协议与实现边界
+
+TPP 本身是语言无关的协议层。它定义 Manifest、Contribution、Command、ContentBlock、
+生命周期、权限声明和 JSON Schema 约束等数据契约与行为语义，不绑定 TypeScript、Node、
+Electron、React 或 SQLite。
+
+当前仓库中的 `packages/core` 不是 TPP 协议本身，而是 TPP 宿主核心的 TypeScript
+实现。它负责 manifest indexing、command orchestration、lazy activation 协调、状态机和输入输出校验等
+宿主无关流程，并通过接口与具体 plugin runtime host 协作。
+
+不同 runtime host 应实现 `core` 定义的端口，而不是让 `core` 依赖某个 runtime：
+
+```text
+TPP spec / schema
+  ↓
+packages/protocol        # TPP 的 TypeScript 类型和 JSON Schema 表达
+  ↓
+packages/core            # TPP core 的 TypeScript 实现
+  ↓ ports
+packages/host-node       # Node runtime adapter
+packages/host-wasm       # future WASM runtime adapter
+packages/host-process    # future multi-language process/RPC adapter
+packages/host-http       # future HTTP runtime adapter
+```
+
+如果未来以 PySide、Rust 或其他技术栈实现宿主，可以实现另一套 `core`，或通过 RPC 调用当前
+TypeScript `core`。这些实现应遵守同一份 TPP 协议，但不要求共享同一种实现语言。
+
 ---
 
 ## 2. 第一版技术选型
@@ -133,7 +161,7 @@ tooldeck/
       # TPP 类型定义、Manifest JSON Schema、Contribution 类型
 
     core/
-      # PluginManager、CommandRegistry、DocumentRegistry、TableRegistry
+      # TPP core 的 TypeScript 实现，负责宿主无关协调
 
     sdk/
       # 插件开发者使用的 definePlugin、PluginContext 类型
@@ -959,6 +987,7 @@ Preload
 Main IPC Handler
   ↓ CommandService
 TPP Core
+  ↓ packages/core: TPP core 的 TypeScript 实现
   ↓ PluginManager / CommandRegistry
 Storage
   ↓ Drizzle / SQLite
@@ -1201,8 +1230,10 @@ TPP 是一套面向工具箱应用的插件协议。
 通过 Content Blocks 解耦 UI 展示，
 通过 LocalizedString 支持 I18n，
 通过 Permission Model 控制插件能力，
-并允许 Desktop / CLI / API 共享同一套插件核心。
+并允许 Desktop / CLI / API 共享同一套 TPP core 实现。
 ```
+
+当前仓库里的 `packages/core` 是这套 core 的 TypeScript 实现，不等同于 TPP 协议本身。
 
 当前 1.0 目标：
 

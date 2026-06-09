@@ -209,7 +209,7 @@ json.format
 即使 Desktop 延后，MVP 也必须保留长期架构边界：
 
 - `packages/protocol` 只定义协议类型和 schema。
-- `packages/core` 负责 manifest indexing、command orchestration、command result validation。
+- `packages/core` 是 TPP core 的 TypeScript 实现，负责 manifest indexing、command orchestration、command result validation 等宿主无关流程。
 - `packages/host-node` 负责 Node plugin loading。
 - `packages/sdk-node` 负责 plugin authoring APIs。
 - `packages/storage` 负责 SQLite schema、migrations、repositories。
