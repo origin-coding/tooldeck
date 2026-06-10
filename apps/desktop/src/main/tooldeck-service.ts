@@ -15,8 +15,16 @@ import {
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
 import {
+  listPreferenceDefinitions,
+  requirePreferenceDefinition,
+  validatePreferenceValue,
+  type PreferenceDefinition,
+} from "@tooldeck/shared";
+import {
   CommandRunRepository,
   openTooldeckDatabase,
+  PreferenceRepository,
+  type PreferenceRow,
   PluginKvRepository,
   PluginRepository,
   type PluginRow,
@@ -26,8 +34,10 @@ import {
 import type {
   CommandRunRecord,
   DesktopCommand,
+  DesktopPreference,
   DesktopPlugin,
   RunCommandRequest,
+  SetPreferenceRequest,
   SetPluginEnabledRequest,
 } from "@/shared/desktop-api";
 
@@ -43,6 +53,7 @@ export class TooldeckDesktopService {
   private readonly storagePath: string;
   private database?: TooldeckDatabase;
   private commandRuns?: CommandRunRepository;
+  private preferences?: PreferenceRepository;
   private plugins?: PluginRepository;
   private pluginKv?: PluginKvRepository;
   private pluginHost?: NodePluginHost;
@@ -62,6 +73,7 @@ export class TooldeckDesktopService {
 
     this.database = openTooldeckDatabase({ path: this.storagePath });
     this.commandRuns = new CommandRunRepository(this.database.db);
+    this.preferences = new PreferenceRepository(this.database.db);
     this.plugins = new PluginRepository(this.database.db);
     this.pluginKv = new PluginKvRepository(this.database.db);
 
@@ -99,6 +111,33 @@ export class TooldeckDesktopService {
           pluginManager,
         }),
       );
+  }
+
+  listPreferences(): DesktopPreference[] {
+    const preferences = this.requirePreferences();
+
+    return listPreferenceDefinitions()
+      .filter(isDesktopVisiblePreference)
+      .map((definition) =>
+        formatDesktopPreference(definition, preferences.getRow(definition.scope, definition.key)),
+      );
+  }
+
+  setPreference(request: SetPreferenceRequest): DesktopPreference {
+    const definition = requirePreferenceDefinition(request.key);
+
+    if (!isDesktopVisiblePreference(definition)) {
+      throw new Error(`Desktop cannot manage preference: ${request.key}`);
+    }
+
+    const value = validatePreferenceValue(definition.key, request.value);
+    const row = this.requirePreferences().set({
+      scope: definition.scope,
+      key: definition.key,
+      value,
+    });
+
+    return formatDesktopPreference(definition, row);
   }
 
   async rescanPlugins(): Promise<{
@@ -321,6 +360,14 @@ export class TooldeckDesktopService {
     return this.commandRuns;
   }
 
+  private requirePreferences(): PreferenceRepository {
+    if (!this.preferences) {
+      throw new Error("Tooldeck desktop service has not started.");
+    }
+
+    return this.preferences;
+  }
+
   private requirePlugins(): PluginRepository {
     if (!this.plugins) {
       throw new Error("Tooldeck desktop service has not started.");
@@ -376,6 +423,28 @@ function formatDesktopPlugin(options: {
     commandCount,
     updatedAt: plugin.updatedAt,
   };
+}
+
+function formatDesktopPreference(
+  definition: PreferenceDefinition,
+  preference: PreferenceRow | undefined,
+): DesktopPreference {
+  return {
+    scope: definition.scope,
+    key: definition.key,
+    value: preference
+      ? validatePreferenceValue(definition.key, JSON.parse(preference.valueJson))
+      : definition.defaultValue,
+    defaultValue: definition.defaultValue,
+    description: definition.description,
+    valueType: definition.valueType,
+    ...(definition.values ? { values: definition.values } : {}),
+    ...(preference ? { updatedAt: preference.updatedAt } : {}),
+  };
+}
+
+function isDesktopVisiblePreference(definition: PreferenceDefinition): boolean {
+  return definition.scope === "shared" || definition.scope === "desktop";
 }
 
 function resolveLocalizedString(value: LocalizedString): string {

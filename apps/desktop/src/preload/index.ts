@@ -4,6 +4,7 @@ import {
   desktopIpcChannels,
   type DesktopApi,
   type RunCommandRequest,
+  type SetPreferenceRequest,
   type SetPluginEnabledRequest,
 } from "@/shared/desktop-api";
 
@@ -13,6 +14,12 @@ const api: DesktopApi = {
   },
   listPlugins() {
     return ipcRenderer.invoke(desktopIpcChannels.listPlugins);
+  },
+  listPreferences() {
+    return ipcRenderer.invoke(desktopIpcChannels.listPreferences);
+  },
+  setPreference(request: SetPreferenceRequest) {
+    return ipcRenderer.invoke(desktopIpcChannels.setPreference, request);
   },
   setPluginEnabled(request: SetPluginEnabledRequest) {
     return ipcRenderer.invoke(desktopIpcChannels.setPluginEnabled, request);

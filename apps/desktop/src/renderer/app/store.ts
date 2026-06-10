@@ -8,7 +8,8 @@ import {
   resolveSelectedPluginId,
 } from "@/renderer/app/selectors";
 import { initialState, type AppState, type AppView } from "@/renderer/app/types";
-import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import { applyLocalePreference } from "@/renderer/i18n";
+import type { DesktopCommand, DesktopPlugin, DesktopPreference } from "@/shared/desktop-api";
 
 interface DesktopStore extends AppState {
   view: AppView;
@@ -23,6 +24,7 @@ interface DesktopStore extends AppState {
   selectPlugin(plugin: DesktopPlugin): void;
   updateInput(key: string, value: string): void;
   runSelectedCommand(): Promise<void>;
+  setPreference(key: string, value: unknown): Promise<void>;
   setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
 }
 
@@ -50,11 +52,13 @@ export const useDesktopStore = create<DesktopStore>()(
         }));
 
         try {
-          const [commands, plugins, history] = await Promise.all([
+          const [commands, plugins, history, preferences] = await Promise.all([
             window.tooldeck.listCommands(),
             window.tooldeck.listPlugins(),
             window.tooldeck.listCommandRuns(25),
+            window.tooldeck.listPreferences(),
           ]);
+          applyLocalePreference(getPreferenceValue(preferences, "locale"));
 
           set((current) =>
             mergeLoadedState({
@@ -62,6 +66,7 @@ export const useDesktopStore = create<DesktopStore>()(
               commands,
               plugins,
               history,
+              preferences,
             }),
           );
         } catch (error) {
@@ -91,6 +96,7 @@ export const useDesktopStore = create<DesktopStore>()(
               commands,
               plugins,
               history,
+              preferences: current.preferences,
             }),
           );
         } catch (error) {
@@ -167,6 +173,7 @@ export const useDesktopStore = create<DesktopStore>()(
               commands,
               plugins,
               history,
+              preferences: state.preferences,
             }),
             result,
             isRunning: false,
@@ -193,9 +200,33 @@ export const useDesktopStore = create<DesktopStore>()(
               commands,
               plugins,
               history,
+              preferences: latest.preferences,
             }),
             isRunning: false,
             runError: getErrorMessage(error),
+          }));
+        }
+      },
+      async setPreference(key, value) {
+        try {
+          const preference = await window.tooldeck.setPreference({
+            key,
+            value,
+          });
+
+          if (preference.key === "locale") {
+            applyLocalePreference(preference.value);
+          }
+
+          set((current) => ({
+            ...current,
+            preferences: replacePreference(current.preferences, preference),
+            loadError: undefined,
+          }));
+        } catch (error) {
+          set((current) => ({
+            ...current,
+            loadError: getErrorMessage(error),
           }));
         }
       },
@@ -222,6 +253,7 @@ export const useDesktopStore = create<DesktopStore>()(
               commands,
               plugins,
               history: current.history,
+              preferences: current.preferences,
             }),
           );
         } catch (error) {
@@ -253,11 +285,13 @@ function mergeLoadedState({
   commands,
   plugins,
   history,
+  preferences,
 }: {
   current: AppState;
   commands: DesktopCommand[];
   plugins: DesktopPlugin[];
   history: AppState["history"];
+  preferences: DesktopPreference[];
 }): AppState {
   const selectedCommandId = resolveSelectedCommandId(commands, current.selectedCommandId);
   const selected = commands.find((command) => command.id === selectedCommandId);
@@ -267,9 +301,31 @@ function mergeLoadedState({
     commands,
     plugins,
     history,
+    preferences,
     selectedCommandId,
     selectedPluginId: resolveSelectedPluginId(plugins, current.selectedPluginId, selected),
     input: createInputState(selected, current.input),
     isLoadingData: false,
   };
+}
+
+function getPreferenceValue(preferences: DesktopPreference[], key: string): unknown {
+  return preferences.find((preference) => preference.key === key)?.value;
+}
+
+function replacePreference(
+  preferences: DesktopPreference[],
+  updated: DesktopPreference,
+): DesktopPreference[] {
+  const exists = preferences.some(
+    (preference) => preference.scope === updated.scope && preference.key === updated.key,
+  );
+
+  if (!exists) {
+    return [...preferences, updated];
+  }
+
+  return preferences.map((preference) =>
+    preference.scope === updated.scope && preference.key === updated.key ? updated : preference,
+  );
 }

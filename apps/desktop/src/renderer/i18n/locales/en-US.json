@@ -1,0 +1,17 @@
+{
+  "common": {
+    "system": "System",
+    "english": "English",
+    "chineseSimplified": "Simplified Chinese"
+  },
+  "settings": {
+    "preferences": {
+      "title": "Preferences",
+      "description": "Desktop settings backed by Tooldeck preferences."
+    },
+    "locale": {
+      "label": "Language",
+      "description": "Controls the language used by Tooldeck desktop surfaces."
+    }
+  }
+}

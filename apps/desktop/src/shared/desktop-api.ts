@@ -1,5 +1,5 @@
 import type { CommandResult, TooldeckJsonSchema } from "@tooldeck/protocol";
-import type { JsonObject } from "@tooldeck/shared";
+import type { JsonObject, PreferenceScope } from "@tooldeck/shared";
 
 export type DesktopPluginRuntimeState =
   | "inactive"
@@ -43,9 +43,25 @@ export interface CommandRunRecord {
   createdAt: number;
 }
 
+export interface DesktopPreference {
+  scope: PreferenceScope;
+  key: string;
+  value: unknown;
+  defaultValue: unknown;
+  description: string;
+  valueType: "boolean" | "enum";
+  values?: readonly string[];
+  updatedAt?: number;
+}
+
 export interface RunCommandRequest {
   commandId: string;
   input?: JsonObject;
+}
+
+export interface SetPreferenceRequest {
+  key: string;
+  value: unknown;
 }
 
 export interface SetPluginEnabledRequest {
@@ -56,6 +72,8 @@ export interface SetPluginEnabledRequest {
 export interface DesktopApi {
   listCommands(): Promise<DesktopCommand[]>;
   listPlugins(): Promise<DesktopPlugin[]>;
+  listPreferences(): Promise<DesktopPreference[]>;
+  setPreference(request: SetPreferenceRequest): Promise<DesktopPreference>;
   setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin>;
   rescanPlugins(): Promise<{
     commands: DesktopCommand[];
@@ -68,6 +86,8 @@ export interface DesktopApi {
 export const desktopIpcChannels = {
   listCommands: "tooldeck:list-commands",
   listPlugins: "tooldeck:list-plugins",
+  listPreferences: "tooldeck:list-preferences",
+  setPreference: "tooldeck:set-preference",
   setPluginEnabled: "tooldeck:set-plugin-enabled",
   rescanPlugins: "tooldeck:rescan-plugins",
   runCommand: "tooldeck:run-command",

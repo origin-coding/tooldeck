@@ -179,6 +179,52 @@ describe("TooldeckDesktopService", () => {
       await service.dispose();
     }
   });
+
+  it("stores desktop-visible preferences", async () => {
+    const service = new TooldeckDesktopService({
+      pluginsRoot: path.resolve("../..", "plugins"),
+      storagePath: createDatabasePath(),
+    });
+
+    await service.start();
+
+    try {
+      expect(service.listPreferences()).toEqual([
+        expect.objectContaining({
+          scope: "shared",
+          key: "locale",
+          value: "system",
+        }),
+      ]);
+
+      expect(
+        service.setPreference({
+          key: "locale",
+          value: "zh-CN",
+        }),
+      ).toMatchObject({
+        scope: "shared",
+        key: "locale",
+        value: "zh-CN",
+        updatedAt: expect.any(Number),
+      });
+      expect(service.listPreferences()).toEqual([
+        expect.objectContaining({
+          scope: "shared",
+          key: "locale",
+          value: "zh-CN",
+        }),
+      ]);
+      expect(() =>
+        service.setPreference({
+          key: "output.format",
+          value: "json",
+        }),
+      ).toThrow("Desktop cannot manage preference: output.format");
+    } finally {
+      await service.dispose();
+    }
+  });
 });
 
 function createDatabasePath(): string {

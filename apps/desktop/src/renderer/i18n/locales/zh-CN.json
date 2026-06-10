@@ -1,0 +1,17 @@
+{
+  "common": {
+    "system": "跟随系统",
+    "english": "英文",
+    "chineseSimplified": "简体中文"
+  },
+  "settings": {
+    "preferences": {
+      "title": "偏好设置",
+      "description": "由 Tooldeck 偏好设置系统保存的桌面端配置。"
+    },
+    "locale": {
+      "label": "语言",
+      "description": "控制 Tooldeck 桌面端界面使用的语言。"
+    }
+  }
+}

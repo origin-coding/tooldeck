@@ -1,12 +1,18 @@
 import type { CommandResult } from "@tooldeck/protocol";
 
-import type { CommandRunRecord, DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import type {
+  CommandRunRecord,
+  DesktopCommand,
+  DesktopPlugin,
+  DesktopPreference,
+} from "@/shared/desktop-api";
 
 export type AppView = "plugins" | "commands" | "settings";
 
 export interface AppState {
   commands: DesktopCommand[];
   plugins: DesktopPlugin[];
+  preferences: DesktopPreference[];
   selectedCommandId?: string;
   selectedPluginId?: string;
   input: Record<string, string>;
@@ -21,6 +27,7 @@ export interface AppState {
 export const initialState: AppState = {
   commands: [],
   plugins: [],
+  preferences: [],
   input: {},
   history: [],
   isLoadingData: false,

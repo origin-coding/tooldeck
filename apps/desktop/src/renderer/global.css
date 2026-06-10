@@ -424,6 +424,23 @@ textarea {
   gap: 10px;
 }
 
+.settings-control-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.settings-control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-select {
+  width: 180px;
+  flex: 0 0 auto;
+}
+
 .spin-icon {
   animation: spin 1s linear infinite;
 }
@@ -462,5 +479,14 @@ textarea {
   .workbench-grid,
   .metrics-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-control-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-select {
+    width: 100%;
   }
 }

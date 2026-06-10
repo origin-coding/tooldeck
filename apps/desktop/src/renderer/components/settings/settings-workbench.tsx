@@ -1,23 +1,73 @@
-import { Button, Card, Divider, Typography } from "antd";
-import { Database, FolderSearch, RotateCw } from "lucide-react";
+import { Button, Card, Divider, Select, Typography } from "antd";
+import { Database, FolderSearch, Languages, RotateCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { StatusBadge } from "@/renderer/components/common/status-badge";
+import {
+  isTooldeckLocalePreference,
+  type TooldeckLocalePreference,
+} from "@/renderer/i18n";
+import type { DesktopPreference } from "@/shared/desktop-api";
 
 export function SettingsWorkbench({
   commandCount,
   pluginCount,
   historyCount,
   isLoading,
+  preferences,
   onRefresh,
+  onSetPreference,
 }: {
   commandCount: number;
   pluginCount: number;
   historyCount: number;
   isLoading: boolean;
+  preferences: DesktopPreference[];
   onRefresh(): void;
+  onSetPreference(key: string, value: unknown): void;
 }) {
+  const { t } = useTranslation();
+  const localePreference = preferences.find((preference) => preference.key === "locale");
+  const localeValue: TooldeckLocalePreference = isTooldeckLocalePreference(
+    localePreference?.value,
+  )
+    ? localePreference.value
+    : "system";
+
   return (
     <>
+      <Card title={t("settings.preferences.title")}>
+        <Typography.Text type="secondary">
+          {t("settings.preferences.description")}
+        </Typography.Text>
+        <div className="settings-list">
+          <div className="settings-list-item">
+            <Languages size={16} />
+            <div className="settings-control-body">
+              <div className="settings-control-row">
+                <div>
+                  <div className="settings-list-title">{t("settings.locale.label")}</div>
+                  <Typography.Text type="secondary">
+                    {t("settings.locale.description")}
+                  </Typography.Text>
+                </div>
+                <Select
+                  className="settings-select"
+                  disabled={isLoading}
+                  options={[
+                    { label: t("common.system"), value: "system" },
+                    { label: t("common.english"), value: "en-US" },
+                    { label: t("common.chineseSimplified"), value: "zh-CN" },
+                  ]}
+                  value={localeValue}
+                  onChange={(value: TooldeckLocalePreference) => onSetPreference("locale", value)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       <Card
         extra={
           <Button

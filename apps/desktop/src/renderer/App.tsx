@@ -113,7 +113,9 @@ export function App() {
                 pluginCount={state.plugins.length}
                 historyCount={state.history.length}
                 isLoading={state.isLoadingData}
+                preferences={state.preferences}
                 onRefresh={state.rescanPlugins}
+                onSetPreference={state.setPreference}
               />
             )}
           </div>
