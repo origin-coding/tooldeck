@@ -9,6 +9,7 @@ import { CommandRunRepository } from "../src";
 import { PluginKvRepository } from "../src";
 import { PluginRepository } from "../src";
 import { PreferenceRepository } from "../src";
+import { withRepository, withTooldeckDatabase } from "../src";
 
 const tempDirs: string[] = [];
 
@@ -114,6 +115,43 @@ describe("storage", () => {
     database.close();
 
     expect(() => database.sqlite.prepare("select 1")).toThrow();
+  });
+
+  it("runs callbacks with a managed database lifecycle", async () => {
+    let databaseFromCallback: ReturnType<typeof openTooldeckDatabase> | undefined;
+
+    const result = await withTooldeckDatabase({ path: createDatabasePath() }, (database) => {
+      databaseFromCallback = database;
+
+      return database.sqlite.prepare("select 1 as value").get();
+    });
+
+    expect(result).toMatchObject({ value: 1 });
+    expect(() => databaseFromCallback?.sqlite.prepare("select 1")).toThrow();
+  });
+
+  it("runs callbacks with a managed repository lifecycle", async () => {
+    const storagePath = createDatabasePath();
+
+    await withRepository(
+      storagePath,
+      (db) => new PreferenceRepository(db),
+      (repository) =>
+        repository.set({
+          scope: "cli",
+          key: "theme",
+          value: "system",
+          now: 1000,
+        }),
+    );
+
+    const value = await withRepository(
+      storagePath,
+      (db) => new PreferenceRepository(db),
+      (repository) => repository.get("cli", "theme"),
+    );
+
+    expect(value).toBe("system");
   });
 
   it("upserts scanned plugins and preserves enabled state", () => {

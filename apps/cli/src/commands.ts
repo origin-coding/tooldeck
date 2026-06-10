@@ -1,0 +1,391 @@
+import { performance } from "node:perf_hooks";
+
+import {
+  CommandRegistry,
+  CommandService,
+  type IndexedCommand,
+  ManifestIndex,
+  parseRawCommandInputFromCliArgs,
+  PluginManager,
+  scanPluginDirectory,
+} from "@tooldeck/core";
+import { NodePluginHost } from "@tooldeck/host-node";
+import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
+import type { JsonObject } from "@tooldeck/shared";
+import {
+  CommandRunRepository,
+  PluginKvRepository,
+  PluginRepository,
+  withTooldeckDatabase,
+} from "@tooldeck/storage";
+import { defineCommand } from "citty";
+import { consola } from "consola";
+
+import { formatCommandList } from "./output";
+import { listCliPlugins, printPluginList } from "./plugins";
+import {
+  createPluginsCommandArg,
+  createStorageCommandArg,
+  resolveCliRuntimePaths,
+  type CreateCliCommandOptions,
+} from "./runtime";
+
+export interface RunCliCommandOptions {
+  commandId: string;
+  pluginsRoot: string;
+  storagePath: string;
+  input?: JsonObject;
+  rawArgs?: string[];
+}
+
+export interface ListCliCommandsOptions {
+  pluginsRoot: string;
+}
+
+export interface ListedCliCommand {
+  id: string;
+  pluginId: string;
+  title: string;
+  description?: string;
+}
+
+export type ListCliResource = "commands" | "plugins";
+
+export interface CreatePluginManagerOptions {
+  pluginsRoot: string;
+  createPluginStorage?: ConstructorParameters<typeof NodePluginHost>[0]["createPluginStorage"];
+}
+
+export interface CreatedPluginManager {
+  pluginManager: PluginManager;
+  commandService: CommandService;
+  pluginHost: NodePluginHost;
+  manifestIndex: ManifestIndex;
+  pluginCount: number;
+  commandCount: number;
+}
+
+export async function createPluginManager(
+  options: CreatePluginManagerOptions,
+): Promise<CreatedPluginManager> {
+  const commandRegistry = new CommandRegistry();
+  const pluginHost = new NodePluginHost({
+    commandRegistry,
+    createPluginStorage: options.createPluginStorage,
+  });
+  const manifestIndex = new ManifestIndex();
+
+  const scanResult = await scanPluginDirectory({
+    pluginsRoot: options.pluginsRoot,
+    manifestIndex,
+  });
+
+  const pluginManager = new PluginManager({
+    manifestIndex,
+    commandRegistry,
+    pluginHost,
+  });
+
+  return {
+    pluginHost,
+    manifestIndex,
+    pluginCount: scanResult.pluginCount,
+    commandCount: scanResult.commandCount,
+    pluginManager,
+    commandService: new CommandService({
+      pluginManager,
+      coercion: "cli",
+    }),
+  };
+}
+
+export async function listCliCommands(
+  options: ListCliCommandsOptions,
+): Promise<ListedCliCommand[]> {
+  const manifestIndex = new ManifestIndex();
+
+  await scanPluginDirectory({
+    pluginsRoot: options.pluginsRoot,
+    manifestIndex,
+  });
+
+  return manifestIndex.listCommands().map(formatListedCommand);
+}
+
+export async function runCliCommandWithStorage(
+  options: RunCliCommandOptions,
+): Promise<CommandResult> {
+  return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
+    const commandRuns = new CommandRunRepository(database.db);
+    const plugins = new PluginRepository(database.db);
+    const pluginKv = new PluginKvRepository(database.db);
+    const startedAt = performance.now();
+    let pluginHost: NodePluginHost | undefined;
+    let pluginId: string | undefined;
+    let input = options.input;
+
+    try {
+      const created = await createPluginManager({
+        pluginsRoot: options.pluginsRoot,
+        createPluginStorage(pluginId) {
+          return {
+            async get(key) {
+              return pluginKv.get(pluginId, key);
+            },
+            async set(key, value) {
+              pluginKv.set({
+                pluginId,
+                key,
+                value,
+              });
+            },
+            async delete(key) {
+              pluginKv.delete(pluginId, key);
+            },
+          };
+        },
+      });
+
+      pluginHost = created.pluginHost;
+      pluginId = created.manifestIndex.getCommandOwner(options.commandId);
+
+      assertPluginsAvailable(created, options.pluginsRoot);
+      syncScannedPluginIndex({
+        manifestIndex: created.manifestIndex,
+        plugins,
+      });
+      assertCommandPluginEnabled({
+        commandId: options.commandId,
+        pluginId,
+        plugins,
+      });
+
+      input ??= parseRawCommandInputFromCliArgs({
+        rawArgs: options.rawArgs ?? [],
+        commandId: options.commandId,
+        ignoredOptions: ["plugins", "storage"],
+      });
+      const run = await created.commandService.runCommand({
+        commandId: options.commandId,
+        input,
+      });
+      input = run.input;
+
+      commandRuns.create({
+        commandId: options.commandId,
+        pluginId,
+        source: "cli",
+        status: run.result.status,
+        input,
+        output: run.result,
+        durationMs: elapsedMilliseconds(startedAt),
+      });
+
+      return run.result;
+    } catch (error) {
+      commandRuns.create({
+        commandId: options.commandId,
+        pluginId,
+        source: "cli",
+        status: "error",
+        input,
+        error: serializeError(error),
+        durationMs: elapsedMilliseconds(startedAt),
+      });
+
+      throw error;
+    } finally {
+      await pluginHost?.disposeAll();
+    }
+  });
+}
+
+export function defineListCommand(options: CreateCliCommandOptions) {
+  return defineCommand({
+    meta: {
+      name: "list",
+      description: "List Tooldeck resources.",
+    },
+    args: {
+      resource: {
+        type: "positional",
+        required: false,
+        description: "Resource type to list.",
+        valueHint: "commands|plugins",
+      },
+      plugins: createPluginsCommandArg(),
+      storage: createStorageCommandArg("SQLite database path for plugin registry."),
+    },
+    async run({ args }) {
+      const resource = normalizeListCliResource(args.resource);
+      const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+        workspaceRoot: options.workspaceRoot,
+        plugins: args.plugins,
+        storage: args.storage,
+      });
+
+      if (resource === "commands") {
+        const commands = await listCliCommands({ pluginsRoot });
+
+        printCommandList(commands);
+        return;
+      }
+
+      if (resource === "plugins") {
+        const plugins = await listCliPlugins({
+          pluginsRoot,
+          storagePath,
+        });
+
+        printPluginList(plugins);
+        return;
+      }
+
+      printUnsupportedListResource(args.resource ?? "");
+      process.exitCode = 1;
+    },
+  });
+}
+
+export function defineRunCommand(options: CreateCliCommandOptions) {
+  return defineCommand({
+    meta: {
+      name: "run",
+      description: "Run a Tooldeck command.",
+    },
+    args: {
+      commandId: {
+        type: "positional",
+        required: true,
+        description: "Command id to run.",
+        valueHint: "command",
+      },
+      plugins: createPluginsCommandArg(),
+      storage: createStorageCommandArg("SQLite database path for command history."),
+    },
+    async run({ args, rawArgs }) {
+      const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+        workspaceRoot: options.workspaceRoot,
+        plugins: args.plugins,
+        storage: args.storage,
+      });
+      const result = await runCliCommandWithStorage({
+        commandId: args.commandId,
+        pluginsRoot,
+        storagePath,
+        rawArgs,
+      });
+
+      printContentBlocks(result);
+    },
+  });
+}
+
+export function printContentBlocks(result: CommandResult): void {
+  for (const block of result.blocks) {
+    if (block.type === "text" || block.type === "code") {
+      consola.log(block.text);
+    } else if (block.type === "json") {
+      consola.log(JSON.stringify(block.value, null, 2));
+    }
+  }
+}
+
+export function printCommandList(commands: ListedCliCommand[]): void {
+  consola.log(formatCommandList(commands));
+}
+
+export function printUnsupportedListResource(resource: string): void {
+  consola.error(
+    `Unsupported list resource: ${resource}\nSupported list resources: commands, plugins`,
+  );
+}
+
+export function normalizeListCliResource(resource?: string): ListCliResource | undefined {
+  if (resource === undefined || resource === "command" || resource === "commands") {
+    return "commands";
+  }
+
+  if (resource === "plugin" || resource === "plugins") {
+    return "plugins";
+  }
+
+  return undefined;
+}
+
+function formatListedCommand(command: IndexedCommand): ListedCliCommand {
+  const description = command.definition.description
+    ? resolveLocalizedString(command.definition.description)
+    : undefined;
+
+  return {
+    id: command.id,
+    pluginId: command.pluginId,
+    title: resolveLocalizedString(command.definition.title),
+    ...(description ? { description } : {}),
+  };
+}
+
+function syncScannedPluginIndex(options: {
+  manifestIndex: ManifestIndex;
+  plugins: PluginRepository;
+}): void {
+  options.plugins.syncScannedPlugins({
+    plugins: options.manifestIndex.listPlugins().map((plugin) => ({
+      manifest: plugin.manifest,
+      manifestPath: plugin.manifestPath,
+    })),
+  });
+}
+
+function assertCommandPluginEnabled(options: {
+  commandId: string;
+  pluginId?: string;
+  plugins: PluginRepository;
+}): void {
+  if (!options.pluginId) {
+    return;
+  }
+
+  const plugin = options.plugins.getById(options.pluginId);
+
+  if (!plugin?.enabled) {
+    throw new Error(`Plugin is disabled for command ${options.commandId}: ${options.pluginId}`);
+  }
+}
+
+function assertPluginsAvailable(created: CreatedPluginManager, pluginsRoot: string): void {
+  if (created.pluginCount === 0) {
+    throw new Error(`No plugins found in directory: ${pluginsRoot}`);
+  }
+
+  if (created.commandCount === 0) {
+    throw new Error(`No commands found in plugin directory: ${pluginsRoot}`);
+  }
+}
+
+function resolveLocalizedString(value: LocalizedString): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return value.default;
+}
+
+function elapsedMilliseconds(startedAt: number): number {
+  return Math.max(0, Math.round(performance.now() - startedAt));
+}
+
+function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+
+  return {
+    message: String(error),
+  };
+}

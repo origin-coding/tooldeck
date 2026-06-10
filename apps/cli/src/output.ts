@@ -18,6 +18,13 @@ export interface PluginListOutputRow {
   name: string;
 }
 
+export interface PreferenceListOutputRow {
+  scope: string;
+  key: string;
+  value: unknown;
+  updatedAt: number;
+}
+
 export function formatCommandList(commands: CommandListOutputRow[]): string {
   if (commands.length === 0) {
     return pc.dim("No commands found.");
@@ -55,6 +62,33 @@ export function formatPluginList(plugins: PluginListOutputRow[]): string {
   }
 
   return joinOutput(createCountLabel(plugins.length, "plugin"), table.toString());
+}
+
+export function formatPreferenceList(preferences: PreferenceListOutputRow[]): string {
+  if (preferences.length === 0) {
+    return pc.dim("No preferences found.");
+  }
+
+  const table = createPlainTable(["Scope", "Key", "Value", "Updated"]);
+
+  for (const preference of preferences) {
+    table.push([
+      pc.dim(preference.scope),
+      pc.cyan(preference.key),
+      formatPreferenceValue(preference.value),
+      new Date(preference.updatedAt).toISOString(),
+    ]);
+  }
+
+  return joinOutput(createCountLabel(preferences.length, "preference"), table.toString());
+}
+
+export function formatPreferenceValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return JSON.stringify(value, null, 2);
 }
 
 function createPlainTable(head: string[]): Table.Table {

@@ -6,6 +6,7 @@ import path from "node:path";
 import {
   CommandRunRepository,
   openTooldeckDatabase,
+  PreferenceRepository,
   PluginKvRepository,
   PluginRepository,
 } from "@tooldeck/storage";
@@ -13,11 +14,16 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   createPluginManager,
+  deleteCliPreference,
+  getCliPreference,
+  listCliPreferences,
   listCliCommands,
   listCliPlugins,
   normalizeListCliResource,
+  parsePreferenceJson,
   resolveCliRuntimePaths,
   runCliCommandWithStorage,
+  setCliPreference,
   setCliPluginEnabled,
 } from "../src/cli";
 
@@ -243,6 +249,98 @@ describe("CLI command support", () => {
       id: "dev.tooldeck.hello-world",
       enabled: true,
     });
+  });
+
+  it("stores and lists CLI preferences in SQLite", async () => {
+    const storagePath = createDatabasePath();
+
+    await expect(
+      setCliPreference({
+        key: "json.indent",
+        value: 4,
+        storagePath,
+      }),
+    ).resolves.toMatchObject({
+      scope: "cli",
+      key: "json.indent",
+      value: 4,
+      updatedAt: expect.any(Number),
+    });
+
+    await expect(
+      setCliPreference({
+        key: "json.mode",
+        value: "pretty",
+        storagePath,
+      }),
+    ).resolves.toMatchObject({
+      scope: "cli",
+      key: "json.mode",
+      value: "pretty",
+    });
+
+    await expect(listCliPreferences({ storagePath })).resolves.toEqual([
+      expect.objectContaining({
+        scope: "cli",
+        key: "json.indent",
+        value: 4,
+      }),
+      expect.objectContaining({
+        scope: "cli",
+        key: "json.mode",
+        value: "pretty",
+      }),
+    ]);
+    expect(readPreferenceValue(storagePath, "cli", "json.indent")).toBe(4);
+  });
+
+  it("keeps CLI preferences scoped to the CLI namespace", async () => {
+    const storagePath = createDatabasePath();
+
+    await setCliPreference({
+      key: "theme",
+      value: "system",
+      storagePath,
+    });
+    writeSharedPreferenceValue(storagePath, "theme", "dark");
+
+    await expect(
+      getCliPreference({
+        key: "theme",
+        storagePath,
+      }),
+    ).resolves.toBe("system");
+    expect(readPreferenceValue(storagePath, "shared", "theme")).toBe("dark");
+  });
+
+  it("deletes CLI preferences by scope and key", async () => {
+    const storagePath = createDatabasePath();
+
+    await setCliPreference({
+      key: "theme",
+      value: "system",
+      storagePath,
+    });
+    await deleteCliPreference({
+      key: "theme",
+      storagePath,
+    });
+
+    await expect(
+      getCliPreference({
+        key: "theme",
+        storagePath,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it("parses preference values as JSON", () => {
+    expect(parsePreferenceJson('"dark"')).toBe("dark");
+    expect(parsePreferenceJson("4")).toBe(4);
+    expect(parsePreferenceJson('{"theme":"dark"}')).toEqual({ theme: "dark" });
+    expect(() => parsePreferenceJson("dark")).toThrow(
+      "Preference value must be valid JSON",
+    );
   });
 
   it("stores successful command runs in SQLite", async () => {
@@ -575,6 +673,36 @@ function readPlugins(storagePath: string) {
 
   try {
     return repository.list();
+  } finally {
+    database.close();
+  }
+}
+
+function readPreferenceValue(
+  storagePath: string,
+  scope: "desktop" | "cli" | "shared",
+  key: string,
+) {
+  const database = openTooldeckDatabase({ path: storagePath });
+  const repository = new PreferenceRepository(database.db);
+
+  try {
+    return repository.get(scope, key);
+  } finally {
+    database.close();
+  }
+}
+
+function writeSharedPreferenceValue(storagePath: string, key: string, value: unknown) {
+  const database = openTooldeckDatabase({ path: storagePath });
+  const repository = new PreferenceRepository(database.db);
+
+  try {
+    repository.set({
+      scope: "shared",
+      key,
+      value,
+    });
   } finally {
     database.close();
   }
