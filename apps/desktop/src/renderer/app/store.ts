@@ -1,3 +1,4 @@
+import type { PreferenceScope } from "@tooldeck/shared";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -22,7 +23,7 @@ interface DesktopStore extends AppState {
   selectPlugin(plugin: DesktopPlugin): void;
   updateInput(key: string, value: string): void;
   runSelectedCommand(): Promise<void>;
-  setPreference(key: string, value: unknown): Promise<void>;
+  setPreference(scope: PreferenceScope, key: string, value: unknown): Promise<void>;
   setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
 }
 
@@ -48,7 +49,7 @@ export const useDesktopStore = create<DesktopStore>()(
             window.tooldeck.listCommandRuns({ limit: 25 }),
             window.tooldeck.listPreferences(),
           ]);
-          applyLocalePreference(getPreferenceValue(preferences, "locale"));
+          applyLocalePreference(getPreferenceValue(preferences, "shared", "locale"));
 
           set((current) =>
             mergeLoadedState({
@@ -242,9 +243,10 @@ export const useDesktopStore = create<DesktopStore>()(
           }));
         }
       },
-      async setPreference(key, value) {
+      async setPreference(scope, key, value) {
         try {
           const preference = await window.tooldeck.setPreference({
+            scope,
             key,
             value,
           });
@@ -370,8 +372,13 @@ function mergeLoadedState({
   };
 }
 
-function getPreferenceValue(preferences: DesktopPreference[], key: string): unknown {
-  return preferences.find((preference) => preference.key === key)?.value;
+function getPreferenceValue(
+  preferences: DesktopPreference[],
+  scope: PreferenceScope,
+  key: string,
+): unknown {
+  return preferences.find((preference) => preference.scope === scope && preference.key === key)
+    ?.value;
 }
 
 function replacePreference(

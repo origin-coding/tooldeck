@@ -22,6 +22,8 @@ import {
   type CreateCliCommandOptions,
 } from "./runtime";
 
+const preferenceScopes: readonly PreferenceScope[] = ["cli", "desktop", "shared"];
+
 export interface ListCliPreferencesOptions {
   storagePath: string;
 }
@@ -63,7 +65,7 @@ export async function listCliPreferences(
 }
 
 export async function getCliPreference(options: GetCliPreferenceOptions): Promise<unknown> {
-  const definition = requirePreferenceDefinition(options.key);
+  const definition = requireCliPreferenceDefinition(options.key);
 
   return withRepository(
     options.storagePath,
@@ -75,7 +77,7 @@ export async function getCliPreference(options: GetCliPreferenceOptions): Promis
         return definition.defaultValue;
       }
 
-      return validatePreferenceValue(definition.key, value);
+      return validatePreferenceValue(definition.scope, definition.key, value);
     },
   );
 }
@@ -92,8 +94,8 @@ export async function getCliOutputFormat(options: {
 export async function setCliPreference(
   options: SetCliPreferenceOptions,
 ): Promise<ListedCliPreference> {
-  const definition = requirePreferenceDefinition(options.key);
-  const value = validatePreferenceValue(definition.key, options.value);
+  const definition = requireCliPreferenceDefinition(options.key);
+  const value = validatePreferenceValue(definition.scope, definition.key, options.value);
 
   return withRepository(
     options.storagePath,
@@ -112,7 +114,7 @@ export async function setCliPreference(
 }
 
 export async function deleteCliPreference(options: DeleteCliPreferenceOptions): Promise<void> {
-  const definition = requirePreferenceDefinition(options.key);
+  const definition = requireCliPreferenceDefinition(options.key);
 
   return withRepository(
     options.storagePath,
@@ -288,10 +290,51 @@ function formatListedPreference(
     scope: definition.scope,
     key: definition.key,
     value: preference
-      ? validatePreferenceValue(definition.key, JSON.parse(preference.valueJson))
+      ? validatePreferenceValue(definition.scope, definition.key, JSON.parse(preference.valueJson))
       : definition.defaultValue,
     ...(preference ? { updatedAt: preference.updatedAt } : {}),
   };
+}
+
+function requireCliPreferenceDefinition(key: string): PreferenceDefinition {
+  const scoped = parseScopedPreferenceKey(key);
+
+  if (scoped) {
+    return requirePreferenceDefinition(scoped.scope, scoped.key);
+  }
+
+  const matching = listPreferenceDefinitions().filter((definition) => definition.key === key);
+
+  if (matching.length === 1) {
+    return matching[0]!;
+  }
+
+  if (matching.length > 1) {
+    throw new Error(`Ambiguous preference key: ${key}\nUse a scoped preference key instead.`);
+  }
+
+  throw new Error(
+    `Unsupported preference key: ${key}\nSupported preference keys: ${listPreferenceDefinitions()
+      .map((known) => known.key)
+      .join(", ")}`,
+  );
+}
+
+function parseScopedPreferenceKey(
+  key: string,
+): { scope: PreferenceScope; key: string } | undefined {
+  for (const scope of preferenceScopes) {
+    const prefix = `${scope}.`;
+
+    if (key.startsWith(prefix)) {
+      return {
+        scope,
+        key: key.slice(prefix.length),
+      };
+    }
+  }
+
+  return undefined;
 }
 
 function serializeError(error: unknown): Record<string, unknown> {

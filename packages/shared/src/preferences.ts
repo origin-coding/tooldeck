@@ -6,7 +6,7 @@ export type SharedPreferenceKey = "locale";
 
 export type CliPreferenceKey = "output.format" | "command.history.enabled";
 
-export type DesktopPreferenceKey = "desktop.navigation.mode" | "desktop.sidebar.collapsed";
+export type DesktopPreferenceKey = "navigation.mode" | "sidebar.collapsed";
 
 export type KnownPreferenceKey = SharedPreferenceKey | CliPreferenceKey | DesktopPreferenceKey;
 
@@ -47,7 +47,7 @@ export const preferenceDefinitions = [
   },
   {
     scope: "desktop",
-    key: "desktop.navigation.mode",
+    key: "navigation.mode",
     valueType: "enum",
     defaultValue: "provider-first",
     values: ["provider-first", "entry-first"],
@@ -55,7 +55,7 @@ export const preferenceDefinitions = [
   },
   {
     scope: "desktop",
-    key: "desktop.sidebar.collapsed",
+    key: "sidebar.collapsed",
     valueType: "boolean",
     defaultValue: false,
     description: "Whether the desktop sidebar is collapsed.",
@@ -66,17 +66,25 @@ export function listPreferenceDefinitions(): readonly PreferenceDefinition[] {
   return preferenceDefinitions;
 }
 
-export function getPreferenceDefinition(key: string): PreferenceDefinition | undefined {
-  return preferenceDefinitions.find((definition) => definition.key === key);
+export function getPreferenceDefinition(
+  scope: PreferenceScope,
+  key: string,
+): PreferenceDefinition | undefined {
+  return preferenceDefinitions.find(
+    (definition) => definition.scope === scope && definition.key === key,
+  );
 }
 
-export function requirePreferenceDefinition(key: string): PreferenceDefinition {
-  const definition = getPreferenceDefinition(key);
+export function requirePreferenceDefinition(
+  scope: PreferenceScope,
+  key: string,
+): PreferenceDefinition {
+  const definition = getPreferenceDefinition(scope, key);
 
   if (!definition) {
     throw new Error(
-      `Unsupported preference key: ${key}\nSupported preference keys: ${preferenceDefinitions
-        .map((known) => known.key)
+      `Unsupported preference key: ${scope}.${key}\nSupported preference keys: ${preferenceDefinitions
+        .map((known) => `${known.scope}.${known.key}`)
         .join(", ")}`,
     );
   }
@@ -84,8 +92,12 @@ export function requirePreferenceDefinition(key: string): PreferenceDefinition {
   return definition;
 }
 
-export function validatePreferenceValue(key: string, value: unknown): JsonValue {
-  const definition = requirePreferenceDefinition(key);
+export function validatePreferenceValue(
+  scope: PreferenceScope,
+  key: string,
+  value: unknown,
+): JsonValue {
+  const definition = requirePreferenceDefinition(scope, key);
 
   if (definition.valueType === "boolean") {
     if (typeof value !== "boolean") {

@@ -429,7 +429,7 @@ function getCommandHistoryEnabled(preferences: PreferenceRepository): boolean {
     return true;
   }
 
-  return validatePreferenceValue("command.history.enabled", value) as boolean;
+  return validatePreferenceValue("cli", "command.history.enabled", value) as boolean;
 }
 
 function serializeError(error: unknown): Record<string, unknown> {

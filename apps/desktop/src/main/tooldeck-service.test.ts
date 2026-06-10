@@ -199,18 +199,19 @@ describe("TooldeckDesktopService", () => {
         }),
         expect.objectContaining({
           scope: "desktop",
-          key: "desktop.navigation.mode",
+          key: "navigation.mode",
           value: "provider-first",
         }),
         expect.objectContaining({
           scope: "desktop",
-          key: "desktop.sidebar.collapsed",
+          key: "sidebar.collapsed",
           value: false,
         }),
       ]);
 
       expect(
         service.setPreference({
+          scope: "shared",
           key: "locale",
           value: "zh-CN",
         }),
@@ -228,41 +229,44 @@ describe("TooldeckDesktopService", () => {
         }),
         expect.objectContaining({
           scope: "desktop",
-          key: "desktop.navigation.mode",
+          key: "navigation.mode",
           value: "provider-first",
         }),
         expect.objectContaining({
           scope: "desktop",
-          key: "desktop.sidebar.collapsed",
+          key: "sidebar.collapsed",
           value: false,
         }),
       ]);
       expect(
         service.setPreference({
-          key: "desktop.navigation.mode",
+          scope: "desktop",
+          key: "navigation.mode",
           value: "entry-first",
         }),
       ).toMatchObject({
         scope: "desktop",
-        key: "desktop.navigation.mode",
+        key: "navigation.mode",
         value: "entry-first",
       });
       expect(
         service.setPreference({
-          key: "desktop.sidebar.collapsed",
+          scope: "desktop",
+          key: "sidebar.collapsed",
           value: true,
         }),
       ).toMatchObject({
         scope: "desktop",
-        key: "desktop.sidebar.collapsed",
+        key: "sidebar.collapsed",
         value: true,
       });
       expect(() =>
         service.setPreference({
+          scope: "cli",
           key: "output.format",
           value: "json",
         }),
-      ).toThrow("Desktop cannot manage preference: output.format");
+      ).toThrow("Desktop cannot manage preference: cli.output.format");
     } finally {
       await service.dispose();
     }

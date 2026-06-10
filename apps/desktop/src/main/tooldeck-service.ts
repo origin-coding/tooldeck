@@ -21,14 +21,14 @@ import {
   type PreferenceDefinition,
 } from "@tooldeck/shared";
 import {
-  CommandRunRepository,
   openTooldeckDatabase,
-  PreferenceRepository,
-  type PreferenceRow,
-  PluginKvRepository,
+  type TooldeckDatabase,
+  CommandRunRepository,
   PluginRepository,
   type PluginRow,
-  type TooldeckDatabase,
+  type PreferenceRow,
+  PluginKvRepository,
+  PreferenceRepository,
 } from "@tooldeck/storage";
 
 import type {
@@ -86,16 +86,14 @@ export class TooldeckDesktopService {
     const pluginManager = this.requirePluginManager();
     const manifestIndex = this.requireManifestIndex();
 
-    return manifestIndex
-      .listCommands()
-      .map((command) =>
-        formatDesktopCommand({
-          command,
-          indexedPlugin: manifestIndex.getPlugin(command.pluginId),
-          plugin: plugins.getById(command.pluginId),
-          pluginManager,
-        }),
-      );
+    return manifestIndex.listCommands().map((command) =>
+      formatDesktopCommand({
+        command,
+        indexedPlugin: manifestIndex.getPlugin(command.pluginId),
+        plugin: plugins.getById(command.pluginId),
+        pluginManager,
+      }),
+    );
   }
 
   listPlugins(): DesktopPlugin[] {
@@ -127,13 +125,13 @@ export class TooldeckDesktopService {
   }
 
   setPreference(request: SetPreferenceRequest): DesktopPreference {
-    const definition = requirePreferenceDefinition(request.key);
+    const definition = requirePreferenceDefinition(request.scope, request.key);
 
     if (!isDesktopVisiblePreference(definition)) {
-      throw new Error(`Desktop cannot manage preference: ${request.key}`);
+      throw new Error(`Desktop cannot manage preference: ${request.scope}.${request.key}`);
     }
 
-    const value = validatePreferenceValue(definition.key, request.value);
+    const value = validatePreferenceValue(definition.scope, definition.key, request.value);
     const row = this.requirePreferences().set({
       scope: definition.scope,
       key: definition.key,
@@ -469,7 +467,7 @@ function formatDesktopPreference(
     scope: definition.scope,
     key: definition.key,
     value: preference
-      ? validatePreferenceValue(definition.key, JSON.parse(preference.valueJson))
+      ? validatePreferenceValue(definition.scope, definition.key, JSON.parse(preference.valueJson))
       : definition.defaultValue,
     defaultValue: definition.defaultValue,
     description: definition.description,

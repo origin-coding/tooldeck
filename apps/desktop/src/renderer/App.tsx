@@ -148,7 +148,7 @@ export function App() {
           {props?.collapsed ? null : <span>Settings</span>}
         </button>
       )}
-      onCollapse={(collapsed) => state.setPreference("desktop.sidebar.collapsed", collapsed)}
+      onCollapse={(collapsed) => state.setPreference("desktop", "sidebar.collapsed", collapsed)}
       pageTitleRender={false}
       route={{
         path: "/",
@@ -418,16 +418,22 @@ function getPageDescription({
   return selectedPlugin?.description ?? selectedPlugin?.id ?? "Select a plugin or command to inspect.";
 }
 
-function getNavigationMode(preferences: { key: string; value: unknown }[]): DesktopNavigationMode {
+function getNavigationMode(
+  preferences: { scope: string; key: string; value: unknown }[],
+): DesktopNavigationMode {
   const value = preferences.find(
-    (preference) => preference.key === "desktop.navigation.mode",
+    (preference) => preference.scope === "desktop" && preference.key === "navigation.mode",
   )?.value;
 
   return value === "entry-first" ? "entry-first" : "provider-first";
 }
 
-function getSidebarCollapsed(preferences: { key: string; value: unknown }[]): boolean {
+function getSidebarCollapsed(
+  preferences: { scope: string; key: string; value: unknown }[],
+): boolean {
   return (
-    preferences.find((preference) => preference.key === "desktop.sidebar.collapsed")?.value === true
+    preferences.find(
+      (preference) => preference.scope === "desktop" && preference.key === "sidebar.collapsed",
+    )?.value === true
   );
 }

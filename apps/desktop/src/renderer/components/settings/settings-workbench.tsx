@@ -1,3 +1,4 @@
+import type { PreferenceScope } from "@tooldeck/shared";
 import { Button, Card, Divider, Segmented, Select, Switch, Typography } from "antd";
 import { Database, FolderSearch, History, Languages, PanelLeftClose, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -31,10 +32,12 @@ export function SettingsWorkbench({
   preferences: DesktopPreference[];
   onOpenHistory(commandId?: string): void;
   onRefresh(): void;
-  onSetPreference(key: string, value: unknown): void;
+  onSetPreference(scope: PreferenceScope, key: string, value: unknown): void;
 }) {
   const { t } = useTranslation();
-  const localePreference = preferences.find((preference) => preference.key === "locale");
+  const localePreference = preferences.find(
+    (preference) => preference.scope === "shared" && preference.key === "locale",
+  );
   const localeValue: TooldeckLocalePreference = isTooldeckLocalePreference(
     localePreference?.value,
   )
@@ -67,7 +70,9 @@ export function SettingsWorkbench({
                     { label: t("common.chineseSimplified"), value: "zh-CN" },
                   ]}
                   value={localeValue}
-                  onChange={(value: TooldeckLocalePreference) => onSetPreference("locale", value)}
+                  onChange={(value: TooldeckLocalePreference) =>
+                    onSetPreference("shared", "locale", value)
+                  }
                 />
               </div>
             </div>
@@ -92,7 +97,7 @@ export function SettingsWorkbench({
                     { label: "Entry first", value: "entry-first" },
                   ]}
                   value={navigationMode}
-                  onChange={(value) => onSetPreference("desktop.navigation.mode", value)}
+                  onChange={(value) => onSetPreference("desktop", "navigation.mode", value)}
                 />
               </div>
             </div>
@@ -111,7 +116,9 @@ export function SettingsWorkbench({
                 <Switch
                   checked={sidebarCollapsed}
                   disabled={isLoading}
-                  onChange={(checked) => onSetPreference("desktop.sidebar.collapsed", checked)}
+                  onChange={(checked) =>
+                    onSetPreference("desktop", "sidebar.collapsed", checked)
+                  }
                 />
               </div>
             </div>

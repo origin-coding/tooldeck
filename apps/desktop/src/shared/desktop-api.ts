@@ -68,6 +68,7 @@ export interface ListCommandRunsRequest {
 }
 
 export interface SetPreferenceRequest {
+  scope: PreferenceScope;
   key: string;
   value: unknown;
 }
