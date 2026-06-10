@@ -36,6 +36,7 @@ import type {
   DesktopCommand,
   DesktopPreference,
   DesktopPlugin,
+  ListCommandRunsRequest,
   RunCommandRequest,
   SetPreferenceRequest,
   SetPluginEnabledRequest,
@@ -221,9 +222,9 @@ export class TooldeckDesktopService {
     }
   }
 
-  listCommandRuns(limit = 50): CommandRunRecord[] {
+  listCommandRuns(request: ListCommandRunsRequest = {}): CommandRunRecord[] {
     return this.requireCommandRuns()
-      .listRecent(limit)
+      .listRecent(request)
       .map((row) => ({
         id: row.id,
         commandId: row.commandId,

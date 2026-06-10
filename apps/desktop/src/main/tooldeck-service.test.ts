@@ -101,6 +101,8 @@ describe("TooldeckDesktopService", () => {
           createdAt: expect.any(Number),
         }),
       ]);
+      expect(service.listCommandRuns({ commandId: "json.format" })).toHaveLength(1);
+      expect(service.listCommandRuns({ commandId: "json.validate" })).toHaveLength(0);
     } finally {
       await service.dispose();
     }
@@ -195,6 +197,16 @@ describe("TooldeckDesktopService", () => {
           key: "locale",
           value: "system",
         }),
+        expect.objectContaining({
+          scope: "desktop",
+          key: "desktop.navigation.mode",
+          value: "provider-first",
+        }),
+        expect.objectContaining({
+          scope: "desktop",
+          key: "desktop.sidebar.collapsed",
+          value: false,
+        }),
       ]);
 
       expect(
@@ -214,7 +226,37 @@ describe("TooldeckDesktopService", () => {
           key: "locale",
           value: "zh-CN",
         }),
+        expect.objectContaining({
+          scope: "desktop",
+          key: "desktop.navigation.mode",
+          value: "provider-first",
+        }),
+        expect.objectContaining({
+          scope: "desktop",
+          key: "desktop.sidebar.collapsed",
+          value: false,
+        }),
       ]);
+      expect(
+        service.setPreference({
+          key: "desktop.navigation.mode",
+          value: "entry-first",
+        }),
+      ).toMatchObject({
+        scope: "desktop",
+        key: "desktop.navigation.mode",
+        value: "entry-first",
+      });
+      expect(
+        service.setPreference({
+          key: "desktop.sidebar.collapsed",
+          value: true,
+        }),
+      ).toMatchObject({
+        scope: "desktop",
+        key: "desktop.sidebar.collapsed",
+        value: true,
+      });
       expect(() =>
         service.setPreference({
           key: "output.format",

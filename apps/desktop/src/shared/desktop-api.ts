@@ -59,6 +59,11 @@ export interface RunCommandRequest {
   input?: JsonObject;
 }
 
+export interface ListCommandRunsRequest {
+  limit?: number;
+  commandId?: string;
+}
+
 export interface SetPreferenceRequest {
   key: string;
   value: unknown;
@@ -80,7 +85,7 @@ export interface DesktopApi {
     plugins: DesktopPlugin[];
   }>;
   runCommand(request: RunCommandRequest): Promise<CommandResult>;
-  listCommandRuns(limit?: number): Promise<CommandRunRecord[]>;
+  listCommandRuns(request?: ListCommandRunsRequest): Promise<CommandRunRecord[]>;
 }
 
 export const desktopIpcChannels = {

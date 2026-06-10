@@ -32,7 +32,7 @@ export function PluginWorkbench({
     <>
       <Card
         extra={
-          <div className="card-extra">
+          <div className="flex items-center gap-2">
             <StatusBadge status={plugin.enabled ? plugin.runtimeState : "disabled"} />
             <Button
               disabled={isLoading}
@@ -48,14 +48,14 @@ export function PluginWorkbench({
         title={plugin.name}
       >
         <Typography.Text type="secondary">{plugin.id}</Typography.Text>
-        <div className="section-offset">
-          <div className="metrics-grid">
+        <div className="mt-3.5">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <PluginMeta label="Version" value={plugin.version} />
             <PluginMeta label="Runtime" value={plugin.enabled ? plugin.runtimeState : "disabled"} />
             <PluginMeta label="Commands" value={String(plugin.commandCount)} />
           </div>
           <Divider />
-          <Typography.Text className="text-truncate block" type="secondary">
+          <Typography.Text className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" type="secondary">
             {plugin.manifestPath}
           </Typography.Text>
         </div>
@@ -65,19 +65,19 @@ export function PluginWorkbench({
         <Typography.Text type="secondary">
           Commands declared by this plugin manifest.
         </Typography.Text>
-        <div className="section-offset">
+        <div className="mt-3.5">
           {commands.length === 0 ? <EmptyState text="No commands contributed" /> : null}
           {commands.length > 0 ? (
-            <div className="command-card-list">
+            <div className="grid gap-2">
               {commands.map((command) => (
                 <button
                   key={command.id}
                   type="button"
-                  className="command-card-list-item"
+                  className="grid w-full gap-1 rounded-md border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-blue-300 hover:bg-blue-50"
                   onClick={() => onSelectCommand(command)}
                 >
-                  <span className="command-card-list-title">{command.title}</span>
-                  <span className="command-card-list-meta">
+                  <span className="font-semibold">{command.title}</span>
+                  <span className="text-xs text-gray-500">
                     {command.description ?? command.id}
                   </span>
                 </button>
@@ -92,9 +92,9 @@ export function PluginWorkbench({
 
 function PluginMeta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="metric-box">
-      <span className="metric-label">{label}</span>
-      <span className="text-truncate metric-value">{value}</span>
+    <div className="grid gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
+      <span className="text-xs text-gray-500">{label}</span>
+      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold">{value}</span>
     </div>
   );
 }

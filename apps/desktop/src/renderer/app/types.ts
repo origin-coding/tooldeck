@@ -7,7 +7,9 @@ import type {
   DesktopPreference,
 } from "@/shared/desktop-api";
 
-export type AppView = "plugins" | "commands" | "settings";
+export type AppView = "main" | "history" | "settings";
+
+export type DesktopNavigationMode = "provider-first" | "entry-first";
 
 export interface AppState {
   commands: DesktopCommand[];
@@ -15,6 +17,7 @@ export interface AppState {
   preferences: DesktopPreference[];
   selectedCommandId?: string;
   selectedPluginId?: string;
+  historyCommandId?: string;
   input: Record<string, string>;
   result?: CommandResult;
   history: CommandRunRecord[];

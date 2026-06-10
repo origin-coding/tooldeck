@@ -109,6 +109,42 @@ describe("storage", () => {
     }
   });
 
+  it("filters recent command runs by command id", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new CommandRunRepository(database.db);
+
+      repository.create({
+        id: "format-old",
+        commandId: "json.format",
+        source: "desktop",
+        status: "success",
+        createdAt: 1000,
+      });
+      repository.create({
+        id: "validate-new",
+        commandId: "json.validate",
+        source: "desktop",
+        status: "success",
+        createdAt: 3000,
+      });
+      repository.create({
+        id: "format-new",
+        commandId: "json.format",
+        source: "desktop",
+        status: "error",
+        createdAt: 2000,
+      });
+
+      const runs = repository.listRecent({ commandId: "json.format" });
+
+      expect(runs.map((run) => run.id)).toEqual(["format-new", "format-old"]);
+    } finally {
+      database.close();
+    }
+  });
+
   it("closes the SQLite connection", () => {
     const database = openTooldeckDatabase({ path: createDatabasePath() });
 

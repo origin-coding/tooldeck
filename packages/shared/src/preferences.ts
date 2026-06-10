@@ -6,7 +6,9 @@ export type SharedPreferenceKey = "locale";
 
 export type CliPreferenceKey = "output.format" | "command.history.enabled";
 
-export type KnownPreferenceKey = SharedPreferenceKey | CliPreferenceKey;
+export type DesktopPreferenceKey = "desktop.navigation.mode" | "desktop.sidebar.collapsed";
+
+export type KnownPreferenceKey = SharedPreferenceKey | CliPreferenceKey | DesktopPreferenceKey;
 
 export type KnownPreferenceValue = string | boolean;
 
@@ -42,6 +44,21 @@ export const preferenceDefinitions = [
     valueType: "boolean",
     defaultValue: true,
     description: "Whether CLI command runs are recorded in command history.",
+  },
+  {
+    scope: "desktop",
+    key: "desktop.navigation.mode",
+    valueType: "enum",
+    defaultValue: "provider-first",
+    values: ["provider-first", "entry-first"],
+    description: "How the desktop sidebar organizes plugins and entries.",
+  },
+  {
+    scope: "desktop",
+    key: "desktop.sidebar.collapsed",
+    valueType: "boolean",
+    defaultValue: false,
+    description: "Whether the desktop sidebar is collapsed.",
   },
 ] as const satisfies readonly PreferenceDefinition[];
 

@@ -30,12 +30,12 @@ export function CommandOutput({ result, hasError }: { result?: CommandResult; ha
   return (
     <div
       className={classes(
-        "command-output-list",
-        result.status === "error" && "command-output-list-error",
+        "grid max-h-[32rem] min-h-0 gap-3 overflow-y-auto pr-1",
+        result.status === "error" && "rounded-md border border-red-200 bg-red-50 p-3",
       )}
     >
       {result.status === "error" ? (
-        <div className="command-output-error">
+        <div className="font-semibold text-red-700">
           {result.error?.message ?? "Command returned an error result."}
         </div>
       ) : null}
@@ -58,12 +58,14 @@ function OutputState({
   return (
     <div
       className={classes(
-        "output-state",
-        tone === "error" ? "output-state-error" : "output-state-idle",
+        "flex min-h-[280px] flex-col items-center justify-center rounded-md border border-dashed p-4 text-center",
+        tone === "error"
+          ? "border-red-200 bg-red-50 text-red-700"
+          : "border-slate-300 bg-slate-50 text-gray-500",
       )}
     >
-      <div className="output-state-title">{title}</div>
-      <div className="output-state-text">{text}</div>
+      <div className="font-semibold">{title}</div>
+      <div className="mt-1 text-xs">{text}</div>
     </div>
   );
 }
@@ -74,14 +76,16 @@ function ContentBlockView({ block }: { block: ContentBlock }) {
   const isText = block.type === "text";
 
   return (
-    <section className="content-block">
-      <div className="content-block-header">
+    <section className="min-h-0 overflow-hidden rounded-md border border-slate-200 bg-white">
+      <div className="flex h-8 items-center border-b border-slate-200 bg-slate-50 px-2.5">
         <Tag>{label}</Tag>
       </div>
       <pre
         className={classes(
-          "content-block-body",
-          isText ? "content-block-body-text" : "content-block-body-code",
+          "m-0 max-h-96 min-h-0 overflow-auto p-3 text-[13px] leading-relaxed",
+          isText
+            ? "whitespace-pre-wrap font-sans"
+            : "min-w-full whitespace-pre bg-slate-50 font-mono",
         )}
       >
         {text}

@@ -12,7 +12,7 @@ export function ErrorNotice({
   return (
     <Alert
       showIcon
-      className={compact ? "notice-compact" : undefined}
+      className={compact ? "mb-3" : undefined}
       description={message}
       title={title}
       type="error"

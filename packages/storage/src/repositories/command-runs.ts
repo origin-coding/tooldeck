@@ -1,5 +1,5 @@
 import type { CommandResult } from "@tooldeck/protocol";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import type { TooldeckDrizzleDatabase } from "../database";
 import { commandRuns, type CommandRunRow } from "../schema";
@@ -15,6 +15,11 @@ export interface CreateCommandRunInput {
   error?: unknown;
   durationMs?: number;
   createdAt?: number;
+}
+
+export interface ListCommandRunsOptions {
+  limit?: number;
+  commandId?: string;
 }
 
 export class CommandRunRepository {
@@ -39,13 +44,20 @@ export class CommandRunRepository {
     return row;
   }
 
-  listRecent(limit = 50): CommandRunRow[] {
-    return this.db
-      .select()
-      .from(commandRuns)
-      .orderBy(desc(commandRuns.createdAt))
-      .limit(limit)
-      .all();
+  listRecent(options: ListCommandRunsOptions = {}): CommandRunRow[] {
+    const limit = options.limit ?? 50;
+
+    if (options.commandId) {
+      return this.db
+        .select()
+        .from(commandRuns)
+        .where(eq(commandRuns.commandId, options.commandId))
+        .orderBy(desc(commandRuns.createdAt))
+        .limit(limit)
+        .all();
+    }
+
+    return this.db.select().from(commandRuns).orderBy(desc(commandRuns.createdAt)).limit(limit).all();
   }
 }
 

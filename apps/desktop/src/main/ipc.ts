@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 
 import {
   desktopIpcChannels,
+  type ListCommandRunsRequest,
   type RunCommandRequest,
   type SetPreferenceRequest,
   type SetPluginEnabledRequest,
@@ -23,8 +24,8 @@ export function registerTooldeckIpc(service: TooldeckDesktopService): () => void
   ipcMain.handle(desktopIpcChannels.runCommand, (_event, request: RunCommandRequest) =>
     service.runCommand(request),
   );
-  ipcMain.handle(desktopIpcChannels.listCommandRuns, (_event, limit?: number) =>
-    service.listCommandRuns(limit),
+  ipcMain.handle(desktopIpcChannels.listCommandRuns, (_event, request?: ListCommandRunsRequest) =>
+    service.listCommandRuns(request),
   );
 
   return () => {

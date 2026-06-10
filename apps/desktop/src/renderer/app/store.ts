@@ -19,6 +19,8 @@ interface DesktopStore extends AppState {
   setCommandQuery(query: string): void;
   setPluginQuery(query: string): void;
   loadData(): Promise<void>;
+  loadHistory(commandId?: string): Promise<void>;
+  openCommandHistory(commandId?: string): Promise<void>;
   rescanPlugins(): Promise<void>;
   selectCommand(command: DesktopCommand): void;
   selectPlugin(plugin: DesktopPlugin): void;
@@ -32,7 +34,7 @@ export const useDesktopStore = create<DesktopStore>()(
   persist(
     (set, get) => ({
       ...initialState,
-      view: "plugins",
+      view: "main",
       commandQuery: "",
       pluginQuery: "",
       setView(view) {
@@ -55,7 +57,7 @@ export const useDesktopStore = create<DesktopStore>()(
           const [commands, plugins, history, preferences] = await Promise.all([
             window.tooldeck.listCommands(),
             window.tooldeck.listPlugins(),
-            window.tooldeck.listCommandRuns(25),
+            window.tooldeck.listCommandRuns({ limit: 25 }),
             window.tooldeck.listPreferences(),
           ]);
           applyLocalePreference(getPreferenceValue(preferences, "locale"));
@@ -77,6 +79,42 @@ export const useDesktopStore = create<DesktopStore>()(
           }));
         }
       },
+      async loadHistory(commandId) {
+        set((current) => ({
+          ...current,
+          isLoadingData: true,
+          loadError: undefined,
+          historyCommandId: commandId,
+        }));
+
+        try {
+          const history = await window.tooldeck.listCommandRuns({
+            limit: 50,
+            commandId,
+          });
+
+          set((current) => ({
+            ...current,
+            history,
+            historyCommandId: commandId,
+            isLoadingData: false,
+          }));
+        } catch (error) {
+          set((current) => ({
+            ...current,
+            isLoadingData: false,
+            loadError: getErrorMessage(error),
+          }));
+        }
+      },
+      async openCommandHistory(commandId) {
+        set((current) => ({
+          ...current,
+          view: "history",
+          historyCommandId: commandId,
+        }));
+        await get().loadHistory(commandId);
+      },
       async rescanPlugins() {
         set((current) => ({
           ...current,
@@ -87,7 +125,7 @@ export const useDesktopStore = create<DesktopStore>()(
         try {
           const [{ commands, plugins }, history] = await Promise.all([
             window.tooldeck.rescanPlugins(),
-            window.tooldeck.listCommandRuns(25),
+            window.tooldeck.listCommandRuns({ limit: 25 }),
           ]);
 
           set((current) =>
@@ -110,7 +148,7 @@ export const useDesktopStore = create<DesktopStore>()(
       selectCommand(command) {
         set((current) => ({
           ...current,
-          view: "commands",
+          view: "main",
           selectedCommandId: command.id,
           selectedPluginId: command.pluginId,
           input: createInputState(command, current.input),
@@ -121,8 +159,11 @@ export const useDesktopStore = create<DesktopStore>()(
       selectPlugin(plugin) {
         set((current) => ({
           ...current,
-          view: "plugins",
+          view: "main",
           selectedPluginId: plugin.id,
+          selectedCommandId: undefined,
+          result: undefined,
+          runError: undefined,
         }));
       },
       updateInput(key, value) {
@@ -164,7 +205,10 @@ export const useDesktopStore = create<DesktopStore>()(
           const [commands, plugins, history] = await Promise.all([
             window.tooldeck.listCommands(),
             window.tooldeck.listPlugins(),
-            window.tooldeck.listCommandRuns(25),
+            window.tooldeck.listCommandRuns({
+              limit: get().view === "history" ? 50 : 25,
+              commandId: get().view === "history" ? get().historyCommandId : undefined,
+            }),
           ]);
 
           set((state) => ({
@@ -188,7 +232,10 @@ export const useDesktopStore = create<DesktopStore>()(
             [commands, plugins, history] = await Promise.all([
               window.tooldeck.listCommands(),
               window.tooldeck.listPlugins(),
-              window.tooldeck.listCommandRuns(25),
+              window.tooldeck.listCommandRuns({
+                limit: state.view === "history" ? 50 : 25,
+                commandId: state.view === "history" ? state.historyCommandId : undefined,
+              }),
             ]);
           } catch {
             // Keep existing state if refreshing failed after the run error.
@@ -268,17 +315,37 @@ export const useDesktopStore = create<DesktopStore>()(
     {
       name: "tooldeck.desktop.ui",
       storage: createJSONStorage(() => localStorage),
+      version: 2,
+      migrate: (persisted) => normalizePersistedState(persisted),
       partialize: (state) => ({
         view: state.view,
         commandQuery: state.commandQuery,
         pluginQuery: state.pluginQuery,
         selectedCommandId: state.selectedCommandId,
         selectedPluginId: state.selectedPluginId,
+        historyCommandId: state.historyCommandId,
         input: state.input,
       }),
     },
   ),
 );
+
+function normalizePersistedState(persisted: unknown): unknown {
+  if (!persisted || typeof persisted !== "object") {
+    return persisted;
+  }
+
+  const state = persisted as { view?: string };
+
+  if (state.view === "commands" || state.view === "plugins" || state.view === "workbench") {
+    return {
+      ...state,
+      view: "main",
+    };
+  }
+
+  return persisted;
+}
 
 function mergeLoadedState({
   current,

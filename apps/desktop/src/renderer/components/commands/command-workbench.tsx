@@ -1,33 +1,32 @@
 import type { CommandResult } from "@tooldeck/protocol";
-import { Alert, Card, Tag, Typography } from "antd";
+import { Alert, Button, Card, Tag, Typography } from "antd";
 import { AlertCircle, History } from "lucide-react";
 
-import { CommandHistory } from "@/renderer/components/commands/command-history";
 import { CommandInputForm } from "@/renderer/components/commands/command-input-form";
 import { CommandOutput } from "@/renderer/components/commands/command-output";
 import { EmptyCard } from "@/renderer/components/common/empty-card";
 import { ErrorNotice } from "@/renderer/components/common/error-notice";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
-import type { CommandRunRecord, DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
 
 export function CommandWorkbench({
   command,
   plugin,
-  history,
   input,
   isLoading,
   result,
   runError,
   onChangeInput,
+  onOpenHistory,
 }: {
   command?: DesktopCommand;
   plugin?: DesktopPlugin;
-  history: CommandRunRecord[];
   input: Record<string, string>;
   isLoading: boolean;
   result?: CommandResult;
   runError?: string;
   onChangeInput(key: string, value: string): void;
+  onOpenHistory(commandId: string): void;
 }) {
   if (!command) {
     return (
@@ -42,9 +41,16 @@ export function CommandWorkbench({
     <>
       <Card
         extra={
-          <div className="card-extra">
+          <div className="flex items-center gap-2">
             <StatusBadge status={command.pluginEnabled ? command.pluginRuntimeState : "disabled"} />
             {plugin ? <Tag>{plugin.name}</Tag> : null}
+            <Button
+              htmlType="button"
+              icon={<History size={15} />}
+              onClick={() => onOpenHistory(command.id)}
+            >
+              History
+            </Button>
           </div>
         }
         title={command.title}
@@ -53,7 +59,7 @@ export function CommandWorkbench({
         {!command.pluginEnabled ? (
           <Alert
             showIcon
-            className="section-offset"
+            className="mt-3.5"
             description={`Enable ${plugin?.name ?? command.pluginId} before running this command.`}
             icon={<AlertCircle size={16} />}
             title="Plugin disabled"
@@ -62,10 +68,10 @@ export function CommandWorkbench({
         ) : null}
       </Card>
 
-      <div className="workbench-grid">
+      <div className="grid min-h-96 grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Input">
           <Typography.Text type="secondary">{command.id}</Typography.Text>
-          <div className="section-offset">
+          <div className="mt-3.5">
             <CommandInputForm command={command} input={input} onChange={onChangeInput} />
           </div>
         </Card>
@@ -75,20 +81,6 @@ export function CommandWorkbench({
           <CommandOutput result={result} hasError={Boolean(runError)} />
         </Card>
       </div>
-
-      <Card
-        title={
-          <span className="title-with-icon">
-            <History size={16} />
-            Command History
-          </span>
-        }
-      >
-        <Typography.Text type="secondary">{history.length} recent runs</Typography.Text>
-        <div className="section-offset">
-          <CommandHistory history={history} isLoading={isLoading} />
-        </div>
-      </Card>
     </>
   );
 }

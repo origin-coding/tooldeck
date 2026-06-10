@@ -30,7 +30,7 @@ export function CommandInputForm({
           key={field.key}
           extra={field.description}
           label={
-            <span className="field-label">
+            <span className="flex items-center gap-2">
               {field.title}
               {field.required ? <Tag>Required</Tag> : null}
             </span>
@@ -42,7 +42,7 @@ export function CommandInputForm({
               id={`command-input-${field.key}`}
               spellCheck={false}
               value={input[field.key] ?? ""}
-              className="code-input"
+              className="!min-h-[280px] !resize-none font-mono"
               onChange={(event) => onChange(field.key, event.target.value)}
             />
           ) : field.kind === "number" ? (
