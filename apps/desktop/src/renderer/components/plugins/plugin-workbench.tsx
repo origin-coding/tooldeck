@@ -47,7 +47,7 @@ export function PluginWorkbench({
         }
         title={plugin.name}
       >
-        <Typography.Text type="secondary">{plugin.id}</Typography.Text>
+        <Typography.Text type="secondary">{plugin.description ?? plugin.id}</Typography.Text>
         <div className="mt-3.5">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
             <PluginMeta label="Version" value={plugin.version} />

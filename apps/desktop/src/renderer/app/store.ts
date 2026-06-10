@@ -13,11 +13,7 @@ import type { DesktopCommand, DesktopPlugin, DesktopPreference } from "@/shared/
 
 interface DesktopStore extends AppState {
   view: AppView;
-  commandQuery: string;
-  pluginQuery: string;
   setView(view: AppView): void;
-  setCommandQuery(query: string): void;
-  setPluginQuery(query: string): void;
   loadData(): Promise<void>;
   loadHistory(commandId?: string): Promise<void>;
   openCommandHistory(commandId?: string): Promise<void>;
@@ -35,16 +31,8 @@ export const useDesktopStore = create<DesktopStore>()(
     (set, get) => ({
       ...initialState,
       view: "main",
-      commandQuery: "",
-      pluginQuery: "",
       setView(view) {
         set({ view });
-      },
-      setCommandQuery(commandQuery) {
-        set({ commandQuery });
-      },
-      setPluginQuery(pluginQuery) {
-        set({ pluginQuery });
       },
       async loadData() {
         set((current) => ({
@@ -315,12 +303,10 @@ export const useDesktopStore = create<DesktopStore>()(
     {
       name: "tooldeck.desktop.ui",
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       migrate: (persisted) => normalizePersistedState(persisted),
       partialize: (state) => ({
         view: state.view,
-        commandQuery: state.commandQuery,
-        pluginQuery: state.pluginQuery,
         selectedCommandId: state.selectedCommandId,
         selectedPluginId: state.selectedPluginId,
         historyCommandId: state.historyCommandId,
@@ -335,7 +321,15 @@ function normalizePersistedState(persisted: unknown): unknown {
     return persisted;
   }
 
-  const state = persisted as { view?: string };
+  const state = {
+    ...(persisted as {
+      commandQuery?: string;
+      pluginQuery?: string;
+      view?: string;
+    }),
+  };
+  delete state.commandQuery;
+  delete state.pluginQuery;
 
   if (state.view === "commands" || state.view === "plugins" || state.view === "workbench") {
     return {
@@ -344,7 +338,7 @@ function normalizePersistedState(persisted: unknown): unknown {
     };
   }
 
-  return persisted;
+  return state;
 }
 
 function mergeLoadedState({

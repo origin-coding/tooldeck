@@ -1,15 +1,15 @@
 import {type MenuDataItem, PageContainer, ProLayout} from "@ant-design/pro-components";
-import {Button, Input} from "antd";
+import {Button} from "antd";
 import {Boxes, Play, RefreshCw, Search, Settings, Wrench} from "lucide-react";
-import {type ReactNode, useEffect, useMemo} from "react";
+import {type ReactNode, useEffect, useMemo, useState} from "react";
 
-import {filterCommands, filterPlugins} from "@/renderer/app/selectors";
 import {useDesktopStore} from "@/renderer/app/store";
 import type {DesktopNavigationMode} from "@/renderer/app/types";
 import {CommandWorkbench} from "@/renderer/components/commands/command-workbench";
 import {ErrorNotice} from "@/renderer/components/common/error-notice";
 import {CommandHistoryWorkbench} from "@/renderer/components/history/command-history-workbench";
 import {PluginWorkbench} from "@/renderer/components/plugins/plugin-workbench";
+import {SearchDialog} from "@/renderer/components/search/search-dialog";
 import {SettingsWorkbench} from "@/renderer/components/settings/settings-workbench";
 import type {DesktopCommand, DesktopPlugin} from "@/shared/desktop-api";
 
@@ -29,6 +29,7 @@ type SidebarRoute = MenuDataItem & {
 
 export function App() {
   const state = useDesktopStore();
+  const [searchOpen, setSearchOpen] = useState(false);
   const navigationMode = getNavigationMode(state.preferences);
   const sidebarCollapsed = getSidebarCollapsed(state.preferences);
 
@@ -45,14 +46,6 @@ export function App() {
   const selectedCommandPlugin = useMemo(
     () => state.plugins.find((plugin) => plugin.id === selectedCommand?.pluginId),
     [selectedCommand?.pluginId, state.plugins],
-  );
-  const filteredCommands = useMemo(
-    () => filterCommands(state.commands, state.commandQuery),
-    [state.commandQuery, state.commands],
-  );
-  const filteredPlugins = useMemo(
-    () => filterPlugins(state.plugins, state.pluginQuery),
-    [state.pluginQuery, state.plugins],
   );
   const selectedPluginCommands = useMemo(
     () => state.commands.filter((command) => command.pluginId === selectedPlugin?.id),
@@ -108,16 +101,17 @@ export function App() {
     () =>
       createSidebarRoutes({
         mode: navigationMode,
-        commands: filteredCommands,
-        plugins: filteredPlugins,
+        commands: state.commands,
+        plugins: state.plugins,
+        onOpenSearch: () => setSearchOpen(true),
         onOpenSettings: () => state.setView("settings"),
         onSelectCommand: state.selectCommand,
         onSelectPlugin: state.selectPlugin,
       }),
     [
-      filteredCommands,
-      filteredPlugins,
       navigationMode,
+      state.commands,
+      state.plugins,
       state.selectCommand,
       state.selectPlugin,
       state.setView,
@@ -152,18 +146,6 @@ export function App() {
             <div className="mt-0.5 text-xs text-gray-500">
               {navigationMode === "entry-first" ? "Browse commands directly" : "Browse by plugin"}
             </div>
-            <Input
-              allowClear
-              className="mt-2"
-              placeholder={navigationMode === "entry-first" ? "Search commands" : "Search plugins"}
-              prefix={<Search size={15} />}
-              value={navigationMode === "entry-first" ? state.commandQuery : state.pluginQuery}
-              onChange={(event) =>
-                navigationMode === "entry-first"
-                  ? state.setCommandQuery(event.target.value)
-                  : state.setPluginQuery(event.target.value)
-              }
-            />
           </div>
         )
       }
@@ -238,6 +220,14 @@ export function App() {
           )}
         </div>
       </PageContainer>
+      <SearchDialog
+        open={searchOpen}
+        commands={state.commands}
+        plugins={state.plugins}
+        onClose={() => setSearchOpen(false)}
+        onSelectCommand={state.selectCommand}
+        onSelectPlugin={state.selectPlugin}
+      />
     </ProLayout>
   );
 }
@@ -246,6 +236,7 @@ function createSidebarRoutes({
   mode,
   commands,
   plugins,
+  onOpenSearch,
   onOpenSettings,
   onSelectCommand,
   onSelectPlugin,
@@ -253,10 +244,19 @@ function createSidebarRoutes({
   mode: DesktopNavigationMode;
   commands: DesktopCommand[];
   plugins: DesktopPlugin[];
+  onOpenSearch(): void;
   onOpenSettings(): void;
   onSelectCommand(command: DesktopCommand): void;
   onSelectPlugin(plugin: DesktopPlugin): void;
 }): SidebarRoute[] {
+  const searchRoute: SidebarRoute = {
+    path: "/search",
+    key: "search",
+    name: "Search",
+    locale: false,
+    icon: <Search size={15} />,
+    onTitleClick: onOpenSearch,
+  };
   const settingsRoute: SidebarRoute = {
     path: "/settings",
     key: "settings",
@@ -291,6 +291,7 @@ function createSidebarRoutes({
           ];
 
     return [
+      searchRoute,
       {
         path: "/commands",
         key: "commands",
@@ -327,6 +328,7 @@ function createSidebarRoutes({
         ];
 
   return [
+    searchRoute,
     {
       path: "/plugins",
       key: "plugins",
@@ -414,7 +416,7 @@ function getPageDescription({
 }: {
   view: string;
   selectedCommand?: { description?: string; id: string };
-  selectedPlugin?: { id: string };
+  selectedPlugin?: { description?: string; id: string };
 }): string {
   if (view === "settings") {
     return "Local desktop preferences and workspace state";
@@ -428,7 +430,7 @@ function getPageDescription({
     return selectedCommand.description ?? selectedCommand.id;
   }
 
-  return selectedPlugin?.id ?? "Select a plugin or command to inspect.";
+  return selectedPlugin?.description ?? selectedPlugin?.id ?? "Select a plugin or command to inspect.";
 }
 
 function getNavigationMode(preferences: { key: string; value: unknown }[]): DesktopNavigationMode {

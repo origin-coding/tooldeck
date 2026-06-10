@@ -93,7 +93,7 @@ function JsonPanel({ title, value }: { title: string; value: unknown }) {
   return (
     <div className="grid gap-2">
       <Typography.Text strong>{title}</Typography.Text>
-      <pre className="m-0 max-h-[280px] overflow-auto rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-relaxed">
+      <pre className="m-0 max-h-70 overflow-auto rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-relaxed">
         {formatJson(value)}
       </pre>
     </div>

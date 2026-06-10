@@ -30,34 +30,6 @@ export function resolveSelectedPluginId(
   return plugins[0]?.id;
 }
 
-export function filterCommands(commands: DesktopCommand[], query: string): DesktopCommand[] {
-  const normalized = query.trim().toLowerCase();
-
-  if (!normalized) {
-    return commands;
-  }
-
-  return commands.filter((command) =>
-    [command.id, command.title, command.description, command.pluginId]
-      .filter(Boolean)
-      .some((value) => value!.toLowerCase().includes(normalized)),
-  );
-}
-
-export function filterPlugins(plugins: DesktopPlugin[], query: string): DesktopPlugin[] {
-  const normalized = query.trim().toLowerCase();
-
-  if (!normalized) {
-    return plugins;
-  }
-
-  return plugins.filter((plugin) =>
-    [plugin.id, plugin.name, plugin.version, plugin.manifestPath]
-      .filter(Boolean)
-      .some((value) => value.toLowerCase().includes(normalized)),
-  );
-}
-
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;

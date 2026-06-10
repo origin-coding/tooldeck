@@ -17,17 +17,20 @@ export interface DesktopCommand {
   title: string;
   description?: string;
   inputSchema?: TooldeckJsonSchema;
+  searchText: string[];
 }
 
 export interface DesktopPlugin {
   id: string;
   name: string;
+  description?: string;
   version: string;
   manifestPath: string;
   enabled: boolean;
   runtimeState: DesktopPluginRuntimeState;
   commandCount: number;
   updatedAt: number;
+  searchText: string[];
 }
 
 export interface CommandRunRecord {
