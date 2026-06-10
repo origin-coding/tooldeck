@@ -4,10 +4,11 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { openTooldeckDatabase } from "../src";
+import {openTooldeckDatabase, type PreferenceRow} from "../src";
 import { CommandRunRepository } from "../src";
 import { PluginKvRepository } from "../src";
 import { PluginRepository } from "../src";
+import { PreferenceRepository } from "../src";
 
 const tempDirs: string[] = [];
 
@@ -31,6 +32,9 @@ describe("storage", () => {
       const pluginKvTable = database.sqlite
         .prepare("select name from sqlite_master where type = 'table' and name = ?")
         .get("plugin_kv");
+      const preferencesTable = database.sqlite
+        .prepare("select name from sqlite_master where type = 'table' and name = ?")
+        .get("preferences");
       const migration = database.sqlite
         .prepare("select id from schema_migrations where id = ?")
         .get("0001_initial");
@@ -40,13 +44,18 @@ describe("storage", () => {
       const pluginKvMigration = database.sqlite
         .prepare("select id from schema_migrations where id = ?")
         .get("0003_plugin_kv");
+      const preferencesMigration = database.sqlite
+        .prepare("select id from schema_migrations where id = ?")
+        .get("0004_preferences");
 
       expect(commandRunsTable).toMatchObject({ name: "command_runs" });
       expect(pluginsTable).toMatchObject({ name: "plugins" });
       expect(pluginKvTable).toMatchObject({ name: "plugin_kv" });
+      expect(preferencesTable).toMatchObject({ name: "preferences" });
       expect(migration).toMatchObject({ id: "0001_initial" });
       expect(pluginRegistryMigration).toMatchObject({ id: "0002_plugin_registry" });
       expect(pluginKvMigration).toMatchObject({ id: "0003_plugin_kv" });
+      expect(preferencesMigration).toMatchObject({ id: "0004_preferences" });
     } finally {
       database.close();
     }
@@ -293,6 +302,83 @@ describe("storage", () => {
           value: undefined,
         }),
       ).toThrow("Plugin KV value must be JSON serializable");
+    } finally {
+      database.close();
+    }
+  });
+
+  it("stores preferences scoped by app or shared namespace", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PreferenceRepository(database.db);
+
+      repository.set({
+        scope: "desktop",
+        key: "theme",
+        value: "system",
+        now: 1000,
+      });
+      repository.set({
+        scope: "cli",
+        key: "theme",
+        value: "dark",
+        now: 1000,
+      });
+      const updated = repository.set({
+        scope: "desktop",
+        key: "theme",
+        value: "light",
+        now: 2000,
+      });
+
+      expect(repository.get("desktop", "theme")).toBe("light");
+      expect(repository.get("cli", "theme")).toBe("dark");
+      expect(repository.get("shared", "theme")).toBeUndefined();
+      expect(updated).toMatchObject({
+        scope: "desktop",
+        key: "theme",
+        valueJson: JSON.stringify("light"),
+        updatedAt: 2000,
+      });
+      expect(repository.list("desktop").map((row: PreferenceRow) => row.key)).toEqual(["theme"]);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("deletes preferences by scope and key", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PreferenceRepository(database.db);
+
+      repository.set({
+        scope: "desktop",
+        key: "sidebarCollapsed",
+        value: true,
+      });
+      repository.delete("desktop", "sidebarCollapsed");
+
+      expect(repository.get("desktop", "sidebarCollapsed")).toBeUndefined();
+    } finally {
+      database.close();
+    }
+  });
+
+  it("rejects preferences that are not JSON serializable", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PreferenceRepository(database.db);
+
+      expect(() =>
+        repository.set({
+          scope: "desktop",
+          key: "invalid",
+          value: undefined,
+        }),
+      ).toThrow("Preference value must be JSON serializable");
     } finally {
       database.close();
     }

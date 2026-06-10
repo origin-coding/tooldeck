@@ -1,3 +1,5 @@
+// noinspection SqlNoDataSourceInspection
+
 import type { DatabaseSync } from "node:sqlite";
 
 export interface Migration {
@@ -64,6 +66,21 @@ export const migrations: Migration[] = [
 
       create index if not exists plugin_kv_plugin_id_idx
         on plugin_kv(plugin_id);
+    `,
+  },
+  {
+    id: "0004_preferences",
+    sql: `
+      create table if not exists preferences (
+        scope text not null,
+        key text not null,
+        value_json text not null,
+        updated_at integer not null,
+        primary key(scope, key)
+      );
+
+      create index if not exists preferences_scope_idx
+        on preferences(scope);
     `,
   },
 ];

@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const schemaMigrations = sqliteTable("schema_migrations", {
   id: text("id").primaryKey(),
@@ -35,9 +35,22 @@ export const pluginKv = sqliteTable("plugin_kv", {
   updatedAt: integer("updated_at").notNull(),
 });
 
+export const preferences = sqliteTable(
+  "preferences",
+  {
+    scope: text("scope").notNull(),
+    key: text("key").notNull(),
+    valueJson: text("value_json").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.scope, table.key] })],
+);
+
 export type CommandRunRow = typeof commandRuns.$inferSelect;
 export type InsertCommandRunRow = typeof commandRuns.$inferInsert;
 export type PluginRow = typeof plugins.$inferSelect;
 export type InsertPluginRow = typeof plugins.$inferInsert;
 export type PluginKvRow = typeof pluginKv.$inferSelect;
 export type InsertPluginKvRow = typeof pluginKv.$inferInsert;
+export type PreferenceRow = typeof preferences.$inferSelect;
+export type InsertPreferenceRow = typeof preferences.$inferInsert;
