@@ -1,18 +1,9 @@
+import { Button, Card, Divider, Typography } from "antd";
 import { Power } from "lucide-react";
 
 import { EmptyCard } from "@/renderer/components/common/empty-card";
 import { EmptyState } from "@/renderer/components/common/empty-state";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
-import { Button } from "@/renderer/components/ui/button";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/renderer/components/ui/card";
-import { Separator } from "@/renderer/components/ui/separator";
 import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
 
 export function PluginWorkbench({
@@ -39,60 +30,61 @@ export function PluginWorkbench({
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>{plugin.name}</CardTitle>
-          <CardDescription>{plugin.id}</CardDescription>
-          <CardAction className="flex items-center gap-2">
+      <Card
+        extra={
+          <div className="card-extra">
             <StatusBadge status={plugin.enabled ? plugin.runtimeState : "disabled"} />
             <Button
-              type="button"
-              variant={plugin.enabled ? "secondary" : "outline"}
               disabled={isLoading}
+              htmlType="button"
+              icon={<Power size={15} />}
               onClick={() => onSetEnabled(plugin.id, !plugin.enabled)}
+              type={plugin.enabled ? "default" : "primary"}
             >
-              <Power className="size-4" />
               {plugin.enabled ? "Disable" : "Enable"}
             </Button>
-          </CardAction>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 text-sm sm:grid-cols-3">
+          </div>
+        }
+        title={plugin.name}
+      >
+        <Typography.Text type="secondary">{plugin.id}</Typography.Text>
+        <div className="section-offset">
+          <div className="metrics-grid">
             <PluginMeta label="Version" value={plugin.version} />
             <PluginMeta label="Runtime" value={plugin.enabled ? plugin.runtimeState : "disabled"} />
             <PluginMeta label="Commands" value={String(plugin.commandCount)} />
           </div>
-          <Separator className="my-4" />
-          <div className="text-muted-foreground truncate text-xs">{plugin.manifestPath}</div>
-        </CardContent>
+          <Divider />
+          <Typography.Text className="text-truncate block" type="secondary">
+            {plugin.manifestPath}
+          </Typography.Text>
+        </div>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Contributed Commands</CardTitle>
-          <CardDescription>Commands declared by this plugin manifest.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {commands.length === 0 ? (
-            <EmptyState text="No commands contributed" />
-          ) : (
-            <div className="grid gap-2">
+      <Card title="Contributed Commands">
+        <Typography.Text type="secondary">
+          Commands declared by this plugin manifest.
+        </Typography.Text>
+        <div className="section-offset">
+          {commands.length === 0 ? <EmptyState text="No commands contributed" /> : null}
+          {commands.length > 0 ? (
+            <div className="command-card-list">
               {commands.map((command) => (
                 <button
                   key={command.id}
                   type="button"
-                  className="border-border bg-background hover:bg-muted grid gap-1 rounded-md border px-3 py-2.5 text-left transition-colors"
+                  className="command-card-list-item"
                   onClick={() => onSelectCommand(command)}
                 >
-                  <span className="font-medium">{command.title}</span>
-                  <span className="text-muted-foreground text-xs">
+                  <span className="command-card-list-title">{command.title}</span>
+                  <span className="command-card-list-meta">
                     {command.description ?? command.id}
                   </span>
                 </button>
               ))}
             </div>
-          )}
-        </CardContent>
+          ) : null}
+        </div>
       </Card>
     </>
   );
@@ -100,9 +92,9 @@ export function PluginWorkbench({
 
 function PluginMeta({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-border bg-muted/30 grid gap-1 rounded-md border px-3 py-2">
-      <span className="text-muted-foreground text-xs">{label}</span>
-      <span className="truncate font-medium">{value}</span>
+    <div className="metric-box">
+      <span className="metric-label">{label}</span>
+      <span className="text-truncate metric-value">{value}</span>
     </div>
   );
 }

@@ -1,23 +1,23 @@
+import { Button } from "antd";
 import { Boxes, Braces, Wrench } from "lucide-react";
 
 import type { AppView } from "@/renderer/app/types";
-import { Button } from "@/renderer/components/ui/button";
 
 export function AppNav({ view, onChange }: { view: AppView; onChange(view: AppView): void }) {
   return (
-    <nav className="border-border bg-background flex min-h-0 flex-col items-center gap-2 border-r px-2 py-3">
-      <div className="bg-primary text-primary-foreground mb-2 flex size-10 items-center justify-center rounded-lg">
-        <Braces className="size-5" />
+    <nav className="icon-nav">
+      <div className="brand-mark">
+        <Braces size={18} />
       </div>
       <NavButton
         active={view === "commands"}
-        icon={<Wrench className="size-5" />}
+        icon={<Wrench size={18} />}
         label="Commands"
         onClick={() => onChange("commands")}
       />
       <NavButton
         active={view === "plugins"}
-        icon={<Boxes className="size-5" />}
+        icon={<Boxes size={18} />}
         label="Plugins"
         onClick={() => onChange("plugins")}
       />
@@ -38,14 +38,12 @@ function NavButton({
 }) {
   return (
     <Button
-      type="button"
-      variant={active ? "secondary" : "ghost"}
-      size="icon-lg"
+      className={active ? "icon-nav-button icon-nav-button-active" : "icon-nav-button"}
+      htmlType="button"
       aria-label={label}
+      icon={icon}
       title={label}
       onClick={onClick}
-    >
-      {icon}
-    </Button>
+    />
   );
 }

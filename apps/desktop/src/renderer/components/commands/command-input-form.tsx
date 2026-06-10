@@ -1,9 +1,7 @@
+import { Form, Input, InputNumber, Tag } from "antd";
+
 import { getInputFields } from "@/renderer/app/command-input";
 import { EmptyState } from "@/renderer/components/common/empty-state";
-import { Badge } from "@/renderer/components/ui/badge";
-import { Input } from "@/renderer/components/ui/input";
-import { Label } from "@/renderer/components/ui/label";
-import { Textarea } from "@/renderer/components/ui/textarea";
 import type { DesktopCommand } from "@/shared/desktop-api";
 
 export function CommandInputForm({
@@ -22,44 +20,48 @@ export function CommandInputForm({
   }
 
   if (fields.length === 0) {
-    return (
-      <div className="border-border bg-muted/30 text-muted-foreground flex min-h-48 items-center justify-center rounded-md border border-dashed text-sm">
-        No input required
-      </div>
-    );
+    return <EmptyState text="No input required" />;
   }
 
   return (
-    <div className="grid gap-4">
+    <Form layout="vertical">
       {fields.map((field) => (
-        <div key={field.key} className="grid gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <Label htmlFor={`command-input-${field.key}`}>{field.title}</Label>
-            {field.required ? <Badge variant="outline">Required</Badge> : null}
-          </div>
+        <Form.Item
+          key={field.key}
+          extra={field.description}
+          label={
+            <span className="field-label">
+              {field.title}
+              {field.required ? <Tag>Required</Tag> : null}
+            </span>
+          }
+          required={field.required}
+        >
           {field.kind === "textarea" ? (
-            <Textarea
+            <Input.TextArea
               id={`command-input-${field.key}`}
               spellCheck={false}
               value={input[field.key] ?? ""}
-              className="min-h-72 resize-none font-mono text-sm"
+              className="code-input"
               onChange={(event) => onChange(field.key, event.target.value)}
+            />
+          ) : field.kind === "number" ? (
+            <InputNumber
+              id={`command-input-${field.key}`}
+              max={field.maximum}
+              min={field.minimum}
+              value={input[field.key] === "" ? null : Number(input[field.key])}
+              onChange={(value) => onChange(field.key, value === null ? "" : String(value))}
             />
           ) : (
             <Input
               id={`command-input-${field.key}`}
-              type={field.kind === "number" ? "number" : "text"}
-              min={field.minimum}
-              max={field.maximum}
               value={input[field.key] ?? ""}
               onChange={(event) => onChange(field.key, event.target.value)}
             />
           )}
-          {field.description ? (
-            <p className="text-muted-foreground text-xs">{field.description}</p>
-          ) : null}
-        </div>
+        </Form.Item>
       ))}
-    </div>
+    </Form>
   );
 }

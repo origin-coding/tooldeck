@@ -1,12 +1,10 @@
-import { Card, CardDescription, CardHeader, CardTitle } from "@/renderer/components/ui/card";
+import { Card, Typography } from "antd";
 
 export function EmptyCard({ title, text }: { title: string; text: string }) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{text}</CardDescription>
-      </CardHeader>
+      <Typography.Title level={4}>{title}</Typography.Title>
+      <Typography.Text type="secondary">{text}</Typography.Text>
     </Card>
   );
 }

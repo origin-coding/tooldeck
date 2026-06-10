@@ -1,8 +1,7 @@
-import { Loader2, Play, RefreshCw } from "lucide-react";
+import { Button, Typography } from "antd";
+import { Play, RefreshCw } from "lucide-react";
 
 import type { AppView } from "@/renderer/app/types";
-import { Button } from "@/renderer/components/ui/button";
-import { cn } from "@/renderer/lib/utils";
 import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
 
 export function AppHeader({
@@ -23,32 +22,46 @@ export function AppHeader({
   onRun(): void;
 }) {
   const title =
-    view === "commands"
+    view === "settings"
+      ? "Settings"
+      : view === "commands"
       ? (selectedCommand?.title ?? (isLoading ? "Loading commands" : "No command selected"))
       : (selectedPlugin?.name ?? (isLoading ? "Loading plugins" : "No plugin selected"));
   const description =
-    view === "commands"
+    view === "settings"
+      ? "Local desktop preferences and workspace state"
+      : view === "commands"
       ? (selectedCommand?.description ?? selectedCommand?.id ?? "Select a command to run")
       : (selectedPlugin?.id ?? "Select a plugin to inspect");
 
   return (
-    <header className="border-border flex min-h-16 items-center justify-between gap-4 border-b px-5">
-      <div className="min-w-0">
-        <h1 className="truncate text-xl font-semibold">{title}</h1>
-        <p className="text-muted-foreground mt-1 truncate text-sm">{description}</p>
+    <header className="app-header">
+      <div className="app-header-title-block">
+        <Typography.Title className="app-header-title" level={4}>
+          {title}
+        </Typography.Title>
+        <Typography.Text className="text-truncate block" type="secondary">
+          {description}
+        </Typography.Text>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <Button type="button" variant="outline" disabled={isLoading} onClick={onRefresh}>
-          <RefreshCw className={cn("size-4", isLoading && "animate-spin")} />
+      <div className="app-header-actions">
+        <Button
+          disabled={isLoading}
+          htmlType="button"
+          icon={<RefreshCw className={isLoading ? "spin-icon" : undefined} size={15} />}
+          onClick={onRefresh}
+        >
           Rescan
         </Button>
         {view === "commands" ? (
           <Button
-            type="button"
             disabled={!selectedCommand || !selectedCommand.pluginEnabled || isLoading || isRunning}
+            htmlType="button"
+            icon={<Play size={15} />}
+            loading={isRunning}
             onClick={onRun}
+            type="primary"
           >
-            {isRunning ? <Loader2 className="size-4 animate-spin" /> : <Play className="size-4" />}
             Run
           </Button>
         ) : null}

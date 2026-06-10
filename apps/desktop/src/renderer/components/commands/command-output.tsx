@@ -1,4 +1,5 @@
 import type { CommandResult, ContentBlock } from "@tooldeck/protocol";
+import { Tag } from "antd";
 
 export function CommandOutput({ result, hasError }: { result?: CommandResult; hasError: boolean }) {
   if (!result) {
@@ -29,12 +30,12 @@ export function CommandOutput({ result, hasError }: { result?: CommandResult; ha
   return (
     <div
       className={classes(
-        "grid max-h-[32rem] min-h-0 gap-3 overflow-y-auto pr-1",
-        result.status === "error" && "rounded-md border border-destructive/30 bg-destructive/5 p-3",
+        "command-output-list",
+        result.status === "error" && "command-output-list-error",
       )}
     >
       {result.status === "error" ? (
-        <div className="text-destructive text-sm font-medium">
+        <div className="command-output-error">
           {result.error?.message ?? "Command returned an error result."}
         </div>
       ) : null}
@@ -57,14 +58,12 @@ function OutputState({
   return (
     <div
       className={classes(
-        "flex min-h-72 flex-col items-center justify-center rounded-md border border-dashed px-4 text-center",
-        tone === "error"
-          ? "border-destructive/40 bg-destructive/5 text-destructive"
-          : "border-border bg-muted/30 text-muted-foreground",
+        "output-state",
+        tone === "error" ? "output-state-error" : "output-state-idle",
       )}
     >
-      <div className="text-sm font-medium">{title}</div>
-      <div className="mt-1 text-xs">{text}</div>
+      <div className="output-state-title">{title}</div>
+      <div className="output-state-text">{text}</div>
     </div>
   );
 }
@@ -75,18 +74,14 @@ function ContentBlockView({ block }: { block: ContentBlock }) {
   const isText = block.type === "text";
 
   return (
-    <section className="border-border bg-card min-h-0 overflow-hidden rounded-md border">
-      <div className="border-border bg-muted/40 flex h-8 items-center justify-between border-b px-3">
-        <span className="border-border text-foreground inline-flex h-5 w-fit shrink-0 items-center justify-center rounded-4xl border px-2 py-0.5 font-mono text-xs font-medium whitespace-nowrap lowercase">
-          {label}
-        </span>
+    <section className="content-block">
+      <div className="content-block-header">
+        <Tag>{label}</Tag>
       </div>
       <pre
         className={classes(
-          "max-h-96 min-h-0 overflow-auto p-3 text-sm leading-6",
-          isText
-            ? "font-sans whitespace-pre-wrap"
-            : "bg-muted/20 font-mono whitespace-pre min-w-full",
+          "content-block-body",
+          isText ? "content-block-body-text" : "content-block-body-code",
         )}
       >
         {text}

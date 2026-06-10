@@ -1,6 +1,5 @@
 import type { CommandResult } from "@tooldeck/protocol";
-
-import { Badge } from "@/renderer/components/ui/badge";
+import { Tag } from "antd";
 
 export type StatusBadgeStatus =
   | CommandResult["status"]
@@ -14,16 +13,14 @@ export type StatusBadgeStatus =
   | "disabled";
 
 export function StatusBadge({ status }: { status: StatusBadgeStatus }) {
-  const variant =
+  const color =
     status === "error" || status === "failed"
-      ? "destructive"
+      ? "error"
       : status === "success" || status === "active"
-        ? "secondary"
-        : "outline";
+        ? "success"
+        : status === "disabled" || status === "idle" || status === "inactive"
+          ? "default"
+          : "processing";
 
-  return (
-    <Badge variant={variant} className="capitalize">
-      {status}
-    </Badge>
-  );
+  return <Tag color={color}>{status}</Tag>;
 }

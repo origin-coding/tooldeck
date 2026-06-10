@@ -17,14 +17,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.17.0",
-    "radix-ui": "^1.4.3",
+    "antd": "^6.4.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "shadcn": "^4.10.0",
-    "tailwind-merge": "^3.6.0"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",

@@ -2,7 +2,7 @@ import type { CommandResult } from "@tooldeck/protocol";
 
 import type { CommandRunRecord, DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
 
-export type AppView = "commands" | "plugins";
+export type AppView = "plugins" | "commands" | "settings";
 
 export interface AppState {
   commands: DesktopCommand[];

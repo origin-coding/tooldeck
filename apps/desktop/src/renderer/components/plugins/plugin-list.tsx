@@ -1,6 +1,5 @@
 import { EmptyState } from "@/renderer/components/common/empty-state";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
-import { cn } from "@/renderer/lib/utils";
 import type { DesktopPlugin } from "@/shared/desktop-api";
 
 export function PluginList({
@@ -17,27 +16,31 @@ export function PluginList({
   }
 
   return (
-    <div className="grid gap-1.5">
+    <div className="nav-list">
       {plugins.map((plugin) => (
         <button
           key={plugin.id}
           type="button"
-          className={cn(
-            "grid gap-1.5 rounded-md border border-transparent px-3 py-2.5 text-left transition-colors hover:bg-muted",
-            plugin.id === selectedPluginId && "border-border bg-background shadow-xs",
-            !plugin.enabled && "opacity-65",
+          className={classes(
+            "nav-list-item",
+            plugin.id === selectedPluginId && "nav-list-item-selected",
+            !plugin.enabled && "nav-list-item-disabled",
           )}
           onClick={() => onSelect(plugin)}
         >
-          <span className="flex min-w-0 items-center justify-between gap-2">
-            <span className="truncate text-sm font-medium">{plugin.name}</span>
+          <span className="nav-list-title-row">
+            <span className="text-truncate nav-list-title">{plugin.name}</span>
             <StatusBadge status={plugin.enabled ? plugin.runtimeState : "disabled"} />
           </span>
-          <span className="text-muted-foreground truncate text-xs">
+          <span className="text-truncate nav-list-meta">
             {plugin.id} · {plugin.commandCount} commands
           </span>
         </button>
       ))}
     </div>
   );
+}
+
+function classes(...values: Array<string | false>): string {
+  return values.filter(Boolean).join(" ");
 }

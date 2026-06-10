@@ -1,6 +1,5 @@
+import { Input } from "antd";
 import { Search } from "lucide-react";
-
-import { Input } from "@/renderer/components/ui/input";
 
 export function SearchBox({
   placeholder,
@@ -12,12 +11,12 @@ export function SearchBox({
   onChange(value: string): void;
 }) {
   return (
-    <div className="relative p-3">
-      <Search className="text-muted-foreground absolute top-1/2 left-5 size-4 -translate-y-1/2" />
+    <div className="sidebar-search">
       <Input
+        allowClear
+        prefix={<Search size={15} />}
         value={value}
         placeholder={placeholder}
-        className="pl-8"
         onChange={(event) => onChange(event.target.value)}
       />
     </div>

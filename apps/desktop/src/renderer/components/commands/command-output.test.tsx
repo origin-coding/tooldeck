@@ -109,7 +109,7 @@ describe("CommandOutput", () => {
 
     expect(html).toContain("Invalid JSON");
     expect(html).toContain("Unexpected token");
-    expect(html).toContain("border-destructive");
+    expect(html).toContain("command-output-list-error");
   });
 
   it("renders an idle failed state when no command result is available", () => {
@@ -136,8 +136,8 @@ describe("CommandOutput", () => {
       />,
     );
 
-    expect(html).toContain("max-h-[32rem]");
-    expect(html).toContain("max-h-96");
-    expect(html).toContain("overflow-auto");
+    expect(html).toContain("command-output-list");
+    expect(html).toContain("content-block-body");
+    expect(html).toContain("content-block-body-code");
   });
 });

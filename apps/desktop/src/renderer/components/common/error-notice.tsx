@@ -1,6 +1,4 @@
-import { AlertCircle } from "lucide-react";
-
-import { Alert, AlertDescription, AlertTitle } from "@/renderer/components/ui/alert";
+import { Alert } from "antd";
 
 export function ErrorNotice({
   title,
@@ -12,10 +10,12 @@ export function ErrorNotice({
   compact?: boolean;
 }) {
   return (
-    <Alert variant="destructive" className={compact ? "mb-3" : undefined}>
-      <AlertCircle className="size-4" />
-      <AlertTitle>{title}</AlertTitle>
-      <AlertDescription>{message}</AlertDescription>
-    </Alert>
+    <Alert
+      showIcon
+      className={compact ? "notice-compact" : undefined}
+      description={message}
+      title={title}
+      type="error"
+    />
   );
 }

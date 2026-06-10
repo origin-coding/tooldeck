@@ -1,6 +1,6 @@
+import { Tag } from "antd";
+
 import { EmptyState } from "@/renderer/components/common/empty-state";
-import { Badge } from "@/renderer/components/ui/badge";
-import { cn } from "@/renderer/lib/utils";
 import type { DesktopCommand } from "@/shared/desktop-api";
 
 export function CommandList({
@@ -17,27 +17,31 @@ export function CommandList({
   }
 
   return (
-    <div className="grid gap-1.5">
+    <div className="nav-list">
       {commands.map((command) => (
         <button
           key={command.id}
           type="button"
-          className={cn(
-            "grid min-h-16 gap-1 rounded-md border border-transparent px-3 py-2.5 text-left transition-colors hover:bg-muted",
-            command.id === selectedCommandId && "border-border bg-background shadow-xs",
-            !command.pluginEnabled && "opacity-55",
+          className={classes(
+            "nav-list-item",
+            command.id === selectedCommandId && "nav-list-item-selected",
+            !command.pluginEnabled && "nav-list-item-disabled",
           )}
           onClick={() => onSelect(command)}
         >
-          <span className="flex min-w-0 items-center justify-between gap-2">
-            <span className="truncate text-sm font-medium">{command.title}</span>
-            {!command.pluginEnabled ? <Badge variant="outline">Disabled</Badge> : null}
+          <span className="nav-list-title-row">
+            <span className="text-truncate nav-list-title">{command.title}</span>
+            {!command.pluginEnabled ? <Tag>Disabled</Tag> : null}
           </span>
-          <span className="text-muted-foreground truncate text-xs">
+          <span className="text-truncate nav-list-meta">
             {command.id} · {command.pluginRuntimeState}
           </span>
         </button>
       ))}
     </div>
   );
+}
+
+function classes(...values: Array<string | false>): string {
+  return values.filter(Boolean).join(" ");
 }

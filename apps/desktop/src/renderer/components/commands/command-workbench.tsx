@@ -1,4 +1,5 @@
 import type { CommandResult } from "@tooldeck/protocol";
+import { Alert, Card, Tag, Typography } from "antd";
 import { AlertCircle, History } from "lucide-react";
 
 import { CommandHistory } from "@/renderer/components/commands/command-history";
@@ -7,16 +8,6 @@ import { CommandOutput } from "@/renderer/components/commands/command-output";
 import { EmptyCard } from "@/renderer/components/common/empty-card";
 import { ErrorNotice } from "@/renderer/components/common/error-notice";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
-import { Alert, AlertDescription, AlertTitle } from "@/renderer/components/ui/alert";
-import { Badge } from "@/renderer/components/ui/badge";
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/renderer/components/ui/card";
 import type { CommandRunRecord, DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
 
 export function CommandWorkbench({
@@ -49,64 +40,54 @@ export function CommandWorkbench({
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle>{command.title}</CardTitle>
-          <CardDescription>{command.description ?? command.id}</CardDescription>
-          <CardAction className="flex items-center gap-2">
+      <Card
+        extra={
+          <div className="card-extra">
             <StatusBadge status={command.pluginEnabled ? command.pluginRuntimeState : "disabled"} />
-            {plugin ? <Badge variant="outline">{plugin.name}</Badge> : null}
-          </CardAction>
-        </CardHeader>
+            {plugin ? <Tag>{plugin.name}</Tag> : null}
+          </div>
+        }
+        title={command.title}
+      >
+        <Typography.Text type="secondary">{command.description ?? command.id}</Typography.Text>
         {!command.pluginEnabled ? (
-          <CardContent>
-            <Alert>
-              <AlertCircle className="size-4" />
-              <AlertTitle>Plugin disabled</AlertTitle>
-              <AlertDescription>
-                Enable {plugin?.name ?? command.pluginId} before running this command.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
+          <Alert
+            showIcon
+            className="section-offset"
+            description={`Enable ${plugin?.name ?? command.pluginId} before running this command.`}
+            icon={<AlertCircle size={16} />}
+            title="Plugin disabled"
+            type="warning"
+          />
         ) : null}
       </Card>
 
-      <div className="grid min-h-96 grid-cols-2 gap-5 max-xl:grid-cols-1">
-        <Card className="min-h-0">
-          <CardHeader>
-            <CardTitle>Input</CardTitle>
-            <CardDescription>{command.id}</CardDescription>
-          </CardHeader>
-          <CardContent className="min-h-0 flex-1">
+      <div className="workbench-grid">
+        <Card title="Input">
+          <Typography.Text type="secondary">{command.id}</Typography.Text>
+          <div className="section-offset">
             <CommandInputForm command={command} input={input} onChange={onChangeInput} />
-          </CardContent>
+          </div>
         </Card>
 
-        <Card className="min-h-0">
-          <CardHeader>
-            <CardTitle>Output</CardTitle>
-            <CardAction>
-              <StatusBadge status={result?.status ?? "idle"} />
-            </CardAction>
-          </CardHeader>
-          <CardContent className="min-h-0 flex-1">
-            {runError ? <ErrorNotice message={runError} title="Run failed" compact /> : null}
-            <CommandOutput result={result} hasError={Boolean(runError)} />
-          </CardContent>
+        <Card extra={<StatusBadge status={result?.status ?? "idle"} />} title="Output">
+          {runError ? <ErrorNotice message={runError} title="Run failed" compact /> : null}
+          <CommandOutput result={result} hasError={Boolean(runError)} />
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="text-muted-foreground size-4" />
+      <Card
+        title={
+          <span className="title-with-icon">
+            <History size={16} />
             Command History
-          </CardTitle>
-          <CardDescription>{history.length} recent runs</CardDescription>
-        </CardHeader>
-        <CardContent>
+          </span>
+        }
+      >
+        <Typography.Text type="secondary">{history.length} recent runs</Typography.Text>
+        <div className="section-offset">
           <CommandHistory history={history} isLoading={isLoading} />
-        </CardContent>
+        </div>
       </Card>
     </>
   );

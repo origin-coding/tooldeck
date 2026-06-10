@@ -1,20 +1,26 @@
+import { Button, Divider, Skeleton } from "antd";
+import { Boxes, Braces, Settings, Wrench } from "lucide-react";
+
 import type { AppView } from "@/renderer/app/types";
 import { CommandList } from "@/renderer/components/commands/command-list";
 import { SearchBox } from "@/renderer/components/layout/search-box";
 import { PluginList } from "@/renderer/components/plugins/plugin-list";
-import { ScrollArea } from "@/renderer/components/ui/scroll-area";
-import { Separator } from "@/renderer/components/ui/separator";
-import { Skeleton } from "@/renderer/components/ui/skeleton";
 import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
 
 export function SidebarHeader({ view }: { view: AppView }) {
+  const title = view === "commands" ? "Commands" : view === "plugins" ? "Plugins" : "Settings";
+  const description =
+    view === "commands"
+      ? "Run contributed tools"
+      : view === "plugins"
+        ? "Manage local plugins"
+        : "Desktop preferences";
+
   return (
-    <div className="flex h-16 items-center px-4">
-      <div>
-        <div className="font-semibold">{view === "commands" ? "Commands" : "Plugins"}</div>
-        <div className="text-muted-foreground text-xs">
-          {view === "commands" ? "Run contributed tools" : "Manage local plugins"}
-        </div>
+    <div className="sidebar-section-header">
+      <div className="min-w-0">
+        <div className="text-truncate sidebar-section-title">{title}</div>
+        <div className="text-truncate sidebar-section-description">{description}</div>
       </div>
     </div>
   );
@@ -22,9 +28,9 @@ export function SidebarHeader({ view }: { view: AppView }) {
 
 export function SidebarSkeleton() {
   return (
-    <div className="grid gap-2">
+    <div className="sidebar-skeleton">
       {Array.from({ length: 5 }).map((_, index) => (
-        <Skeleton key={index} className="h-16" />
+        <Skeleton.Button key={index} active block className="sidebar-skeleton-item" />
       ))}
     </div>
   );
@@ -47,8 +53,9 @@ export function CommandSidebar({
 }) {
   return (
     <>
+      <SidebarHeader view="commands" />
       <SearchBox placeholder="Search commands" value={query} onChange={onQueryChange} />
-      <ScrollArea className="min-h-0 flex-1 px-3 pb-4">
+      <div className="sidebar-scroll">
         {isLoading && commands.length === 0 ? (
           <SidebarSkeleton />
         ) : (
@@ -58,7 +65,7 @@ export function CommandSidebar({
             onSelect={onSelect}
           />
         )}
-      </ScrollArea>
+      </div>
     </>
   );
 }
@@ -80,24 +87,105 @@ export function PluginSidebar({
 }) {
   return (
     <>
+      <SidebarHeader view="plugins" />
       <SearchBox placeholder="Search plugins" value={query} onChange={onQueryChange} />
-      <ScrollArea className="min-h-0 flex-1 px-3 pb-4">
+      <div className="sidebar-scroll">
         {isLoading && plugins.length === 0 ? (
           <SidebarSkeleton />
         ) : (
           <PluginList plugins={plugins} selectedPluginId={selectedPluginId} onSelect={onSelect} />
         )}
-      </ScrollArea>
+      </div>
     </>
   );
 }
 
-export function SidebarShell({ view, children }: { view: AppView; children: React.ReactNode }) {
+export function SettingsSidebar() {
   return (
-    <aside className="border-border bg-muted/30 flex min-h-0 flex-col border-r max-lg:hidden">
-      <SidebarHeader view={view} />
-      <Separator />
-      {children}
+    <>
+      <SidebarHeader view="settings" />
+      <div className="sidebar-note">Configure the local desktop workspace.</div>
+    </>
+  );
+}
+
+// 中文：把常用工具装进一个桌面
+// English：Your everyday tools, all in one desktop
+
+export function AppSidebar({
+  view,
+  children,
+  onChange,
+}: {
+  view: AppView;
+  children: React.ReactNode;
+  onChange(view: AppView): void;
+}) {
+  return (
+    <aside className="app-sidebar">
+      <div className="brand-row">
+        <div className="brand-mark">
+          <Braces size={16} />
+        </div>
+        <div className="min-w-0">
+          <div className="text-truncate brand-title">Tooldeck</div>
+          <div className="text-truncate brand-subtitle">把常用工具装进一个桌面</div>
+        </div>
+      </div>
+      <Divider className="sidebar-divider" />
+      <div className="sidebar-nav">
+        <SidebarNavButton
+          active={view === "plugins"}
+          icon={<Boxes size={15} />}
+          label="Plugins"
+          onClick={() => onChange("plugins")}
+        />
+        <SidebarNavButton
+          active={view === "commands"}
+          icon={<Wrench size={15} />}
+          label="Commands"
+          onClick={() => onChange("commands")}
+        />
+      </div>
+      <Divider className="sidebar-divider" />
+      <div className="sidebar-body">{children}</div>
+      <Divider className="sidebar-divider" />
+      <div className="sidebar-nav">
+        <SidebarNavButton
+          active={view === "settings"}
+          icon={<Settings size={15} />}
+          label="Settings"
+          onClick={() => onChange("settings")}
+        />
+      </div>
     </aside>
   );
+}
+
+function SidebarNavButton({
+  active,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  onClick(): void;
+}) {
+  return (
+    <Button
+      block
+      htmlType="button"
+      className={classes("sidebar-nav-button", active && "sidebar-nav-button-active")}
+      icon={icon}
+      onClick={onClick}
+    >
+      {label}
+    </Button>
+  );
+}
+
+function classes(...values: Array<string | false>): string {
+  return values.filter(Boolean).join(" ");
 }
