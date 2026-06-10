@@ -128,6 +128,8 @@ describe("CLI command support", () => {
     expect(normalizeListCliResource("commands")).toBe("commands");
     expect(normalizeListCliResource("plugin")).toBe("plugins");
     expect(normalizeListCliResource("plugins")).toBe("plugins");
+    expect(normalizeListCliResource("preference")).toBe("preferences");
+    expect(normalizeListCliResource("preferences")).toBe("preferences");
     expect(normalizeListCliResource("documents")).toBeUndefined();
   });
 
@@ -251,96 +253,140 @@ describe("CLI command support", () => {
     });
   });
 
-  it("stores and lists CLI preferences in SQLite", async () => {
+  it("stores and lists known preferences with defaults", async () => {
     const storagePath = createDatabasePath();
 
     await expect(
       setCliPreference({
-        key: "json.indent",
-        value: 4,
+        key: "output.format",
+        value: "json",
         storagePath,
       }),
     ).resolves.toMatchObject({
       scope: "cli",
-      key: "json.indent",
-      value: 4,
+      key: "output.format",
+      value: "json",
       updatedAt: expect.any(Number),
     });
 
     await expect(
       setCliPreference({
-        key: "json.mode",
-        value: "pretty",
+        key: "locale",
+        value: "zh-CN",
         storagePath,
       }),
     ).resolves.toMatchObject({
-      scope: "cli",
-      key: "json.mode",
-      value: "pretty",
+      scope: "shared",
+      key: "locale",
+      value: "zh-CN",
     });
 
     await expect(listCliPreferences({ storagePath })).resolves.toEqual([
       expect.objectContaining({
-        scope: "cli",
-        key: "json.indent",
-        value: 4,
+        scope: "shared",
+        key: "locale",
+        value: "zh-CN",
       }),
       expect.objectContaining({
         scope: "cli",
-        key: "json.mode",
-        value: "pretty",
+        key: "output.format",
+        value: "json",
+      }),
+      expect.objectContaining({
+        scope: "cli",
+        key: "command.history.enabled",
+        value: true,
       }),
     ]);
-    expect(readPreferenceValue(storagePath, "cli", "json.indent")).toBe(4);
+    expect(readPreferenceValue(storagePath, "cli", "output.format")).toBe("json");
+    expect(readPreferenceValue(storagePath, "shared", "locale")).toBe("zh-CN");
+    expect(readPreferenceValue(storagePath, "cli", "command.history.enabled")).toBeUndefined();
   });
 
-  it("keeps CLI preferences scoped to the CLI namespace", async () => {
+  it("rejects unsupported preference keys and invalid values", async () => {
     const storagePath = createDatabasePath();
-
-    await setCliPreference({
-      key: "theme",
-      value: "system",
-      storagePath,
-    });
-    writeSharedPreferenceValue(storagePath, "theme", "dark");
 
     await expect(
-      getCliPreference({
-        key: "theme",
+      setCliPreference({
+        key: "json.indent",
+        value: 4,
         storagePath,
       }),
-    ).resolves.toBe("system");
-    expect(readPreferenceValue(storagePath, "shared", "theme")).toBe("dark");
+    ).rejects.toThrow("Unsupported preference key: json.indent");
+
+    await expect(
+      setCliPreference({
+        key: "output.format",
+        value: "yaml",
+        storagePath,
+      }),
+    ).rejects.toThrow("Preference output.format must be one of: text, json");
+
+    await expect(
+      setCliPreference({
+        key: "command.history.enabled",
+        value: "false",
+        storagePath,
+      }),
+    ).rejects.toThrow("Preference command.history.enabled must be a boolean value");
   });
 
-  it("deletes CLI preferences by scope and key", async () => {
+  it("deletes known preferences by scope and falls back to defaults", async () => {
     const storagePath = createDatabasePath();
 
     await setCliPreference({
-      key: "theme",
-      value: "system",
+      key: "locale",
+      value: "en-US",
       storagePath,
     });
     await deleteCliPreference({
-      key: "theme",
+      key: "locale",
       storagePath,
     });
 
     await expect(
       getCliPreference({
-        key: "theme",
+        key: "locale",
         storagePath,
       }),
-    ).resolves.toBeUndefined();
+    ).resolves.toBe("system");
+    expect(readPreferenceValue(storagePath, "shared", "locale")).toBeUndefined();
   });
 
   it("parses preference values as JSON", () => {
     expect(parsePreferenceJson('"dark"')).toBe("dark");
     expect(parsePreferenceJson("4")).toBe(4);
     expect(parsePreferenceJson('{"theme":"dark"}')).toEqual({ theme: "dark" });
-    expect(() => parsePreferenceJson("dark")).toThrow(
-      "Preference value must be valid JSON",
-    );
+    expect(() => parsePreferenceJson("dark")).toThrow("Preference value must be valid JSON");
+  });
+
+  it("can disable CLI command history through preferences", async () => {
+    const pluginsRoot = path.resolve("../..", "plugins");
+    const storagePath = createDatabasePath();
+
+    await setCliPreference({
+      key: "command.history.enabled",
+      value: false,
+      storagePath,
+    });
+
+    await expect(
+      runCliCommandWithStorage({
+        commandId: "hello.world",
+        pluginsRoot,
+        storagePath,
+      }),
+    ).resolves.toEqual({
+      status: "success",
+      blocks: [
+        {
+          type: "text",
+          text: "Hello, world!",
+        },
+      ],
+    });
+
+    expect(readCommandRuns(storagePath)).toHaveLength(0);
   });
 
   it("stores successful command runs in SQLite", async () => {
@@ -688,21 +734,6 @@ function readPreferenceValue(
 
   try {
     return repository.get(scope, key);
-  } finally {
-    database.close();
-  }
-}
-
-function writeSharedPreferenceValue(storagePath: string, key: string, value: unknown) {
-  const database = openTooldeckDatabase({ path: storagePath });
-  const repository = new PreferenceRepository(database.db);
-
-  try {
-    repository.set({
-      scope: "shared",
-      key,
-      value,
-    });
   } finally {
     database.close();
   }

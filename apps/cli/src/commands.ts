@@ -11,9 +11,10 @@ import {
 } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
-import type { JsonObject } from "@tooldeck/shared";
+import { validatePreferenceValue, type JsonObject } from "@tooldeck/shared";
 import {
   CommandRunRepository,
+  PreferenceRepository,
   PluginKvRepository,
   PluginRepository,
   withTooldeckDatabase,
@@ -23,6 +24,12 @@ import { consola } from "consola";
 
 import { formatCommandList } from "./output";
 import { listCliPlugins, printPluginList } from "./plugins";
+import {
+  getCliOutputFormat,
+  listCliPreferences,
+  printPreferenceList,
+  type CliOutputFormat,
+} from "./preferences";
 import {
   createPluginsCommandArg,
   createStorageCommandArg,
@@ -49,7 +56,7 @@ export interface ListedCliCommand {
   description?: string;
 }
 
-export type ListCliResource = "commands" | "plugins";
+export type ListCliResource = "commands" | "plugins" | "preferences";
 
 export interface CreatePluginManagerOptions {
   pluginsRoot: string;
@@ -117,8 +124,10 @@ export async function runCliCommandWithStorage(
 ): Promise<CommandResult> {
   return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
     const commandRuns = new CommandRunRepository(database.db);
+    const preferences = new PreferenceRepository(database.db);
     const plugins = new PluginRepository(database.db);
     const pluginKv = new PluginKvRepository(database.db);
+    const recordCommandHistory = getCommandHistoryEnabled(preferences);
     const startedAt = performance.now();
     let pluginHost: NodePluginHost | undefined;
     let pluginId: string | undefined;
@@ -171,27 +180,31 @@ export async function runCliCommandWithStorage(
       });
       input = run.input;
 
-      commandRuns.create({
-        commandId: options.commandId,
-        pluginId,
-        source: "cli",
-        status: run.result.status,
-        input,
-        output: run.result,
-        durationMs: elapsedMilliseconds(startedAt),
-      });
+      if (recordCommandHistory) {
+        commandRuns.create({
+          commandId: options.commandId,
+          pluginId,
+          source: "cli",
+          status: run.result.status,
+          input,
+          output: run.result,
+          durationMs: elapsedMilliseconds(startedAt),
+        });
+      }
 
       return run.result;
     } catch (error) {
-      commandRuns.create({
-        commandId: options.commandId,
-        pluginId,
-        source: "cli",
-        status: "error",
-        input,
-        error: serializeError(error),
-        durationMs: elapsedMilliseconds(startedAt),
-      });
+      if (recordCommandHistory) {
+        commandRuns.create({
+          commandId: options.commandId,
+          pluginId,
+          source: "cli",
+          status: "error",
+          input,
+          error: serializeError(error),
+          durationMs: elapsedMilliseconds(startedAt),
+        });
+      }
 
       throw error;
     } finally {
@@ -211,7 +224,7 @@ export function defineListCommand(options: CreateCliCommandOptions) {
         type: "positional",
         required: false,
         description: "Resource type to list.",
-        valueHint: "commands|plugins",
+        valueHint: "commands|plugins|preferences",
       },
       plugins: createPluginsCommandArg(),
       storage: createStorageCommandArg("SQLite database path for plugin registry."),
@@ -226,8 +239,9 @@ export function defineListCommand(options: CreateCliCommandOptions) {
 
       if (resource === "commands") {
         const commands = await listCliCommands({ pluginsRoot });
+        const outputFormat = await getCliOutputFormat({ storagePath });
 
-        printCommandList(commands);
+        printCommandList(commands, outputFormat);
         return;
       }
 
@@ -236,8 +250,19 @@ export function defineListCommand(options: CreateCliCommandOptions) {
           pluginsRoot,
           storagePath,
         });
+        const outputFormat = await getCliOutputFormat({ storagePath });
 
-        printPluginList(plugins);
+        printPluginList(plugins, outputFormat);
+        return;
+      }
+
+      if (resource === "preferences") {
+        const preferences = await listCliPreferences({
+          storagePath,
+        });
+        const outputFormat = await getCliOutputFormat({ storagePath });
+
+        printPreferenceList(preferences, outputFormat);
         return;
       }
 
@@ -275,13 +300,22 @@ export function defineRunCommand(options: CreateCliCommandOptions) {
         storagePath,
         rawArgs,
       });
+      const outputFormat = await getCliOutputFormat({ storagePath });
 
-      printContentBlocks(result);
+      printContentBlocks(result, outputFormat);
     },
   });
 }
 
-export function printContentBlocks(result: CommandResult): void {
+export function printContentBlocks(
+  result: CommandResult,
+  outputFormat: CliOutputFormat = "text",
+): void {
+  if (outputFormat === "json") {
+    consola.log(JSON.stringify(result, null, 2));
+    return;
+  }
+
   for (const block of result.blocks) {
     if (block.type === "text" || block.type === "code") {
       consola.log(block.text);
@@ -291,13 +325,21 @@ export function printContentBlocks(result: CommandResult): void {
   }
 }
 
-export function printCommandList(commands: ListedCliCommand[]): void {
+export function printCommandList(
+  commands: ListedCliCommand[],
+  outputFormat: CliOutputFormat = "text",
+): void {
+  if (outputFormat === "json") {
+    consola.log(JSON.stringify(commands, null, 2));
+    return;
+  }
+
   consola.log(formatCommandList(commands));
 }
 
 export function printUnsupportedListResource(resource: string): void {
   consola.error(
-    `Unsupported list resource: ${resource}\nSupported list resources: commands, plugins`,
+    `Unsupported list resource: ${resource}\nSupported list resources: commands, plugins, preferences`,
   );
 }
 
@@ -308,6 +350,10 @@ export function normalizeListCliResource(resource?: string): ListCliResource | u
 
   if (resource === "plugin" || resource === "plugins") {
     return "plugins";
+  }
+
+  if (resource === "preference" || resource === "preferences") {
+    return "preferences";
   }
 
   return undefined;
@@ -374,6 +420,16 @@ function resolveLocalizedString(value: LocalizedString): string {
 
 function elapsedMilliseconds(startedAt: number): number {
   return Math.max(0, Math.round(performance.now() - startedAt));
+}
+
+function getCommandHistoryEnabled(preferences: PreferenceRepository): boolean {
+  const value = preferences.get("cli", "command.history.enabled");
+
+  if (value === undefined) {
+    return true;
+  }
+
+  return validatePreferenceValue("command.history.enabled", value) as boolean;
 }
 
 function serializeError(error: unknown): Record<string, unknown> {

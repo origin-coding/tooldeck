@@ -90,6 +90,38 @@ describe("CLI command output", () => {
       log.mockRestore();
     }
   });
+
+  it("prints command results as JSON when requested", () => {
+    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
+
+    try {
+      printContentBlocks(
+        {
+          status: "success",
+          blocks: [
+            {
+              type: "text",
+              text: "plain output",
+            },
+          ],
+        },
+        "json",
+      );
+
+      expect(log).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toEqual({
+        status: "success",
+        blocks: [
+          {
+            type: "text",
+            text: "plain output",
+          },
+        ],
+      });
+    } finally {
+      log.mockRestore();
+    }
+  });
 });
 
 const ESC = String.fromCharCode(27);

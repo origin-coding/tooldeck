@@ -5,6 +5,7 @@ import { defineCommand } from "citty";
 import { consola } from "consola";
 
 import { formatPluginList } from "./output";
+import { getCliOutputFormat, type CliOutputFormat } from "./preferences";
 import {
   createPluginsCommandArg,
   createStorageCommandArg,
@@ -34,33 +35,41 @@ export interface ListedCliPlugin {
 }
 
 export async function listCliPlugins(options: ListCliPluginsOptions): Promise<ListedCliPlugin[]> {
-  return withRepository(options.storagePath, (db) => new PluginRepository(db), async (plugins) => {
-    await syncScannedPlugins({
-      pluginsRoot: options.pluginsRoot,
-      plugins,
-    });
+  return withRepository(
+    options.storagePath,
+    (db) => new PluginRepository(db),
+    async (plugins) => {
+      await syncScannedPlugins({
+        pluginsRoot: options.pluginsRoot,
+        plugins,
+      });
 
-    return plugins.list().map(formatListedPlugin);
-  });
+      return plugins.list().map(formatListedPlugin);
+    },
+  );
 }
 
 export async function setCliPluginEnabled(
   options: SetCliPluginEnabledOptions,
 ): Promise<ListedCliPlugin> {
-  return withRepository(options.storagePath, (db) => new PluginRepository(db), async (plugins) => {
-    await syncScannedPlugins({
-      pluginsRoot: options.pluginsRoot,
-      plugins,
-    });
+  return withRepository(
+    options.storagePath,
+    (db) => new PluginRepository(db),
+    async (plugins) => {
+      await syncScannedPlugins({
+        pluginsRoot: options.pluginsRoot,
+        plugins,
+      });
 
-    const plugin = plugins.setEnabled(options.pluginId, options.enabled);
+      const plugin = plugins.setEnabled(options.pluginId, options.enabled);
 
-    if (!plugin) {
-      throw new Error(`Plugin is not registered: ${options.pluginId}`);
-    }
+      if (!plugin) {
+        throw new Error(`Plugin is not registered: ${options.pluginId}`);
+      }
 
-    return formatListedPlugin(plugin);
-  });
+      return formatListedPlugin(plugin);
+    },
+  );
 }
 
 export function definePluginCommand(options: CreateCliCommandOptions) {
@@ -86,8 +95,9 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
             pluginsRoot,
             storagePath,
           });
+          const outputFormat = await getCliOutputFormat({ storagePath });
 
-          printPluginList(plugins);
+          printPluginList(plugins, outputFormat);
         },
       }),
       enable: defineCommand({
@@ -108,8 +118,9 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
             pluginsRoot,
             storagePath,
           });
+          const outputFormat = await getCliOutputFormat({ storagePath });
 
-          printPluginList([plugin]);
+          printPluginList([plugin], outputFormat);
         },
       }),
       disable: defineCommand({
@@ -130,15 +141,24 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
             pluginsRoot,
             storagePath,
           });
+          const outputFormat = await getCliOutputFormat({ storagePath });
 
-          printPluginList([plugin]);
+          printPluginList([plugin], outputFormat);
         },
       }),
     },
   });
 }
 
-export function printPluginList(plugins: ListedCliPlugin[]): void {
+export function printPluginList(
+  plugins: ListedCliPlugin[],
+  outputFormat: CliOutputFormat = "text",
+): void {
+  if (outputFormat === "json") {
+    consola.log(JSON.stringify(plugins, null, 2));
+    return;
+  }
+
   consola.log(formatPluginList(plugins));
 }
 

@@ -12,12 +12,12 @@
   },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "prebuild": "pnpm --filter @tooldeck/storage build",
+    "prebuild": "pnpm --filter @tooldeck/shared --filter @tooldeck/storage build",
     "build": "vite build",
     "smoke:built": "node scripts/smoke-built.mjs",
-    "pretypecheck": "pnpm --filter @tooldeck/storage build",
+    "pretypecheck": "pnpm --filter @tooldeck/shared --filter @tooldeck/storage build",
     "typecheck": "tsc --noEmit",
-    "pretest": "pnpm --filter @tooldeck/storage --filter @tooldeck/hello-world --filter @tooldeck/json-tools build",
+    "pretest": "pnpm --filter @tooldeck/shared --filter @tooldeck/storage --filter @tooldeck/hello-world --filter @tooldeck/json-tools build",
     "test": "vitest run test"
   },
   "dependencies": {

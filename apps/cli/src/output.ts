@@ -22,7 +22,7 @@ export interface PreferenceListOutputRow {
   scope: string;
   key: string;
   value: unknown;
-  updatedAt: number;
+  updatedAt?: number;
 }
 
 export function formatCommandList(commands: CommandListOutputRow[]): string {
@@ -76,7 +76,9 @@ export function formatPreferenceList(preferences: PreferenceListOutputRow[]): st
       pc.dim(preference.scope),
       pc.cyan(preference.key),
       formatPreferenceValue(preference.value),
-      new Date(preference.updatedAt).toISOString(),
+      preference.updatedAt === undefined
+        ? pc.dim("default")
+        : new Date(preference.updatedAt).toISOString(),
     ]);
   }
 

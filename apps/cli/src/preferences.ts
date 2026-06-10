@@ -1,4 +1,11 @@
 import {
+  listPreferenceDefinitions,
+  requirePreferenceDefinition,
+  validatePreferenceValue,
+  type PreferenceDefinition,
+  type PreferenceScope,
+} from "@tooldeck/shared";
+import {
   PreferenceRepository,
   type PreferenceRow,
   type SetPreferenceInput,
@@ -34,47 +41,86 @@ export interface DeleteCliPreferenceOptions {
 }
 
 export interface ListedCliPreference {
-  scope: "cli";
+  scope: PreferenceScope;
   key: string;
   value: unknown;
-  updatedAt: number;
+  updatedAt?: number;
 }
+
+export type CliOutputFormat = "text" | "json";
 
 export async function listCliPreferences(
   options: ListCliPreferencesOptions,
 ): Promise<ListedCliPreference[]> {
-  return withRepository(options.storagePath, (db) => new PreferenceRepository(db), (preferences) =>
-    preferences.list("cli").map(formatListedPreference),
+  return withRepository(
+    options.storagePath,
+    (db) => new PreferenceRepository(db),
+    (preferences) =>
+      listPreferenceDefinitions().map((definition) =>
+        formatListedPreference(definition, preferences.getRow(definition.scope, definition.key)),
+      ),
   );
 }
 
-export async function getCliPreference(
-  options: GetCliPreferenceOptions,
-): Promise<unknown | undefined> {
-  return withRepository(options.storagePath, (db) => new PreferenceRepository(db), (preferences) =>
-    preferences.get("cli", options.key),
+export async function getCliPreference(options: GetCliPreferenceOptions): Promise<unknown> {
+  const definition = requirePreferenceDefinition(options.key);
+
+  return withRepository(
+    options.storagePath,
+    (db) => new PreferenceRepository(db),
+    (preferences) => {
+      const value = preferences.get(definition.scope, definition.key);
+
+      if (value === undefined) {
+        return definition.defaultValue;
+      }
+
+      return validatePreferenceValue(definition.key, value);
+    },
   );
+}
+
+export async function getCliOutputFormat(options: {
+  storagePath: string;
+}): Promise<CliOutputFormat> {
+  return (await getCliPreference({
+    key: "output.format",
+    storagePath: options.storagePath,
+  })) as CliOutputFormat;
 }
 
 export async function setCliPreference(
   options: SetCliPreferenceOptions,
 ): Promise<ListedCliPreference> {
-  return withRepository(options.storagePath, (db) => new PreferenceRepository(db), (preferences) =>
-    formatListedPreference(
-      preferences.set({
-        scope: "cli",
-        key: options.key,
-        value: options.value,
-        now: options.now,
-      }),
-    ),
+  const definition = requirePreferenceDefinition(options.key);
+  const value = validatePreferenceValue(definition.key, options.value);
+
+  return withRepository(
+    options.storagePath,
+    (db) => new PreferenceRepository(db),
+    (preferences) =>
+      formatListedPreference(
+        definition,
+        preferences.set({
+          scope: definition.scope,
+          key: definition.key,
+          value,
+          now: options.now,
+        }),
+      ),
   );
 }
 
 export async function deleteCliPreference(options: DeleteCliPreferenceOptions): Promise<void> {
-  return withRepository(options.storagePath, (db) => new PreferenceRepository(db), (preferences) => {
-    preferences.delete("cli", options.key);
-  });
+  const definition = requirePreferenceDefinition(options.key);
+
+  return withRepository(
+    options.storagePath,
+    (db) => new PreferenceRepository(db),
+    (preferences) => {
+      preferences.delete(definition.scope, definition.key);
+    },
+  );
 }
 
 export function definePreferenceCommand(options: CreateCliCommandOptions) {
@@ -87,7 +133,7 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
       list: defineCommand({
         meta: {
           name: "list",
-          description: "List stored CLI preferences.",
+          description: "List known Tooldeck preferences.",
         },
         args: createPreferenceCommandArgs(),
         async run({ args }) {
@@ -98,14 +144,15 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
           const preferences = await listCliPreferences({
             storagePath,
           });
+          const outputFormat = await getCliOutputFormat({ storagePath });
 
-          printPreferenceList(preferences);
+          printPreferenceList(preferences, outputFormat);
         },
       }),
       get: defineCommand({
         meta: {
           name: "get",
-          description: "Print a stored CLI preference value.",
+          description: "Print a Tooldeck preference value.",
         },
         args: {
           key: {
@@ -125,14 +172,15 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
             key: requireCliArgument(args.key, "key"),
             storagePath,
           });
+          const outputFormat = await getCliOutputFormat({ storagePath });
 
-          printPreferenceValue(value);
+          printPreferenceValue(value, outputFormat);
         },
       }),
       set: defineCommand({
         meta: {
           name: "set",
-          description: "Store a JSON CLI preference value.",
+          description: "Store a known Tooldeck preference value.",
         },
         args: {
           key: {
@@ -144,8 +192,8 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
           value: {
             type: "positional",
             required: true,
-            description: "JSON preference value.",
-            valueHint: "json",
+            description: "Preference value as JSON.",
+            valueHint: "value",
           },
           ...createPreferenceCommandArgs(),
         },
@@ -159,14 +207,18 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
             value: parsePreferenceJson(requireCliArgument(args.value, "value")),
             storagePath,
           });
+          const outputFormat =
+            preference.key === "output.format"
+              ? (preference.value as CliOutputFormat)
+              : await getCliOutputFormat({ storagePath });
 
-          printPreferenceList([preference]);
+          printPreferenceList([preference], outputFormat);
         },
       }),
       delete: defineCommand({
         meta: {
           name: "delete",
-          description: "Delete a stored CLI preference.",
+          description: "Delete a stored Tooldeck preference override.",
         },
         args: {
           key: {
@@ -193,14 +245,27 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
   });
 }
 
-export function printPreferenceList(preferences: ListedCliPreference[]): void {
+export function printPreferenceList(
+  preferences: ListedCliPreference[],
+  outputFormat: CliOutputFormat = "text",
+): void {
+  if (outputFormat === "json") {
+    consola.log(JSON.stringify(preferences, null, 2));
+    return;
+  }
+
   consola.log(formatPreferenceList(preferences));
 }
 
-export function printPreferenceValue(value: unknown): void {
+export function printPreferenceValue(value: unknown, outputFormat: CliOutputFormat = "text"): void {
   if (value === undefined) {
     consola.error("Preference not found.");
     process.exitCode = 1;
+    return;
+  }
+
+  if (outputFormat === "json") {
+    consola.log(JSON.stringify(value, null, 2));
     return;
   }
 
@@ -215,12 +280,17 @@ export function parsePreferenceJson(value: string): unknown {
   }
 }
 
-function formatListedPreference(preference: PreferenceRow): ListedCliPreference {
+function formatListedPreference(
+  definition: PreferenceDefinition,
+  preference?: PreferenceRow,
+): ListedCliPreference {
   return {
-    scope: "cli",
-    key: preference.key,
-    value: JSON.parse(preference.valueJson),
-    updatedAt: preference.updatedAt,
+    scope: definition.scope,
+    key: definition.key,
+    value: preference
+      ? validatePreferenceValue(definition.key, JSON.parse(preference.valueJson))
+      : definition.defaultValue,
+    ...(preference ? { updatedAt: preference.updatedAt } : {}),
   };
 }
 
