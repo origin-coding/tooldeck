@@ -18,7 +18,7 @@ type SidebarRoute = MenuDataItem & {
   key: string;
   name: string;
   locale: false;
-  icon: ReactNode;
+  icon?: ReactNode;
   children?: SidebarRoute[];
   disabled?: boolean;
   kind?: "command" | "plugin";
@@ -104,7 +104,6 @@ export function App() {
         commands: state.commands,
         plugins: state.plugins,
         onOpenSearch: () => setSearchOpen(true),
-        onOpenSettings: () => state.setView("settings"),
         onSelectCommand: state.selectCommand,
         onSelectPlugin: state.selectPlugin,
       }),
@@ -114,7 +113,6 @@ export function App() {
       state.plugins,
       state.selectCommand,
       state.selectPlugin,
-      state.setView,
     ],
   );
 
@@ -137,18 +135,19 @@ export function App() {
       }
       title={"Tooldeck"}
       menu={{ defaultOpenAll: true, locale: false, type: "group" }}
-      menuExtraRender={(props) =>
-        props.collapsed ? null : (
-          <div className="px-4 pt-2 pb-2.5">
-            <div className="text-[13px] font-semibold text-gray-900">
-              {navigationMode === "entry-first" ? "Entries" : "Providers"}
-            </div>
-            <div className="mt-0.5 text-xs text-gray-500">
-              {navigationMode === "entry-first" ? "Browse commands directly" : "Browse by plugin"}
-            </div>
-          </div>
-        )
-      }
+      menuFooterRender={(props) => (
+        <button
+          type="button"
+          aria-current={state.view === "settings" ? "page" : undefined}
+          className={`tooldeck-sidebar-footer-action ${
+            state.view === "settings" ? "tooldeck-sidebar-footer-action-selected" : ""
+          } ${props?.collapsed ? "tooldeck-sidebar-footer-action-collapsed" : ""}`}
+          onClick={() => state.setView("settings")}
+        >
+          <Settings size={15} />
+          {props?.collapsed ? null : <span>Settings</span>}
+        </button>
+      )}
       onCollapse={(collapsed) => state.setPreference("desktop.sidebar.collapsed", collapsed)}
       pageTitleRender={false}
       route={{
@@ -237,7 +236,6 @@ function createSidebarRoutes({
   commands,
   plugins,
   onOpenSearch,
-  onOpenSettings,
   onSelectCommand,
   onSelectPlugin,
 }: {
@@ -245,7 +243,6 @@ function createSidebarRoutes({
   commands: DesktopCommand[];
   plugins: DesktopPlugin[];
   onOpenSearch(): void;
-  onOpenSettings(): void;
   onSelectCommand(command: DesktopCommand): void;
   onSelectPlugin(plugin: DesktopPlugin): void;
 }): SidebarRoute[] {
@@ -256,14 +253,6 @@ function createSidebarRoutes({
     locale: false,
     icon: <Search size={15} />,
     onTitleClick: onOpenSearch,
-  };
-  const settingsRoute: SidebarRoute = {
-    path: "/settings",
-    key: "settings",
-    name: "Settings",
-    locale: false,
-    icon: <Settings size={15} />,
-    onTitleClick: onOpenSettings,
   };
 
   if (mode === "entry-first") {
@@ -297,10 +286,8 @@ function createSidebarRoutes({
         key: "commands",
         name: "Commands",
         locale: false,
-        icon: <Wrench size={15} />,
         children: commandRoutes,
       },
-      settingsRoute,
     ];
   }
 
@@ -334,10 +321,8 @@ function createSidebarRoutes({
       key: "plugins",
       name: "Plugins",
       locale: false,
-      icon: <Boxes size={15} />,
       children: pluginRoutes,
     },
-    settingsRoute,
   ];
 }
 
