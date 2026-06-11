@@ -2,6 +2,7 @@ import { PageContainer, ProLayout } from "@ant-design/pro-components";
 import { Button } from "antd";
 import { Play, RefreshCw, Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 
 import { getNavigationMode, getSidebarCollapsed } from "@/renderer/app/selectors";
@@ -14,6 +15,7 @@ import { createSidebarRoutes } from "./sidebar-routes";
 import { WorkbenchSwitch } from "./workbench-switch";
 
 export function DesktopShell() {
+  const { t } = useTranslation();
   const {
     commands,
     plugins,
@@ -84,11 +86,13 @@ export function DesktopShell() {
     isLoading: isLoadingData,
     historyCommandId,
     navigationMode,
+    t,
   });
   const pageDescription = getPageDescription({
     view,
     selectedCommand,
     selectedPlugin,
+    t,
   });
   const locationPathname = getLocationPathname({
     view,
@@ -102,11 +106,18 @@ export function DesktopShell() {
         mode: navigationMode,
         commands,
         plugins,
+        labels: {
+          search: t("navigation.search"),
+          commands: t("common.commands"),
+          plugins: t("common.plugins"),
+          noCommandsFound: t("navigation.noCommandsFound"),
+          noPluginsFound: t("navigation.noPluginsFound"),
+        },
         onOpenSearch: () => setSearchOpen(true),
         onSelectCommand: selectCommand,
         onSelectPlugin: selectPlugin,
       }),
-    [navigationMode, commands, plugins, selectCommand, selectPlugin],
+    [navigationMode, commands, plugins, selectCommand, selectPlugin, t],
   );
 
   return (
@@ -138,7 +149,7 @@ export function DesktopShell() {
           onClick={() => setView("settings")}
         >
           <Settings size={15} />
-          {props?.collapsed ? null : <span>Settings</span>}
+          {props?.collapsed ? null : <span>{t("common.settings")}</span>}
         </button>
       )}
       onCollapse={(collapsed) => setPreference("desktop", "sidebar.collapsed", collapsed)}
@@ -160,7 +171,7 @@ export function DesktopShell() {
             icon={<RefreshCw className={isLoadingData ? "animate-spin" : undefined} size={15} />}
             onClick={rescanPlugins}
           >
-            Rescan
+            {t("common.rescan")}
           </Button>,
           view === "main" && selectedCommand ? (
             <Button
@@ -172,14 +183,14 @@ export function DesktopShell() {
               onClick={runSelectedCommand}
               type="primary"
             >
-              Run
+              {t("common.run")}
             </Button>
           ) : null,
         ].filter(Boolean)}
         title={pageTitle}
       >
         <div className="grid w-full gap-4">
-          {loadError ? <ErrorNotice message={loadError} title="Load failed" /> : null}
+          {loadError ? <ErrorNotice message={loadError} title={t("shell.loadFailed")} /> : null}
 
           <WorkbenchSwitch view={view} navigationMode={navigationMode} />
         </div>

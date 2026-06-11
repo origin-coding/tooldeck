@@ -1,6 +1,7 @@
 import type { CommandResult } from "@tooldeck/protocol";
 import { Alert, Button, Card, Tag, Typography } from "antd";
 import { AlertCircle, History } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { CommandInputForm } from "@/renderer/components/commands/command-input-form";
 import { CommandOutput } from "@/renderer/components/commands/command-output";
@@ -28,11 +29,13 @@ export function CommandWorkbench({
   onChangeInput(key: string, value: string): void;
   onOpenHistory(commandId: string): void;
 }) {
+  const { t } = useTranslation();
+
   if (!command) {
     return (
       <EmptyCard
-        title="No command selected"
-        text={isLoading ? "Loading commands" : "Choose a command from the list."}
+        title={t("command.empty.title")}
+        text={isLoading ? t("command.empty.loading") : t("command.empty.choose")}
       />
     );
   }
@@ -49,7 +52,7 @@ export function CommandWorkbench({
               icon={<History size={15} />}
               onClick={() => onOpenHistory(command.id)}
             >
-              History
+              {t("command.history")}
             </Button>
           </div>
         }
@@ -60,24 +63,28 @@ export function CommandWorkbench({
           <Alert
             showIcon
             className="mt-3.5"
-            description={`Enable ${plugin?.name ?? command.pluginId} before running this command.`}
+            description={t("command.pluginDisabled.description", {
+              pluginName: plugin?.name ?? command.pluginId,
+            })}
             icon={<AlertCircle size={16} />}
-            title="Plugin disabled"
+            title={t("command.pluginDisabled.title")}
             type="warning"
           />
         ) : null}
       </Card>
 
       <div className="grid min-h-96 grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card title="Input">
+        <Card title={t("command.input")}>
           <Typography.Text type="secondary">{command.id}</Typography.Text>
           <div className="mt-3.5">
             <CommandInputForm command={command} input={input} onChange={onChangeInput} />
           </div>
         </Card>
 
-        <Card extra={<StatusBadge status={result?.status ?? "idle"} />} title="Output">
-          {runError ? <ErrorNotice message={runError} title="Run failed" compact /> : null}
+        <Card extra={<StatusBadge status={result?.status ?? "idle"} />} title={t("command.output")}>
+          {runError ? (
+            <ErrorNotice message={runError} title={t("command.runFailed")} compact />
+          ) : null}
           <CommandOutput result={result} hasError={Boolean(runError)} />
         </Card>
       </div>

@@ -23,6 +23,7 @@ export function createSidebarRoutes({
   mode,
   commands,
   plugins,
+  labels,
   onOpenSearch,
   onSelectCommand,
   onSelectPlugin,
@@ -30,6 +31,13 @@ export function createSidebarRoutes({
   mode: DesktopNavigationMode;
   commands: DesktopCommand[];
   plugins: DesktopPlugin[];
+  labels: {
+    search: string;
+    commands: string;
+    plugins: string;
+    noCommandsFound: string;
+    noPluginsFound: string;
+  };
   onOpenSearch(): void;
   onSelectCommand(command: DesktopCommand): void;
   onSelectPlugin(plugin: DesktopPlugin): void;
@@ -37,7 +45,7 @@ export function createSidebarRoutes({
   const searchRoute: SidebarRoute = {
     path: "/search",
     key: "search",
-    name: "Search",
+    name: labels.search,
     locale: false,
     icon: <Search size={15} />,
     onTitleClick: onOpenSearch,
@@ -60,7 +68,7 @@ export function createSidebarRoutes({
             {
               path: "/commands/empty",
               key: "commands-empty",
-              name: "No commands found",
+              name: labels.noCommandsFound,
               locale: false,
               icon: <Wrench size={15} />,
               disabled: true,
@@ -72,7 +80,7 @@ export function createSidebarRoutes({
       {
         path: "/commands",
         key: "commands",
-        name: "Commands",
+        name: labels.commands,
         locale: false,
         children: commandRoutes,
       },
@@ -95,7 +103,7 @@ export function createSidebarRoutes({
           {
             path: "/plugins/empty",
             key: "plugins-empty",
-            name: "No plugins found",
+            name: labels.noPluginsFound,
             locale: false,
             icon: <Boxes size={15} />,
             disabled: true,
@@ -107,7 +115,7 @@ export function createSidebarRoutes({
     {
       path: "/plugins",
       key: "plugins",
-      name: "Plugins",
+      name: labels.plugins,
       locale: false,
       children: pluginRoutes,
     },

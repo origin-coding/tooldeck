@@ -1,9 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
+import { i18n } from "../../i18n";
 import { CommandHistoryWorkbench } from "./command-history-workbench";
 
 describe("CommandHistoryWorkbench", () => {
+  beforeEach(() => {
+    void i18n.changeLanguage("en-US");
+  });
+
   it("renders the filtered empty state", () => {
     const html = renderToStaticMarkup(
       <CommandHistoryWorkbench commandId="json.format" history={[]} isLoading={false} />,

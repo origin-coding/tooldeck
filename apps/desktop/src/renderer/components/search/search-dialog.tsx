@@ -2,6 +2,7 @@ import { Empty, Input, Modal, Segmented, Tag, Typography } from "antd";
 import Fuse from "fuse.js";
 import { Boxes, Search, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
 
@@ -42,6 +43,7 @@ export function SearchDialog({
   onSelectCommand(command: DesktopCommand): void;
   onSelectPlugin(plugin: DesktopPlugin): void;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [scope, setScope] = useState<SearchScope>("all");
   const pluginNames = useMemo(
@@ -121,7 +123,7 @@ export function SearchDialog({
       centered
       footer={null}
       open={open}
-      title="Search"
+      title={t("search.title")}
       width={720}
       onCancel={onClose}
     >
@@ -130,7 +132,7 @@ export function SearchDialog({
           autoFocus
           allowClear
           size="large"
-          placeholder="Search commands and plugins"
+          placeholder={t("search.placeholder")}
           prefix={<Search size={16} />}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -138,9 +140,9 @@ export function SearchDialog({
         <Segmented
           value={scope}
           options={[
-            { label: "All", value: "all" },
-            { label: "Commands", value: "commands" },
-            { label: "Plugins", value: "plugins" },
+            { label: t("search.scope.all"), value: "all" },
+            { label: t("search.scope.commands"), value: "commands" },
+            { label: t("search.scope.plugins"), value: "plugins" },
           ]}
           onChange={(value) => setScope(value as SearchScope)}
         />
@@ -149,7 +151,7 @@ export function SearchDialog({
           {results.length === 0 ? (
             <Empty
               className="py-8"
-              description="No results found"
+              description={t("search.noResults")}
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
           ) : (
@@ -173,7 +175,9 @@ export function SearchDialog({
                     </Typography.Text>
                   </span>
                   <Tag>
-                    {record.kind === "command" ? (record.pluginName ?? record.pluginId) : "Plugin"}
+                    {record.kind === "command"
+                      ? (record.pluginName ?? record.pluginId)
+                      : t("search.kind.plugin")}
                   </Tag>
                 </button>
               ))}

@@ -1,9 +1,14 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
+import { i18n } from "../../i18n";
 import { CommandOutput } from "./command-output";
 
 describe("CommandOutput", () => {
+  beforeEach(() => {
+    void i18n.changeLanguage("en-US");
+  });
+
   it("renders text content blocks", () => {
     const html = renderToStaticMarkup(
       <CommandOutput

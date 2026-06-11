@@ -1,5 +1,6 @@
 import { Card, Descriptions, Drawer, List, Typography } from "antd";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { CommandRunRecord } from "@/shared/desktop-api";
 
@@ -15,6 +16,7 @@ export function CommandHistoryWorkbench({
   history: CommandRunRecord[];
   isLoading: boolean;
 }) {
+  const { i18n, t } = useTranslation();
   const [selectedRunId, setSelectedRunId] = useState<string>();
   const selectedRun = useMemo(
     () => history.find((run) => run.id === selectedRunId),
@@ -23,15 +25,15 @@ export function CommandHistoryWorkbench({
 
   return (
     <>
-      <Card title={commandId ? `Command History: ${commandId}` : "Command History"}>
+      <Card title={commandId ? t("history.titleFor", { commandId }) : t("history.title")}>
         {history.length === 0 ? (
           <EmptyState
             text={
               isLoading
-                ? "Loading history"
+                ? t("history.loading")
                 : commandId
-                  ? "No runs for this command"
-                  : "No command runs"
+                  ? t("history.emptyForCommand")
+                  : t("history.empty")
             }
           />
         ) : (
@@ -50,9 +52,9 @@ export function CommandHistoryWorkbench({
                 onClick={() => setSelectedRunId(run.id)}
               >
                 <List.Item.Meta
-                  description={`${run.pluginId ?? "unknown plugin"} · ${run.source} · ${new Date(
-                    run.createdAt,
-                  ).toLocaleString()}`}
+                  description={`${run.pluginId ?? t("history.unknownPlugin")} · ${
+                    run.source
+                  } · ${new Date(run.createdAt).toLocaleString(i18n.resolvedLanguage)}`}
                   title={run.commandId}
                 />
               </List.Item>
@@ -63,7 +65,7 @@ export function CommandHistoryWorkbench({
 
       <Drawer
         open={Boolean(selectedRun)}
-        title="Command Run Details"
+        title={t("history.detailsTitle")}
         size={640}
         onClose={() => setSelectedRunId(undefined)}
       >
@@ -74,6 +76,8 @@ export function CommandHistoryWorkbench({
 }
 
 function RunDetails({ run }: { run: CommandRunRecord }) {
+  const { i18n, t } = useTranslation();
+
   return (
     <div className="grid gap-4">
       <Descriptions
@@ -81,40 +85,72 @@ function RunDetails({ run }: { run: CommandRunRecord }) {
         column={1}
         size="small"
         items={[
-          { key: "id", label: "Run ID", children: run.id },
-          { key: "commandId", label: "Command ID", children: run.commandId },
-          { key: "pluginId", label: "Plugin ID", children: run.pluginId ?? "unknown" },
-          { key: "source", label: "Source", children: run.source },
-          { key: "status", label: "Status", children: <StatusBadge status={run.status} /> },
-          { key: "durationMs", label: "Duration", children: `${run.durationMs ?? 0} ms` },
+          { key: "id", label: t("history.runId"), children: run.id },
+          { key: "commandId", label: t("history.commandId"), children: run.commandId },
+          {
+            key: "pluginId",
+            label: t("history.pluginId"),
+            children: run.pluginId ?? t("common.unknown"),
+          },
+          { key: "source", label: t("history.source"), children: run.source },
+          {
+            key: "status",
+            label: t("history.status"),
+            children: <StatusBadge status={run.status} />,
+          },
+          {
+            key: "durationMs",
+            label: t("history.duration"),
+            children: `${run.durationMs ?? 0} ms`,
+          },
           {
             key: "createdAt",
-            label: "Created At",
-            children: new Date(run.createdAt).toLocaleString(),
+            label: t("history.createdAt"),
+            children: new Date(run.createdAt).toLocaleString(i18n.resolvedLanguage),
           },
         ]}
       />
-      <JsonPanel title="Input JSON" value={run.input} />
-      <JsonPanel title="Output" value={run.output} />
-      <JsonPanel title="Error" value={run.error} />
+      <JsonPanel
+        title={t("history.inputJson")}
+        value={run.input}
+        undefinedText={t("common.undefined")}
+      />
+      <JsonPanel
+        title={t("history.output")}
+        value={run.output}
+        undefinedText={t("common.undefined")}
+      />
+      <JsonPanel
+        title={t("history.error")}
+        value={run.error}
+        undefinedText={t("common.undefined")}
+      />
     </div>
   );
 }
 
-function JsonPanel({ title, value }: { title: string; value: unknown }) {
+function JsonPanel({
+  title,
+  value,
+  undefinedText,
+}: {
+  title: string;
+  value: unknown;
+  undefinedText: string;
+}) {
   return (
     <div className="grid gap-2">
       <Typography.Text strong>{title}</Typography.Text>
       <pre className="m-0 max-h-70 overflow-auto rounded-md border border-slate-200 bg-slate-50 p-3 font-mono text-xs leading-relaxed">
-        {formatJson(value)}
+        {formatJson(value, undefinedText)}
       </pre>
     </div>
   );
 }
 
-function formatJson(value: unknown): string {
+function formatJson(value: unknown, undefinedText: string): string {
   if (value === undefined) {
-    return "undefined";
+    return undefinedText;
   }
 
   return JSON.stringify(value, null, 2);

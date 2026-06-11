@@ -1,8 +1,125 @@
 {
   "common": {
-    "system": "System",
+    "all": "All",
+    "chineseSimplified": "Simplified Chinese",
+    "commands": "Commands",
     "english": "English",
-    "chineseSimplified": "Simplified Chinese"
+    "plugins": "Plugins",
+    "rescan": "Rescan",
+    "run": "Run",
+    "settings": "Settings",
+    "system": "System",
+    "unknown": "unknown",
+    "undefined": "undefined"
+  },
+  "status": {
+    "active": "active",
+    "activating": "activating",
+    "deactivating": "deactivating",
+    "disabled": "disabled",
+    "disposed": "disposed",
+    "error": "error",
+    "failed": "failed",
+    "idle": "idle",
+    "inactive": "inactive",
+    "success": "success"
+  },
+  "shell": {
+    "loadFailed": "Load failed"
+  },
+  "navigation": {
+    "search": "Search",
+    "noCommandsFound": "No commands found",
+    "noPluginsFound": "No plugins found"
+  },
+  "page": {
+    "commandHistory": "Command History",
+    "commandHistoryFor": "Command History: {{commandId}}",
+    "loadingWorkspace": "Loading workspace",
+    "settingsDescription": "Local desktop preferences and workspace state",
+    "historyDescription": "Review recent command runs",
+    "emptyDescription": "Select a plugin or command to inspect."
+  },
+  "command": {
+    "empty": {
+      "title": "No command selected",
+      "loading": "Loading commands",
+      "choose": "Choose a command from the list."
+    },
+    "history": "History",
+    "pluginDisabled": {
+      "title": "Plugin disabled",
+      "description": "Enable {{pluginName}} before running this command."
+    },
+    "input": "Input",
+    "output": "Output",
+    "runFailed": "Run failed",
+    "form": {
+      "noCommandSelected": "No command selected",
+      "noInputRequired": "No input required",
+      "required": "Required"
+    },
+    "outputState": {
+      "commandFailed": "Command failed",
+      "noOutputYet": "No output yet",
+      "emptyOutput": "Empty output",
+      "commandDidNotReturnOutput": "The command did not return output.",
+      "runCommandToSeeOutput": "Run a command to see output.",
+      "errorWithoutOutput": "The command returned an error without output.",
+      "completedWithoutOutput": "The command completed without output.",
+      "errorResult": "Command returned an error result.",
+      "code": "code"
+    },
+    "historyList": {
+      "loading": "Loading history",
+      "empty": "No command runs"
+    }
+  },
+  "plugin": {
+    "empty": {
+      "title": "No plugin selected",
+      "loading": "Loading plugins",
+      "choose": "Choose a plugin from the list."
+    },
+    "enable": "Enable",
+    "disable": "Disable",
+    "version": "Version",
+    "runtime": "Runtime",
+    "contributedCommands": "Contributed Commands",
+    "contributedCommandsDescription": "Commands declared by this plugin manifest.",
+    "noCommandsContributed": "No commands contributed"
+  },
+  "search": {
+    "title": "Search",
+    "placeholder": "Search commands and plugins",
+    "noResults": "No results found",
+    "scope": {
+      "all": "All",
+      "commands": "Commands",
+      "plugins": "Plugins"
+    },
+    "kind": {
+      "plugin": "Plugin"
+    }
+  },
+  "history": {
+    "title": "Command History",
+    "titleFor": "Command History: {{commandId}}",
+    "loading": "Loading history",
+    "empty": "No command runs",
+    "emptyForCommand": "No runs for this command",
+    "unknownPlugin": "unknown plugin",
+    "detailsTitle": "Command Run Details",
+    "runId": "Run ID",
+    "commandId": "Command ID",
+    "pluginId": "Plugin ID",
+    "source": "Source",
+    "status": "Status",
+    "duration": "Duration",
+    "createdAt": "Created At",
+    "inputJson": "Input JSON",
+    "output": "Output",
+    "error": "Error"
   },
   "settings": {
     "preferences": {
@@ -12,6 +129,30 @@
     "locale": {
       "label": "Language",
       "description": "Controls the language used by Tooldeck desktop surfaces."
+    },
+    "navigationMode": {
+      "label": "Navigation mode",
+      "providerFirstDescription": "Browse by plugin, then choose an entry.",
+      "entryFirstDescription": "Browse commands and other entries directly.",
+      "providerFirst": "Provider first",
+      "entryFirst": "Entry first"
+    },
+    "sidebarCollapsed": {
+      "label": "Sidebar collapsed",
+      "description": "Keep the sidebar collapsed to show icons only."
+    },
+    "workspace": {
+      "title": "Local Workspace",
+      "description": "Trusted plugin data for this desktop instance.",
+      "recentRuns": "Recent Runs"
+    },
+    "scope": {
+      "title": "V1 Scope",
+      "description": "Current desktop settings stay inside the local MVP boundary.",
+      "manifestScanning": "Manifest scanning",
+      "manifestScanningDescription": "Plugin manifests are scanned without activating plugin code.",
+      "sqliteState": "SQLite state",
+      "sqliteStateDescription": "Plugin registry and command run history are persisted as core local state."
     }
   }
 }

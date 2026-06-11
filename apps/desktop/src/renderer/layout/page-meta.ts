@@ -1,5 +1,7 @@
 import type { DesktopNavigationMode } from "@/renderer/app/types";
 
+export type PageMetaTranslator = (key: string, options?: Record<string, string | number>) => string;
+
 export function getLocationPathname({
   view,
   selectedCommandId,
@@ -37,6 +39,7 @@ export function getPageTitle({
   isLoading,
   historyCommandId,
   navigationMode,
+  t,
 }: {
   view: string;
   selectedCommand?: { title: string };
@@ -44,13 +47,16 @@ export function getPageTitle({
   isLoading: boolean;
   historyCommandId?: string;
   navigationMode: DesktopNavigationMode;
+  t: PageMetaTranslator;
 }): string {
   if (view === "settings") {
-    return "Settings";
+    return t("common.settings");
   }
 
   if (view === "history") {
-    return historyCommandId ? `Command History: ${historyCommandId}` : "Command History";
+    return historyCommandId
+      ? t("page.commandHistoryFor", { commandId: historyCommandId })
+      : t("page.commandHistory");
   }
 
   if (selectedCommand) {
@@ -62,34 +68,34 @@ export function getPageTitle({
   }
 
   if (isLoading) {
-    return "Loading workspace";
+    return t("page.loadingWorkspace");
   }
 
-  return navigationMode === "entry-first" ? "Commands" : "Plugins";
+  return navigationMode === "entry-first" ? t("common.commands") : t("common.plugins");
 }
 
 export function getPageDescription({
   view,
   selectedCommand,
   selectedPlugin,
+  t,
 }: {
   view: string;
   selectedCommand?: { description?: string; id: string };
   selectedPlugin?: { description?: string; id: string };
+  t: PageMetaTranslator;
 }): string {
   if (view === "settings") {
-    return "Local desktop preferences and workspace state";
+    return t("page.settingsDescription");
   }
 
   if (view === "history") {
-    return "Review recent command runs";
+    return t("page.historyDescription");
   }
 
   if (selectedCommand) {
     return selectedCommand.description ?? selectedCommand.id;
   }
 
-  return (
-    selectedPlugin?.description ?? selectedPlugin?.id ?? "Select a plugin or command to inspect."
-  );
+  return selectedPlugin?.description ?? selectedPlugin?.id ?? t("page.emptyDescription");
 }

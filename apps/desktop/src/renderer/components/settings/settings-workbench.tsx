@@ -76,18 +76,18 @@ export function SettingsWorkbench({
             <div className="min-w-0 flex-1">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <div className="font-semibold">Navigation mode</div>
+                  <div className="font-semibold">{t("settings.navigationMode.label")}</div>
                   <Typography.Text type="secondary">
                     {navigationMode === "provider-first"
-                      ? "Browse by plugin, then choose an entry."
-                      : "Browse commands and other entries directly."}
+                      ? t("settings.navigationMode.providerFirstDescription")
+                      : t("settings.navigationMode.entryFirstDescription")}
                   </Typography.Text>
                 </div>
                 <Segmented
                   disabled={isLoading}
                   options={[
-                    { label: "Provider first", value: "provider-first" },
-                    { label: "Entry first", value: "entry-first" },
+                    { label: t("settings.navigationMode.providerFirst"), value: "provider-first" },
+                    { label: t("settings.navigationMode.entryFirst"), value: "entry-first" },
                   ]}
                   value={navigationMode}
                   onChange={(value) => onSetPreference("desktop", "navigation.mode", value)}
@@ -101,9 +101,9 @@ export function SettingsWorkbench({
             <div className="min-w-0 flex-1">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <div className="font-semibold">Sidebar collapsed</div>
+                  <div className="font-semibold">{t("settings.sidebarCollapsed.label")}</div>
                   <Typography.Text type="secondary">
-                    Keep the sidebar collapsed to show icons only.
+                    {t("settings.sidebarCollapsed.description")}
                   </Typography.Text>
                 </div>
                 <Switch
@@ -125,24 +125,22 @@ export function SettingsWorkbench({
             icon={<RotateCw className={isLoading ? "animate-spin" : undefined} size={15} />}
             onClick={onRefresh}
           >
-            Rescan
+            {t("common.rescan")}
           </Button>
         }
-        title="Local Workspace"
+        title={t("settings.workspace.title")}
       >
-        <Typography.Text type="secondary">
-          Trusted plugin data for this desktop instance.
-        </Typography.Text>
+        <Typography.Text type="secondary">{t("settings.workspace.description")}</Typography.Text>
         <div className="mt-3.5">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <SettingsMetric label="Plugins" value={pluginCount} />
-            <SettingsMetric label="Commands" value={commandCount} />
+            <SettingsMetric label={t("common.plugins")} value={pluginCount} />
+            <SettingsMetric label={t("common.commands")} value={commandCount} />
             <button
               type="button"
               className="grid w-full gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-inherit hover:border-blue-300 hover:bg-blue-50"
               onClick={() => onOpenHistory(undefined)}
             >
-              <span className="text-xs text-gray-500">Recent Runs</span>
+              <span className="text-xs text-gray-500">{t("settings.workspace.recentRuns")}</span>
               <span className="flex items-center justify-between gap-2">
                 <span className="text-2xl font-bold tabular-nums">{historyCount}</span>
                 <History size={16} />
@@ -152,17 +150,15 @@ export function SettingsWorkbench({
         </div>
       </Card>
 
-      <Card title="V1 Scope">
-        <Typography.Text type="secondary">
-          Current desktop settings stay inside the local MVP boundary.
-        </Typography.Text>
+      <Card title={t("settings.scope.title")}>
+        <Typography.Text type="secondary">{t("settings.scope.description")}</Typography.Text>
         <div className="mt-3.5 grid gap-3.5">
           <div className="flex items-start gap-2.5">
             <FolderSearch size={16} />
             <div>
-              <div className="font-semibold">Manifest scanning</div>
+              <div className="font-semibold">{t("settings.scope.manifestScanning")}</div>
               <Typography.Text type="secondary">
-                Plugin manifests are scanned without activating plugin code.
+                {t("settings.scope.manifestScanningDescription")}
               </Typography.Text>
             </div>
           </div>
@@ -170,9 +166,9 @@ export function SettingsWorkbench({
           <div className="flex items-start gap-2.5">
             <Database size={16} />
             <div>
-              <div className="font-semibold">SQLite state</div>
+              <div className="font-semibold">{t("settings.scope.sqliteState")}</div>
               <Typography.Text type="secondary">
-                Plugin registry and command run history are persisted as core local state.
+                {t("settings.scope.sqliteStateDescription")}
               </Typography.Text>
             </div>
           </div>

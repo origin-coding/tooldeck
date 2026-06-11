@@ -1,5 +1,6 @@
 import { Button, Card, Divider, Typography } from "antd";
 import { Power } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { EmptyCard } from "@/renderer/components/common/empty-card";
 import { EmptyState } from "@/renderer/components/common/empty-state";
@@ -19,11 +20,13 @@ export function PluginWorkbench({
   onSelectCommand(command: DesktopCommand): void;
   onSetEnabled(pluginId: string, enabled: boolean): void;
 }) {
+  const { t } = useTranslation();
+
   if (!plugin) {
     return (
       <EmptyCard
-        title="No plugin selected"
-        text={isLoading ? "Loading plugins" : "Choose a plugin from the list."}
+        title={t("plugin.empty.title")}
+        text={isLoading ? t("plugin.empty.loading") : t("plugin.empty.choose")}
       />
     );
   }
@@ -41,7 +44,7 @@ export function PluginWorkbench({
               onClick={() => onSetEnabled(plugin.id, !plugin.enabled)}
               type={plugin.enabled ? "default" : "primary"}
             >
-              {plugin.enabled ? "Disable" : "Enable"}
+              {plugin.enabled ? t("plugin.disable") : t("plugin.enable")}
             </Button>
           </div>
         }
@@ -50,9 +53,12 @@ export function PluginWorkbench({
         <Typography.Text type="secondary">{plugin.description ?? plugin.id}</Typography.Text>
         <div className="mt-3.5">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <PluginMeta label="Version" value={plugin.version} />
-            <PluginMeta label="Runtime" value={plugin.enabled ? plugin.runtimeState : "disabled"} />
-            <PluginMeta label="Commands" value={String(plugin.commandCount)} />
+            <PluginMeta label={t("plugin.version")} value={plugin.version} />
+            <PluginMeta
+              label={t("plugin.runtime")}
+              value={plugin.enabled ? plugin.runtimeState : t("status.disabled")}
+            />
+            <PluginMeta label={t("common.commands")} value={String(plugin.commandCount)} />
           </div>
           <Divider />
           <Typography.Text
@@ -64,12 +70,12 @@ export function PluginWorkbench({
         </div>
       </Card>
 
-      <Card title="Contributed Commands">
+      <Card title={t("plugin.contributedCommands")}>
         <Typography.Text type="secondary">
-          Commands declared by this plugin manifest.
+          {t("plugin.contributedCommandsDescription")}
         </Typography.Text>
         <div className="mt-3.5">
-          {commands.length === 0 ? <EmptyState text="No commands contributed" /> : null}
+          {commands.length === 0 ? <EmptyState text={t("plugin.noCommandsContributed")} /> : null}
           {commands.length > 0 ? (
             <div className="grid gap-2">
               {commands.map((command) => (

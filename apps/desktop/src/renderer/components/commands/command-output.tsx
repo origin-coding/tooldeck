@@ -1,13 +1,22 @@
 import type { CommandResult, ContentBlock } from "@tooldeck/protocol";
 import { Tag } from "antd";
+import { useTranslation } from "react-i18next";
 
 export function CommandOutput({ result, hasError }: { result?: CommandResult; hasError: boolean }) {
+  const { t } = useTranslation();
+
   if (!result) {
     return (
       <OutputState
         tone={hasError ? "error" : "idle"}
-        title={hasError ? "Command failed" : "No output yet"}
-        text={hasError ? "The command did not return output." : "Run a command to see output."}
+        title={
+          hasError ? t("command.outputState.commandFailed") : t("command.outputState.noOutputYet")
+        }
+        text={
+          hasError
+            ? t("command.outputState.commandDidNotReturnOutput")
+            : t("command.outputState.runCommandToSeeOutput")
+        }
       />
     );
   }
@@ -16,12 +25,16 @@ export function CommandOutput({ result, hasError }: { result?: CommandResult; ha
     return (
       <OutputState
         tone={result.status === "error" ? "error" : "idle"}
-        title={result.status === "error" ? "Command failed" : "Empty output"}
+        title={
+          result.status === "error"
+            ? t("command.outputState.commandFailed")
+            : t("command.outputState.emptyOutput")
+        }
         text={
           result.error?.message ??
           (result.status === "error"
-            ? "The command returned an error without output."
-            : "The command completed without output.")
+            ? t("command.outputState.errorWithoutOutput")
+            : t("command.outputState.completedWithoutOutput"))
         }
       />
     );
@@ -37,7 +50,7 @@ export function CommandOutput({ result, hasError }: { result?: CommandResult; ha
     >
       {result.status === "error" ? (
         <div className="font-semibold text-red-700">
-          {result.error?.message ?? "Command returned an error result."}
+          {result.error?.message ?? t("command.outputState.errorResult")}
         </div>
       ) : null}
       {result.blocks.map((block, index) => (
@@ -72,7 +85,8 @@ function OutputState({
 }
 
 function ContentBlockView({ block }: { block: ContentBlock }) {
-  const label = getContentBlockLabel(block);
+  const { t } = useTranslation();
+  const label = getContentBlockLabel(block, t("command.outputState.code"));
   const text = formatContentBlockText(block);
   const isText = block.type === "text";
 
@@ -99,9 +113,9 @@ function classes(...values: Array<string | false | undefined>): string {
   return values.filter(Boolean).join(" ");
 }
 
-function getContentBlockLabel(block: ContentBlock): string {
+function getContentBlockLabel(block: ContentBlock, codeFallback: string): string {
   if (block.type === "code") {
-    return block.language ?? "code";
+    return block.language ?? codeFallback;
   }
 
   return block.type;

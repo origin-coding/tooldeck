@@ -1,8 +1,125 @@
 {
   "common": {
-    "system": "跟随系统",
+    "all": "全部",
+    "chineseSimplified": "简体中文",
+    "commands": "命令",
     "english": "英文",
-    "chineseSimplified": "简体中文"
+    "plugins": "插件",
+    "rescan": "重新扫描",
+    "run": "运行",
+    "settings": "设置",
+    "system": "跟随系统",
+    "unknown": "未知",
+    "undefined": "未定义"
+  },
+  "status": {
+    "active": "已激活",
+    "activating": "激活中",
+    "deactivating": "停用中",
+    "disabled": "已禁用",
+    "disposed": "已释放",
+    "error": "错误",
+    "failed": "失败",
+    "idle": "空闲",
+    "inactive": "未激活",
+    "success": "成功"
+  },
+  "shell": {
+    "loadFailed": "加载失败"
+  },
+  "navigation": {
+    "search": "搜索",
+    "noCommandsFound": "未找到命令",
+    "noPluginsFound": "未找到插件"
+  },
+  "page": {
+    "commandHistory": "命令历史",
+    "commandHistoryFor": "命令历史：{{commandId}}",
+    "loadingWorkspace": "正在加载工作区",
+    "settingsDescription": "本地桌面偏好设置和工作区状态",
+    "historyDescription": "查看最近的命令运行记录",
+    "emptyDescription": "选择一个插件或命令进行查看。"
+  },
+  "command": {
+    "empty": {
+      "title": "未选择命令",
+      "loading": "正在加载命令",
+      "choose": "请从列表中选择一个命令。"
+    },
+    "history": "历史",
+    "pluginDisabled": {
+      "title": "插件已禁用",
+      "description": "请先启用 {{pluginName}}，再运行此命令。"
+    },
+    "input": "输入",
+    "output": "输出",
+    "runFailed": "运行失败",
+    "form": {
+      "noCommandSelected": "未选择命令",
+      "noInputRequired": "无需输入",
+      "required": "必填"
+    },
+    "outputState": {
+      "commandFailed": "命令失败",
+      "noOutputYet": "暂无输出",
+      "emptyOutput": "空输出",
+      "commandDidNotReturnOutput": "命令没有返回输出。",
+      "runCommandToSeeOutput": "运行命令后可查看输出。",
+      "errorWithoutOutput": "命令返回了错误但没有输出。",
+      "completedWithoutOutput": "命令已完成但没有输出。",
+      "errorResult": "命令返回了错误结果。",
+      "code": "代码"
+    },
+    "historyList": {
+      "loading": "正在加载历史",
+      "empty": "暂无命令运行记录"
+    }
+  },
+  "plugin": {
+    "empty": {
+      "title": "未选择插件",
+      "loading": "正在加载插件",
+      "choose": "请从列表中选择一个插件。"
+    },
+    "enable": "启用",
+    "disable": "禁用",
+    "version": "版本",
+    "runtime": "运行时",
+    "contributedCommands": "贡献的命令",
+    "contributedCommandsDescription": "此插件 manifest 声明的命令。",
+    "noCommandsContributed": "未贡献命令"
+  },
+  "search": {
+    "title": "搜索",
+    "placeholder": "搜索命令和插件",
+    "noResults": "未找到结果",
+    "scope": {
+      "all": "全部",
+      "commands": "命令",
+      "plugins": "插件"
+    },
+    "kind": {
+      "plugin": "插件"
+    }
+  },
+  "history": {
+    "title": "命令历史",
+    "titleFor": "命令历史：{{commandId}}",
+    "loading": "正在加载历史",
+    "empty": "暂无命令运行记录",
+    "emptyForCommand": "此命令暂无运行记录",
+    "unknownPlugin": "未知插件",
+    "detailsTitle": "命令运行详情",
+    "runId": "运行 ID",
+    "commandId": "命令 ID",
+    "pluginId": "插件 ID",
+    "source": "来源",
+    "status": "状态",
+    "duration": "耗时",
+    "createdAt": "创建时间",
+    "inputJson": "输入 JSON",
+    "output": "输出",
+    "error": "错误"
   },
   "settings": {
     "preferences": {
@@ -12,6 +129,30 @@
     "locale": {
       "label": "语言",
       "description": "控制 Tooldeck 桌面端界面使用的语言。"
+    },
+    "navigationMode": {
+      "label": "导航模式",
+      "providerFirstDescription": "先按插件浏览，再选择入口。",
+      "entryFirstDescription": "直接浏览命令和其他入口。",
+      "providerFirst": "插件优先",
+      "entryFirst": "入口优先"
+    },
+    "sidebarCollapsed": {
+      "label": "折叠侧边栏",
+      "description": "折叠侧边栏后仅显示图标。"
+    },
+    "workspace": {
+      "title": "本地工作区",
+      "description": "此桌面实例使用的可信插件数据。",
+      "recentRuns": "最近运行"
+    },
+    "scope": {
+      "title": "V1 范围",
+      "description": "当前桌面设置保持在本地 MVP 边界内。",
+      "manifestScanning": "Manifest 扫描",
+      "manifestScanningDescription": "扫描插件 manifest 时不会激活插件代码。",
+      "sqliteState": "SQLite 状态",
+      "sqliteStateDescription": "插件注册表和命令运行历史会作为核心本地状态持久化。"
     }
   }
 }

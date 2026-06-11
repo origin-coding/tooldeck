@@ -1,4 +1,5 @@
 import { Form, Input, InputNumber, Tag } from "antd";
+import { useTranslation } from "react-i18next";
 
 import { getInputFields } from "@/renderer/app/command-input";
 import { EmptyState } from "@/renderer/components/common/empty-state";
@@ -13,14 +14,15 @@ export function CommandInputForm({
   input: Record<string, string>;
   onChange(key: string, value: string): void;
 }) {
+  const { t } = useTranslation();
   const fields = getInputFields(command);
 
   if (!command) {
-    return <EmptyState text="No command selected" />;
+    return <EmptyState text={t("command.form.noCommandSelected")} />;
   }
 
   if (fields.length === 0) {
-    return <EmptyState text="No input required" />;
+    return <EmptyState text={t("command.form.noInputRequired")} />;
   }
 
   return (
@@ -32,7 +34,7 @@ export function CommandInputForm({
           label={
             <span className="flex items-center gap-2">
               {field.title}
-              {field.required ? <Tag>Required</Tag> : null}
+              {field.required ? <Tag>{t("command.form.required")}</Tag> : null}
             </span>
           }
           required={field.required}
