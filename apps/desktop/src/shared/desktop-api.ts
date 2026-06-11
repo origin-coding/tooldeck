@@ -62,6 +62,16 @@ export interface RunCommandRequest {
   input?: JsonObject;
 }
 
+export interface CatalogLocaleRequest {
+  locale?: string;
+}
+
+export type ListCommandsRequest = CatalogLocaleRequest;
+
+export type ListPluginsRequest = CatalogLocaleRequest;
+
+export type RescanPluginsRequest = CatalogLocaleRequest;
+
 export interface ListCommandRunsRequest {
   limit?: number;
   commandId?: string;
@@ -84,13 +94,13 @@ export interface SetPluginEnabledRequest {
 }
 
 export interface DesktopApi {
-  listCommands(): Promise<DesktopCommand[]>;
-  listPlugins(): Promise<DesktopPlugin[]>;
+  listCommands(request?: ListCommandsRequest): Promise<DesktopCommand[]>;
+  listPlugins(request?: ListPluginsRequest): Promise<DesktopPlugin[]>;
   listPreferences(): Promise<DesktopPreference[]>;
   getPreference(request: GetPreferenceRequest): Promise<DesktopPreference>;
   setPreference(request: SetPreferenceRequest): Promise<DesktopPreference>;
   setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin>;
-  rescanPlugins(): Promise<{
+  rescanPlugins(request?: RescanPluginsRequest): Promise<{
     commands: DesktopCommand[];
     plugins: DesktopPlugin[];
   }>;

@@ -3,7 +3,10 @@ import { ipcMain } from "electron";
 import {
   desktopIpcChannels,
   type GetPreferenceRequest,
+  type ListCommandsRequest,
   type ListCommandRunsRequest,
+  type ListPluginsRequest,
+  type RescanPluginsRequest,
   type RunCommandRequest,
   type SetPreferenceRequest,
   type SetPluginEnabledRequest,
@@ -12,8 +15,12 @@ import {
 import type { TooldeckDesktopService } from "./tooldeck-service";
 
 export function registerTooldeckIpc(service: TooldeckDesktopService): () => void {
-  ipcMain.handle(desktopIpcChannels.listCommands, () => service.listCommands());
-  ipcMain.handle(desktopIpcChannels.listPlugins, () => service.listPlugins());
+  ipcMain.handle(desktopIpcChannels.listCommands, (_event, request?: ListCommandsRequest) =>
+    service.listCommands(request),
+  );
+  ipcMain.handle(desktopIpcChannels.listPlugins, (_event, request?: ListPluginsRequest) =>
+    service.listPlugins(request),
+  );
   ipcMain.handle(desktopIpcChannels.listPreferences, () => service.listPreferences());
   ipcMain.handle(desktopIpcChannels.getPreference, (_event, request: GetPreferenceRequest) =>
     service.getPreference(request),
@@ -24,7 +31,9 @@ export function registerTooldeckIpc(service: TooldeckDesktopService): () => void
   ipcMain.handle(desktopIpcChannels.setPluginEnabled, (_event, request: SetPluginEnabledRequest) =>
     service.setPluginEnabled(request),
   );
-  ipcMain.handle(desktopIpcChannels.rescanPlugins, () => service.rescanPlugins());
+  ipcMain.handle(desktopIpcChannels.rescanPlugins, (_event, request?: RescanPluginsRequest) =>
+    service.rescanPlugins(request),
+  );
   ipcMain.handle(desktopIpcChannels.runCommand, (_event, request: RunCommandRequest) =>
     service.runCommand(request),
   );

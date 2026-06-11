@@ -6,7 +6,10 @@ import type {
   DesktopPreference,
   DesktopPlugin,
   GetPreferenceRequest,
+  ListCommandsRequest,
   ListCommandRunsRequest,
+  ListPluginsRequest,
+  RescanPluginsRequest,
   RunCommandRequest,
   SetPreferenceRequest,
   SetPluginEnabledRequest,
@@ -24,9 +27,9 @@ export interface DesktopLifecycleService {
 }
 
 export interface DesktopCatalogService {
-  listCommands(): DesktopCommand[];
-  listPlugins(): DesktopPlugin[];
-  rescanPlugins(): Promise<{
+  listCommands(request?: ListCommandsRequest): DesktopCommand[];
+  listPlugins(request?: ListPluginsRequest): DesktopPlugin[];
+  rescanPlugins(request?: RescanPluginsRequest): Promise<{
     commands: DesktopCommand[];
     plugins: DesktopPlugin[];
   }>;

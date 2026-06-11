@@ -26,6 +26,8 @@ describe("TooldeckDesktopService", () => {
     try {
       const commands = service.listCommands();
       const plugins = service.listPlugins();
+      const localizedCommands = service.listCommands({ locale: "zh-CN" });
+      const localizedPlugins = service.listPlugins({ locale: "zh-CN" });
 
       expect(commands).toEqual(
         expect.arrayContaining([
@@ -35,6 +37,15 @@ describe("TooldeckDesktopService", () => {
             pluginEnabled: true,
             pluginRuntimeState: "inactive",
             title: "Format JSON",
+          }),
+        ]),
+      );
+      expect(localizedCommands).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "json.format",
+            title: "格式化 JSON",
+            description: "使用可配置缩进格式化 JSON 文本。",
           }),
         ]),
       );
@@ -48,6 +59,29 @@ describe("TooldeckDesktopService", () => {
           }),
         ]),
       );
+      expect(localizedPlugins).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "dev.tooldeck.json-tools",
+            name: "JSON 工具",
+            description: "用于格式化 JSON 的工具。",
+          }),
+        ]),
+      );
+      await expect(service.rescanPlugins({ locale: "zh-CN" })).resolves.toMatchObject({
+        commands: expect.arrayContaining([
+          expect.objectContaining({
+            id: "json.format",
+            title: "格式化 JSON",
+          }),
+        ]),
+        plugins: expect.arrayContaining([
+          expect.objectContaining({
+            id: "dev.tooldeck.json-tools",
+            name: "JSON 工具",
+          }),
+        ]),
+      });
 
       await expect(
         service.runCommand({

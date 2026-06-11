@@ -6,7 +6,10 @@ import type {
   DesktopPreference,
   DesktopPlugin,
   GetPreferenceRequest,
+  ListCommandsRequest,
   ListCommandRunsRequest,
+  ListPluginsRequest,
+  RescanPluginsRequest,
   RunCommandRequest,
   SetPreferenceRequest,
   SetPluginEnabledRequest,
@@ -47,19 +50,19 @@ export class TooldeckDesktopService implements TooldeckDesktopServiceFacade {
     return this.runtime.dispose();
   }
 
-  listCommands(): DesktopCommand[] {
-    return this.catalog.listCommands();
+  listCommands(request?: ListCommandsRequest): DesktopCommand[] {
+    return this.catalog.listCommands(request);
   }
 
-  listPlugins(): DesktopPlugin[] {
-    return this.catalog.listPlugins();
+  listPlugins(request?: ListPluginsRequest): DesktopPlugin[] {
+    return this.catalog.listPlugins(request);
   }
 
-  rescanPlugins(): Promise<{
+  rescanPlugins(request?: RescanPluginsRequest): Promise<{
     commands: DesktopCommand[];
     plugins: DesktopPlugin[];
   }> {
-    return this.catalog.rescanPlugins();
+    return this.catalog.rescanPlugins(request);
   }
 
   setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin> {

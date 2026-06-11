@@ -1,6 +1,7 @@
 export * from "./commands/command-registry";
 export * from "./commands/command-service";
 export * from "./commands/command-input";
+export * from "./i18n/locale-resolution";
 export * from "./manifests/manifest-validation";
 export * from "./manifests/manifest-index";
 export * from "./plugins/plugin-scanner";

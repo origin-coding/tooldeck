@@ -1,4 +1,11 @@
-import type { DesktopCommand, DesktopPlugin, SetPluginEnabledRequest } from "@/shared/desktop-api";
+import type {
+  DesktopCommand,
+  DesktopPlugin,
+  ListCommandsRequest,
+  ListPluginsRequest,
+  RescanPluginsRequest,
+  SetPluginEnabledRequest,
+} from "@/shared/desktop-api";
 
 import { TooldeckDesktopServiceContext } from "./context";
 import { formatDesktopCommand, formatDesktopPlugin } from "./formatters";
@@ -11,7 +18,7 @@ export class TooldeckDesktopCatalogService implements DesktopCatalogService {
     private readonly runtime: TooldeckDesktopRuntimeService,
   ) {}
 
-  listCommands(): DesktopCommand[] {
+  listCommands(request: ListCommandsRequest = {}): DesktopCommand[] {
     const plugins = this.context.requirePlugins();
     const pluginManager = this.context.requirePluginManager();
     const manifestIndex = this.context.requireManifestIndex();
@@ -22,11 +29,12 @@ export class TooldeckDesktopCatalogService implements DesktopCatalogService {
         indexedPlugin: manifestIndex.getPlugin(command.pluginId),
         plugin: plugins.getById(command.pluginId),
         pluginManager,
+        locale: request.locale,
       }),
     );
   }
 
-  listPlugins(): DesktopPlugin[] {
+  listPlugins(request: ListPluginsRequest = {}): DesktopPlugin[] {
     const manifestIndex = this.context.requireManifestIndex();
     const pluginManager = this.context.requirePluginManager();
 
@@ -41,19 +49,20 @@ export class TooldeckDesktopCatalogService implements DesktopCatalogService {
             .listCommands()
             .filter((command) => command.pluginId === plugin.id).length,
           pluginManager,
+          locale: request.locale,
         }),
       );
   }
 
-  async rescanPlugins(): Promise<{
+  async rescanPlugins(request: RescanPluginsRequest = {}): Promise<{
     commands: DesktopCommand[];
     plugins: DesktopPlugin[];
   }> {
     await this.runtime.scanAndCreateRuntime();
 
     return {
-      commands: this.listCommands(),
-      plugins: this.listPlugins(),
+      commands: this.listCommands(request),
+      plugins: this.listPlugins(request),
     };
   }
 

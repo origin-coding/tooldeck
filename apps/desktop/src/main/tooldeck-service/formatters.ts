@@ -1,7 +1,14 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { type IndexedCommand, type IndexedPlugin, PluginManager } from "@tooldeck/core";
+import {
+  flattenLocaleResource,
+  type IndexedCommand,
+  type IndexedPlugin,
+  type LocaleResourceIndex,
+  PluginManager,
+  resolveLocalizedString,
+} from "@tooldeck/core";
 import type { LocalizedString } from "@tooldeck/protocol";
 import { validatePreferenceValue, type PreferenceDefinition } from "@tooldeck/shared";
 import type { PluginRow, PreferenceRow } from "@tooldeck/storage";
@@ -13,12 +20,24 @@ export function formatDesktopCommand(options: {
   indexedPlugin: IndexedPlugin | undefined;
   plugin: PluginRow | undefined;
   pluginManager: PluginManager;
+  locale?: string;
 }): DesktopCommand {
-  const { command, indexedPlugin, plugin, pluginManager } = options;
+  const { command, indexedPlugin, plugin, pluginManager, locale } = options;
   const localeResources = readManifestLocaleResources(indexedPlugin);
-  const title = resolveLocalizedString(command.definition.title);
+  const defaultLocale = indexedPlugin?.manifest.defaultLocale;
+  const title = resolveLocalizedString({
+    value: command.definition.title,
+    resources: localeResources,
+    locale,
+    defaultLocale,
+  });
   const description = command.definition.description
-    ? resolveLocalizedString(command.definition.description)
+    ? resolveLocalizedString({
+        value: command.definition.description,
+        resources: localeResources,
+        locale,
+        defaultLocale,
+      })
     : undefined;
 
   return {
@@ -50,12 +69,23 @@ export function formatDesktopPlugin(options: {
   indexedPlugin: IndexedPlugin | undefined;
   commandCount: number;
   pluginManager: PluginManager;
+  locale?: string;
 }): DesktopPlugin {
-  const { plugin, indexedPlugin, commandCount, pluginManager } = options;
+  const { plugin, indexedPlugin, commandCount, pluginManager, locale } = options;
   const localeResources = readManifestLocaleResources(indexedPlugin);
-  const name = resolveStoredLocalizedString(plugin.nameJson);
+  const defaultLocale = indexedPlugin?.manifest.defaultLocale;
+  const name = resolveStoredLocalizedString(plugin.nameJson, {
+    resources: localeResources,
+    locale,
+    defaultLocale,
+  });
   const description = indexedPlugin?.manifest.description
-    ? resolveLocalizedString(indexedPlugin.manifest.description)
+    ? resolveLocalizedString({
+        value: indexedPlugin.manifest.description,
+        resources: localeResources,
+        locale,
+        defaultLocale,
+      })
     : undefined;
 
   return {
@@ -99,40 +129,42 @@ export function formatDesktopPreference(
   };
 }
 
-type LocaleResources = Record<string, string>[];
-
-function resolveLocalizedString(value: LocalizedString): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  return value.default;
-}
-
-function resolveStoredLocalizedString(value: string): string {
+function resolveStoredLocalizedString(
+  value: string,
+  options: {
+    resources: LocaleResourceIndex;
+    locale?: string;
+    defaultLocale?: string;
+  },
+): string {
   try {
-    return resolveLocalizedString(JSON.parse(value) as LocalizedString);
+    return resolveLocalizedString({
+      value: JSON.parse(value) as LocalizedString,
+      ...options,
+    });
   } catch {
     return value;
   }
 }
 
-function readManifestLocaleResources(indexedPlugin: IndexedPlugin | undefined): LocaleResources {
+function readManifestLocaleResources(
+  indexedPlugin: IndexedPlugin | undefined,
+): LocaleResourceIndex {
   if (!indexedPlugin?.manifest.locales) {
-    return [];
+    return {};
   }
 
   const manifestDir = path.dirname(indexedPlugin.manifestPath);
-  const resources: LocaleResources = [];
+  const resources: LocaleResourceIndex = {};
 
-  for (const localePath of Object.values(indexedPlugin.manifest.locales)) {
+  for (const [locale, localePath] of Object.entries(indexedPlugin.manifest.locales)) {
     if (!localePath) {
       continue;
     }
 
     try {
       const text = readFileSync(path.resolve(manifestDir, localePath), "utf8");
-      resources.push(flattenLocaleResource(JSON.parse(text)));
+      resources[locale] = flattenLocaleResource(JSON.parse(text));
     } catch {
       // Locale files are optional search enrichment; manifest defaults remain searchable.
     }
@@ -141,32 +173,9 @@ function readManifestLocaleResources(indexedPlugin: IndexedPlugin | undefined): 
   return resources;
 }
 
-function flattenLocaleResource(value: unknown, prefix = ""): Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-
-  const flattened: Record<string, string> = {};
-
-  for (const [key, entry] of Object.entries(value)) {
-    const nextKey = prefix ? `${prefix}.${key}` : key;
-
-    if (typeof entry === "string") {
-      flattened[nextKey] = entry;
-      continue;
-    }
-
-    if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-      Object.assign(flattened, flattenLocaleResource(entry, nextKey));
-    }
-  }
-
-  return flattened;
-}
-
 function collectPluginLocalizedSearchText(
   manifest: IndexedPlugin["manifest"],
-  resources: LocaleResources,
+  resources: LocaleResourceIndex,
 ): string[] {
   return [
     manifest.id,
@@ -180,7 +189,7 @@ function collectPluginLocalizedSearchText(
 
 function collectLocalizedStringSearchText(
   value: LocalizedString,
-  resources: LocaleResources,
+  resources: LocaleResourceIndex,
 ): string[] {
   if (typeof value === "string") {
     return [value];
@@ -188,7 +197,9 @@ function collectLocalizedStringSearchText(
 
   return uniqueStrings([
     value.default,
-    ...resources.map((resource) => resource[value.key]).filter(isSearchString),
+    ...Object.values(resources)
+      .map((resource) => resource?.[value.key])
+      .filter(isSearchString),
   ]);
 }
 

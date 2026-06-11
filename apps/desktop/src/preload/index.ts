@@ -4,18 +4,21 @@ import {
   desktopIpcChannels,
   type DesktopApi,
   type GetPreferenceRequest,
+  type ListCommandsRequest,
   type ListCommandRunsRequest,
+  type ListPluginsRequest,
+  type RescanPluginsRequest,
   type RunCommandRequest,
   type SetPreferenceRequest,
   type SetPluginEnabledRequest,
 } from "@/shared/desktop-api";
 
 const api: DesktopApi = {
-  listCommands() {
-    return ipcRenderer.invoke(desktopIpcChannels.listCommands);
+  listCommands(request?: ListCommandsRequest) {
+    return ipcRenderer.invoke(desktopIpcChannels.listCommands, request);
   },
-  listPlugins() {
-    return ipcRenderer.invoke(desktopIpcChannels.listPlugins);
+  listPlugins(request?: ListPluginsRequest) {
+    return ipcRenderer.invoke(desktopIpcChannels.listPlugins, request);
   },
   listPreferences() {
     return ipcRenderer.invoke(desktopIpcChannels.listPreferences);
@@ -29,8 +32,8 @@ const api: DesktopApi = {
   setPluginEnabled(request: SetPluginEnabledRequest) {
     return ipcRenderer.invoke(desktopIpcChannels.setPluginEnabled, request);
   },
-  rescanPlugins() {
-    return ipcRenderer.invoke(desktopIpcChannels.rescanPlugins);
+  rescanPlugins(request?: RescanPluginsRequest) {
+    return ipcRenderer.invoke(desktopIpcChannels.rescanPlugins, request);
   },
   runCommand(request: RunCommandRequest) {
     return ipcRenderer.invoke(desktopIpcChannels.runCommand, request);
