@@ -126,6 +126,109 @@ describe("manifest validation", () => {
     ).toThrow("Invalid plugin manifest");
   });
 
+  it("rejects input field order entries that do not reference input properties", () => {
+    expect(() =>
+      validatePluginManifest({
+        manifest: {
+          schemaVersion: "1.0",
+          id: "dev.tooldeck.bad",
+          name: "Bad",
+          version: "0.0.0",
+          runtime: {
+            kind: "node",
+            entry: "./dist/index.js",
+          },
+          contributes: {
+            commands: [
+              {
+                id: "bad.run",
+                title: "Bad",
+                inputSchema: {
+                  type: "object",
+                  "x-ui": {
+                    fieldOrder: ["missing"],
+                  },
+                  properties: {
+                    text: {
+                      type: "string",
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      }),
+    ).toThrow("references unknown input field 'missing'");
+  });
+
+  it("rejects unsupported input schema x-ui properties", () => {
+    expect(() =>
+      validatePluginManifest({
+        manifest: {
+          schemaVersion: "1.0",
+          id: "dev.tooldeck.bad",
+          name: "Bad",
+          version: "0.0.0",
+          runtime: {
+            kind: "node",
+            entry: "./dist/index.js",
+          },
+          contributes: {
+            commands: [
+              {
+                id: "bad.run",
+                title: "Bad",
+                inputSchema: {
+                  type: "object",
+                  "x-ui": {
+                    layout: "vertical",
+                  },
+                  properties: {
+                    text: {
+                      type: "string",
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      }),
+    ).toThrow("is not a supported input schema x-ui property");
+  });
+
+  it("rejects x-ui on command output schemas", () => {
+    expect(() =>
+      validatePluginManifest({
+        manifest: {
+          schemaVersion: "1.0",
+          id: "dev.tooldeck.bad",
+          name: "Bad",
+          version: "0.0.0",
+          runtime: {
+            kind: "node",
+            entry: "./dist/index.js",
+          },
+          contributes: {
+            commands: [
+              {
+                id: "bad.run",
+                title: "Bad",
+                outputSchema: {
+                  type: "object",
+                  "x-ui": {
+                    fieldOrder: ["blocks"],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      }),
+    ).toThrow("is not supported on command output schemas");
+  });
+
   it.each([
     ["activationEvents", { activationEvents: ["onCommand:hello.world"] }],
     [

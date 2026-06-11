@@ -1,4 +1,4 @@
-import type { CommandResult, TooldeckJsonSchema } from "@tooldeck/protocol";
+import type { CommandResult, TooldeckInputJsonSchema } from "@tooldeck/protocol";
 import type { JsonObject, PreferenceScope } from "@tooldeck/shared";
 
 export type DesktopPluginRuntimeState =
@@ -16,7 +16,7 @@ export interface DesktopCommand {
   pluginRuntimeState: DesktopPluginRuntimeState;
   title: string;
   description?: string;
-  inputSchema?: TooldeckJsonSchema;
+  inputSchema?: TooldeckInputJsonSchema;
   searchText: string[];
 }
 

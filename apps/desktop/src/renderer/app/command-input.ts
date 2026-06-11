@@ -1,4 +1,4 @@
-import type { TooldeckJsonSchema } from "@tooldeck/protocol";
+import type { TooldeckInputJsonSchema } from "@tooldeck/protocol";
 import type { JsonObject } from "@tooldeck/shared";
 
 import type { DesktopCommand } from "@/shared/desktop-api";
@@ -24,29 +24,58 @@ export function getInputFields(command: DesktopCommand | undefined): InputField[
   const required = Array.isArray(schema.required) ? schema.required : [];
   const properties = isRecord(schema.properties) ? schema.properties : {};
 
-  return Object.entries(properties).map(([key, value]) => {
-    const fieldSchema = isRecord(value) ? value : {};
-    const type = typeof fieldSchema.type === "string" ? fieldSchema.type : "string";
-    const title = typeof fieldSchema.title === "string" ? fieldSchema.title : key;
-    const description =
-      typeof fieldSchema.description === "string" ? fieldSchema.description : undefined;
+  const fieldOrder = getFieldOrder(schema, properties);
 
-    return {
-      key,
-      title,
-      description,
-      kind:
-        type === "integer" || type === "number"
-          ? "number"
-          : type === "string"
-            ? "textarea"
-            : "text",
-      required: required.includes(key),
-      defaultValue: fieldSchema.default,
-      minimum: typeof fieldSchema.minimum === "number" ? fieldSchema.minimum : undefined,
-      maximum: typeof fieldSchema.maximum === "number" ? fieldSchema.maximum : undefined,
-    };
-  });
+  return Object.entries(properties)
+    .sort(sortFields(fieldOrder))
+    .map(([key, value]) => {
+      const fieldSchema = isRecord(value) ? value : {};
+      const type = typeof fieldSchema.type === "string" ? fieldSchema.type : "string";
+      const title = typeof fieldSchema.title === "string" ? fieldSchema.title : key;
+      const description =
+        typeof fieldSchema.description === "string" ? fieldSchema.description : undefined;
+
+      return {
+        key,
+        title,
+        description,
+        kind:
+          type === "integer" || type === "number"
+            ? "number"
+            : type === "string"
+              ? "textarea"
+              : "text",
+        required: required.includes(key),
+        defaultValue: fieldSchema.default,
+        minimum: typeof fieldSchema.minimum === "number" ? fieldSchema.minimum : undefined,
+        maximum: typeof fieldSchema.maximum === "number" ? fieldSchema.maximum : undefined,
+      };
+    });
+}
+
+function getFieldOrder(
+  schema: TooldeckInputJsonSchema,
+  properties: Record<string, unknown>,
+): Map<string, number> {
+  const fieldOrder = schema["x-ui"]?.fieldOrder;
+
+  if (!Array.isArray(fieldOrder)) {
+    return new Map();
+  }
+
+  const propertyKeys = new Set(Object.keys(properties));
+  const orderedFields = fieldOrder.filter((field) => propertyKeys.has(field));
+
+  return new Map(orderedFields.map((field, index) => [field, index]));
+}
+
+function sortFields(fieldOrder: Map<string, number>) {
+  return ([leftKey]: [string, unknown], [rightKey]: [string, unknown]): number => {
+    const leftOrder = fieldOrder.get(leftKey) ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = fieldOrder.get(rightKey) ?? Number.MAX_SAFE_INTEGER;
+
+    return leftOrder - rightOrder;
+  };
 }
 
 export function createInputState(
@@ -90,7 +119,9 @@ function defaultInputValue(field: InputField): string {
   return "";
 }
 
-function isObjectSchema(schema: TooldeckJsonSchema | undefined): schema is TooldeckJsonSchema & {
+function isObjectSchema(
+  schema: TooldeckInputJsonSchema | undefined,
+): schema is TooldeckInputJsonSchema & {
   properties?: unknown;
   required?: unknown;
 } {

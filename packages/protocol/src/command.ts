@@ -1,13 +1,13 @@
 import type { JsonObject, JsonValue } from "@tooldeck/shared";
 
 import type { LocalizedString } from "./i18n";
-import type { TooldeckJsonSchema } from "./schema";
+import type { TooldeckInputJsonSchema, TooldeckJsonSchema } from "./schema";
 
 export interface CommandDefinitionV1 {
   id: string;
   title: LocalizedString;
   description?: LocalizedString;
-  inputSchema?: TooldeckJsonSchema;
+  inputSchema?: TooldeckInputJsonSchema;
   outputSchema?: TooldeckJsonSchema;
 }
 

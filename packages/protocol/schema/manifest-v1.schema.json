@@ -117,12 +117,27 @@
           "$ref": "#/definitions/localizedString"
         },
         "inputSchema": {
-          "$ref": "#/definitions/tooldeckJsonSchema"
+          "$ref": "#/definitions/tooldeckInputJsonSchema"
         },
         "outputSchema": {
           "$ref": "#/definitions/tooldeckJsonSchema"
         }
       }
+    },
+    "tooldeckInputJsonSchema": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/tooldeckJsonSchema"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x-ui": {
+              "$ref": "#/definitions/jsonSchemaUi"
+            }
+          }
+        }
+      ]
     },
     "tooldeckJsonSchema": {
       "allOf": [
@@ -148,6 +163,20 @@
         },
         "description": {
           "type": "string"
+        }
+      }
+    },
+    "jsonSchemaUi": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fieldOrder": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
         }
       }
     }

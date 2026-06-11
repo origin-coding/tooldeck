@@ -7,6 +7,14 @@ export interface JsonSchemaI18n {
   description?: TranslationKey;
 }
 
+export interface JsonSchemaUi {
+  fieldOrder?: string[];
+}
+
 export type TooldeckJsonSchema = JSONSchema7 & {
   "x-i18n"?: JsonSchemaI18n;
+};
+
+export type TooldeckInputJsonSchema = TooldeckJsonSchema & {
+  "x-ui"?: JsonSchemaUi;
 };

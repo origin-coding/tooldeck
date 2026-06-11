@@ -36,6 +36,9 @@
           "type": "object",
           "required": ["text"],
           "additionalProperties": false,
+          "x-ui": {
+            "fieldOrder": ["text", "indent"]
+          },
           "properties": {
             "text": {
               "type": "string",
