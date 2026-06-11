@@ -30,8 +30,9 @@ export function CommandOutput({ result, hasError }: { result?: CommandResult; ha
   return (
     <div
       className={classes(
-        "grid max-h-[32rem] min-h-0 gap-3 overflow-y-auto pr-1",
-        result.status === "error" && "rounded-md border border-red-200 bg-red-50 p-3",
+        "command-output-list grid max-h-128 min-h-0 gap-3 overflow-y-auto pr-1",
+        result.status === "error" &&
+          "command-output-list-error rounded-md border border-red-200 bg-red-50 p-3",
       )}
     >
       {result.status === "error" ? (
@@ -58,7 +59,7 @@ function OutputState({
   return (
     <div
       className={classes(
-        "flex min-h-[280px] flex-col items-center justify-center rounded-md border border-dashed p-4 text-center",
+        "flex min-h-70 flex-col items-center justify-center rounded-md border border-dashed p-4 text-center",
         tone === "error"
           ? "border-red-200 bg-red-50 text-red-700"
           : "border-slate-300 bg-slate-50 text-gray-500",
@@ -82,10 +83,10 @@ function ContentBlockView({ block }: { block: ContentBlock }) {
       </div>
       <pre
         className={classes(
-          "m-0 max-h-96 min-h-0 overflow-auto p-3 text-[13px] leading-relaxed",
+          "content-block-body m-0 max-h-96 min-h-0 overflow-auto p-3 text-[13px] leading-relaxed",
           isText
             ? "whitespace-pre-wrap font-sans"
-            : "min-w-full whitespace-pre bg-slate-50 font-mono",
+            : "content-block-body-code min-w-full whitespace-pre bg-slate-50 font-mono",
         )}
       >
         {text}

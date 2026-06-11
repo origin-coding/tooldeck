@@ -297,6 +297,16 @@ describe("CLI command support", () => {
         key: "command.history.enabled",
         value: true,
       }),
+      expect.objectContaining({
+        scope: "desktop",
+        key: "navigation.mode",
+        value: "provider-first",
+      }),
+      expect.objectContaining({
+        scope: "desktop",
+        key: "sidebar.collapsed",
+        value: false,
+      }),
     ]);
     expect(readPreferenceValue(storagePath, "cli", "output.format")).toBe("json");
     expect(readPreferenceValue(storagePath, "shared", "locale")).toBe("zh-CN");
