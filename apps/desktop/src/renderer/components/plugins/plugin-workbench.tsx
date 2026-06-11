@@ -55,7 +55,10 @@ export function PluginWorkbench({
             <PluginMeta label="Commands" value={String(plugin.commandCount)} />
           </div>
           <Divider />
-          <Typography.Text className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap" type="secondary">
+          <Typography.Text
+            className="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+            type="secondary"
+          >
             {plugin.manifestPath}
           </Typography.Text>
         </div>
@@ -77,9 +80,7 @@ export function PluginWorkbench({
                   onClick={() => onSelectCommand(command)}
                 >
                   <span className="font-semibold">{command.title}</span>
-                  <span className="text-xs text-gray-500">
-                    {command.description ?? command.id}
-                  </span>
+                  <span className="text-xs text-gray-500">{command.description ?? command.id}</span>
                 </button>
               ))}
             </div>
@@ -94,7 +95,9 @@ function PluginMeta({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5">
       <span className="text-xs text-gray-500">{label}</span>
-      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-semibold">{value}</span>
+      <span className="min-w-0 overflow-hidden font-semibold text-ellipsis whitespace-nowrap">
+        {value}
+      </span>
     </div>
   );
 }

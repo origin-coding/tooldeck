@@ -8,9 +8,7 @@ import {
   type TooldeckDatabaseOptions,
 } from "./database";
 
-export type RepositoryFactory<TRepository> = (
-  db: TooldeckDrizzleDatabase,
-) => TRepository;
+export type RepositoryFactory<TRepository> = (db: TooldeckDrizzleDatabase) => TRepository;
 
 export async function withTooldeckDatabase<TResult>(
   options: TooldeckDatabaseOptions,

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import {openTooldeckDatabase, type PreferenceRow} from "../src";
+import { openTooldeckDatabase, type PreferenceRow } from "../src";
 import { CommandRunRepository } from "../src";
 import { PluginKvRepository } from "../src";
 import { PluginRepository } from "../src";

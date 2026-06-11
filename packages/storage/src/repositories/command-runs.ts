@@ -57,7 +57,12 @@ export class CommandRunRepository {
         .all();
     }
 
-    return this.db.select().from(commandRuns).orderBy(desc(commandRuns.createdAt)).limit(limit).all();
+    return this.db
+      .select()
+      .from(commandRuns)
+      .orderBy(desc(commandRuns.createdAt))
+      .limit(limit)
+      .all();
   }
 }
 

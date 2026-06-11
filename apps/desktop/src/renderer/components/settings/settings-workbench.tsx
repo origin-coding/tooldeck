@@ -5,10 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import type { DesktopNavigationMode } from "@/renderer/app/types";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
-import {
-  isTooldeckLocalePreference,
-  type TooldeckLocalePreference,
-} from "@/renderer/i18n";
+import { isTooldeckLocalePreference, type TooldeckLocalePreference } from "@/renderer/i18n";
 import type { DesktopPreference } from "@/shared/desktop-api";
 
 export function SettingsWorkbench({
@@ -38,18 +35,14 @@ export function SettingsWorkbench({
   const localePreference = preferences.find(
     (preference) => preference.scope === "shared" && preference.key === "locale",
   );
-  const localeValue: TooldeckLocalePreference = isTooldeckLocalePreference(
-    localePreference?.value,
-  )
+  const localeValue: TooldeckLocalePreference = isTooldeckLocalePreference(localePreference?.value)
     ? localePreference.value
     : "system";
 
   return (
     <>
       <Card title={t("settings.preferences.title")}>
-        <Typography.Text type="secondary">
-          {t("settings.preferences.description")}
-        </Typography.Text>
+        <Typography.Text type="secondary">{t("settings.preferences.description")}</Typography.Text>
         <div className="mt-3.5 grid gap-3.5">
           <div className="flex items-start gap-2.5">
             <Languages size={16} />
@@ -116,9 +109,7 @@ export function SettingsWorkbench({
                 <Switch
                   checked={sidebarCollapsed}
                   disabled={isLoading}
-                  onChange={(checked) =>
-                    onSetPreference("desktop", "sidebar.collapsed", checked)
-                  }
+                  onChange={(checked) => onSetPreference("desktop", "sidebar.collapsed", checked)}
                 />
               </div>
             </div>

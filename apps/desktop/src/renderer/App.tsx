@@ -1,17 +1,17 @@
-import {type MenuDataItem, PageContainer, ProLayout} from "@ant-design/pro-components";
-import {Button} from "antd";
-import {Boxes, Play, RefreshCw, Search, Settings, Wrench} from "lucide-react";
-import {type ReactNode, useEffect, useMemo, useState} from "react";
+import { type MenuDataItem, PageContainer, ProLayout } from "@ant-design/pro-components";
+import { Button } from "antd";
+import { Boxes, Play, RefreshCw, Search, Settings, Wrench } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
-import {useDesktopStore} from "@/renderer/app/store";
-import type {DesktopNavigationMode} from "@/renderer/app/types";
-import {CommandWorkbench} from "@/renderer/components/commands/command-workbench";
-import {ErrorNotice} from "@/renderer/components/common/error-notice";
-import {CommandHistoryWorkbench} from "@/renderer/components/history/command-history-workbench";
-import {PluginWorkbench} from "@/renderer/components/plugins/plugin-workbench";
-import {SearchDialog} from "@/renderer/components/search/search-dialog";
-import {SettingsWorkbench} from "@/renderer/components/settings/settings-workbench";
-import type {DesktopCommand, DesktopPlugin} from "@/shared/desktop-api";
+import { useDesktopStore } from "@/renderer/app/store";
+import type { DesktopNavigationMode } from "@/renderer/app/types";
+import { CommandWorkbench } from "@/renderer/components/commands/command-workbench";
+import { ErrorNotice } from "@/renderer/components/common/error-notice";
+import { CommandHistoryWorkbench } from "@/renderer/components/history/command-history-workbench";
+import { PluginWorkbench } from "@/renderer/components/plugins/plugin-workbench";
+import { SearchDialog } from "@/renderer/components/search/search-dialog";
+import { SettingsWorkbench } from "@/renderer/components/settings/settings-workbench";
+import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
 
 type SidebarRoute = MenuDataItem & {
   path: string;
@@ -107,13 +107,7 @@ export function App() {
         onSelectCommand: state.selectCommand,
         onSelectPlugin: state.selectPlugin,
       }),
-    [
-      navigationMode,
-      state.commands,
-      state.plugins,
-      state.selectCommand,
-      state.selectPlugin,
-    ],
+    [navigationMode, state.commands, state.plugins, state.selectCommand, state.selectPlugin],
   );
 
   return (
@@ -415,7 +409,9 @@ function getPageDescription({
     return selectedCommand.description ?? selectedCommand.id;
   }
 
-  return selectedPlugin?.description ?? selectedPlugin?.id ?? "Select a plugin or command to inspect.";
+  return (
+    selectedPlugin?.description ?? selectedPlugin?.id ?? "Select a plugin or command to inspect."
+  );
 }
 
 function getNavigationMode(

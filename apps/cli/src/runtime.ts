@@ -1,10 +1,6 @@
 import path from "node:path";
 
-import {
-  resolveTooldeckPaths,
-  type TooldeckPaths,
-  type TooldeckRuntimeMode,
-} from "@tooldeck/core";
+import { resolveTooldeckPaths, type TooldeckPaths, type TooldeckRuntimeMode } from "@tooldeck/core";
 
 export interface CreateCliCommandOptions {
   workspaceRoot: string;

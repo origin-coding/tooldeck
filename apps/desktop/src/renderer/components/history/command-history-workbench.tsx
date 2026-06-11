@@ -25,7 +25,15 @@ export function CommandHistoryWorkbench({
     <>
       <Card title={commandId ? `Command History: ${commandId}` : "Command History"}>
         {history.length === 0 ? (
-          <EmptyState text={isLoading ? "Loading history" : commandId ? "No runs for this command" : "No command runs"} />
+          <EmptyState
+            text={
+              isLoading
+                ? "Loading history"
+                : commandId
+                  ? "No runs for this command"
+                  : "No command runs"
+            }
+          />
         ) : (
           <List
             bordered
@@ -79,7 +87,11 @@ function RunDetails({ run }: { run: CommandRunRecord }) {
           { key: "source", label: "Source", children: run.source },
           { key: "status", label: "Status", children: <StatusBadge status={run.status} /> },
           { key: "durationMs", label: "Duration", children: `${run.durationMs ?? 0} ms` },
-          { key: "createdAt", label: "Created At", children: new Date(run.createdAt).toLocaleString() },
+          {
+            key: "createdAt",
+            label: "Created At",
+            children: new Date(run.createdAt).toLocaleString(),
+          },
         ]}
       />
       <JsonPanel title="Input JSON" value={run.input} />

@@ -5,6 +5,7 @@ import zhCN from "antd/locale/zh_CN";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
+
 import type { TooldeckAppLocale } from "@/renderer/i18n";
 
 import "./i18n";

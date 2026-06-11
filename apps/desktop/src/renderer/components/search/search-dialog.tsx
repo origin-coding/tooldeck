@@ -147,7 +147,11 @@ export function SearchDialog({
 
         <div className="max-h-[56vh] overflow-auto rounded-md border border-slate-200">
           {results.length === 0 ? (
-            <Empty className="py-8" description="No results found" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            <Empty
+              className="py-8"
+              description="No results found"
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
           ) : (
             <div className="grid divide-y divide-slate-100">
               {results.map((record) => (
@@ -164,14 +168,13 @@ export function SearchDialog({
                     <span className="block truncate font-semibold text-slate-900">
                       {record.title}
                     </span>
-                    <Typography.Text
-                      className="block min-w-0 truncate text-xs"
-                      type="secondary"
-                    >
+                    <Typography.Text className="block min-w-0 truncate text-xs" type="secondary">
                       {record.description ?? record.id}
                     </Typography.Text>
                   </span>
-                  <Tag>{record.kind === "command" ? record.pluginName ?? record.pluginId : "Plugin"}</Tag>
+                  <Tag>
+                    {record.kind === "command" ? (record.pluginName ?? record.pluginId) : "Plugin"}
+                  </Tag>
                 </button>
               ))}
             </div>
