@@ -442,11 +442,38 @@ interface CommandUiHint {
 
 `outputSchema` 是可选的命令输出契约。宿主始终校验命令返回值是否符合基础 `CommandResult` / `ContentBlock` 结构；如果 manifest 声明了 `outputSchema`，宿主必须在命令返回后继续用该 schema 校验完整 `CommandResult`。校验失败属于插件执行失败，应该进入统一错误处理和命令运行历史记录。
 
-MVP 实现备忘：当前实现标准 JSON Schema 语义、`x-i18n` 翻译 key、`inputSchema.x-ui.fieldOrder` 表单字段排序提示，以及 command 级 `x-ui.layout` 展示提示。`x-ui` 只作为宿主展示和交互提示扩展，不改变数据校验语义。除 command 级 `layout` 和 input schema 级 `fieldOrder` 以外的 `x-ui` 字段、以及 `x-cli` 暂时不作为 v1 MVP 的实现目标。
+MVP 实现备忘：当前实现标准 JSON Schema 语义、`x-i18n` 翻译 key、`inputSchema.x-ui.fieldOrder` 表单字段排序提示、input field 级 `x-ui.control` 控件提示，以及 command 级 `x-ui.layout` 展示提示。`x-ui` 只作为宿主展示和交互提示扩展，不改变数据校验语义。CLI 必须按 JSON Schema 解析和校验输入，忽略 `x-ui`。除这些已声明字段以外的 `x-ui` 字段、以及 `x-cli` 暂时不作为 v1 MVP 的实现目标。
 
 `command.x-ui.layout` 只影响 Desktop 中命令输入区和输出区的整体排布，不影响 command 输入/输出校验，CLI 忽略该字段。`stacked` 是默认值，表示输入区在上、输出区在下；`split` 表示输入区和输出区并排，宿主可在窄屏降级为 `stacked`。该字段不描述输入字段内部布局，也不描述输出 block 内部布局。
 
 `inputSchema.x-ui.fieldOrder` 只能引用同一 `inputSchema.properties` 中已经声明的字段，可以只声明部分字段；未声明字段由宿主按 `properties` 顺序追加展示。输出结果不使用 `fieldOrder`，宿主按 `CommandResult.blocks` 数组顺序展示。
+
+`inputSchema.properties.<field>.x-ui.control` 可以显式指定 Desktop 等交互宿主的输入控件。控件不改变字段值的 JSON 形态；例如 `checkbox` 仍对应 boolean，`radio` / `select` 仍对应 scalar enum，`checkboxGroup` / `multiSelect` 仍对应 array enum。支持的控件：
+
+```text
+text
+textarea
+number
+checkbox
+radio
+select
+checkboxGroup
+multiSelect
+```
+
+如果字段未声明 `x-ui.control`，宿主应按 JSON Schema 语义选择默认控件：
+
+| JSON Schema 形态 | 默认控件 |
+| ---------------- | -------- |
+| `type: "boolean"` | `checkbox` |
+| `type: "string"` + `enum`，选项数 `<= 4` | `radio` |
+| `type: "string"` + `enum`，选项数 `> 4` | `select` |
+| `type: "array"` + `items.enum`，选项数 `<= 6` | `checkboxGroup` |
+| `type: "array"` + `items.enum`，选项数 `> 6` | `multiSelect` |
+| `type: "integer"` / `type: "number"` | `number` |
+| `type: "string"` 且无 `enum` | `textarea` |
+
+`text`、`textarea`、`number`、`select` 和 `multiSelect` 可以声明 `placeholder`。`textarea` 还可以声明 `rows`。这些字段同样只影响交互展示，不影响输入校验、默认值填充或 CLI 参数语义。
 
 插件 SDK 支持 command input map。Manifest 的 `inputSchema` 是运行时解析和校验的来源；插件代码可以用 command map 给 `ctx.commands.register()` 提供编译期类型推导。后续可由 manifest 自动生成 command map，避免手写类型和 schema 不一致。
 

@@ -267,6 +267,62 @@
               "$ref": "#/definitions/localizedString"
             }
           }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control"],
+          "properties": {
+            "control": {
+              "const": "checkbox"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control"],
+          "properties": {
+            "control": {
+              "const": "radio"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control"],
+          "properties": {
+            "control": {
+              "const": "select"
+            },
+            "placeholder": {
+              "$ref": "#/definitions/localizedString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control"],
+          "properties": {
+            "control": {
+              "const": "checkboxGroup"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control"],
+          "properties": {
+            "control": {
+              "const": "multiSelect"
+            },
+            "placeholder": {
+              "$ref": "#/definitions/localizedString"
+            }
+          }
         }
       ]
     }

@@ -11,6 +11,16 @@ export interface JsonSchemaRootUi {
   fieldOrder?: string[];
 }
 
+export type JsonSchemaFieldControl =
+  | "text"
+  | "textarea"
+  | "number"
+  | "checkbox"
+  | "radio"
+  | "select"
+  | "checkboxGroup"
+  | "multiSelect";
+
 export type JsonSchemaFieldUi =
   | {
       control: "text";
@@ -23,6 +33,23 @@ export type JsonSchemaFieldUi =
     }
   | {
       control: "number";
+      placeholder?: LocalizedString;
+    }
+  | {
+      control: "checkbox";
+    }
+  | {
+      control: "radio";
+    }
+  | {
+      control: "select";
+      placeholder?: LocalizedString;
+    }
+  | {
+      control: "checkboxGroup";
+    }
+  | {
+      control: "multiSelect";
       placeholder?: LocalizedString;
     };
 
