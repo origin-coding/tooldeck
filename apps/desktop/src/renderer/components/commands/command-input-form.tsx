@@ -18,11 +18,21 @@ export function CommandInputForm({
   const fields = getInputFields(command);
 
   if (!command) {
-    return <EmptyState text={t("command.form.noCommandSelected")} />;
+    return (
+      <EmptyState
+        className="flex min-h-40 flex-col items-center justify-center"
+        text={t("command.form.noCommandSelected")}
+      />
+    );
   }
 
   if (fields.length === 0) {
-    return <EmptyState text={t("command.form.noInputRequired")} />;
+    return (
+      <EmptyState
+        className="flex min-h-40 flex-col items-center justify-center"
+        text={t("command.form.noInputRequired")}
+      />
+    );
   }
 
   return (

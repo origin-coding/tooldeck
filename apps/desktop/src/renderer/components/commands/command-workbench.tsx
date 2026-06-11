@@ -86,10 +86,7 @@ export function CommandWorkbench({
 
       <div className="grid min-h-96 grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title={t("command.input")}>
-          <Typography.Text type="secondary">{command.id}</Typography.Text>
-          <div className="mt-3.5">
-            <CommandInputForm command={command} input={input} onChange={onChangeInput} />
-          </div>
+          <CommandInputForm command={command} input={input} onChange={onChangeInput} />
         </Card>
 
         <Card extra={<StatusBadge status={result?.status ?? "idle"} />} title={t("command.output")}>
