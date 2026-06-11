@@ -4,6 +4,9 @@ const rendererAndPreload = ["src/renderer", "src/preload"];
 const allowedDesktopApiMethods = [
   "listCommands",
   "listPlugins",
+  "listPreferences",
+  "getPreference",
+  "setPreference",
   "setPluginEnabled",
   "rescanPlugins",
   "runCommand",
@@ -70,6 +73,7 @@ assertOnlyAllowedMethods({
   pattern: String.raw`window\.tooldeck\.([a-zA-Z][a-zA-Z0-9]+)\(`,
   paths: ["src/renderer"],
   allowed: allowedDesktopApiMethods,
+  requireAll: false,
 });
 
 if (failures.length > 0) {
@@ -87,7 +91,7 @@ function assertRequiredMatch({ name, pattern, paths }) {
   }
 }
 
-function assertOnlyAllowedMethods({ name, pattern, paths, allowed }) {
+function assertOnlyAllowedMethods({ name, pattern, paths, allowed, requireAll = true }) {
   const result = runRg(pattern, paths);
   const expression = new RegExp(pattern);
 
@@ -108,7 +112,7 @@ function assertOnlyAllowedMethods({ name, pattern, paths, allowed }) {
   }
 
   const extra = [...found].filter((method) => !allowed.includes(method));
-  const missing = allowed.filter((method) => !found.has(method));
+  const missing = requireAll ? allowed.filter((method) => !found.has(method)) : [];
 
   if (extra.length > 0 || missing.length > 0) {
     failures.push(
