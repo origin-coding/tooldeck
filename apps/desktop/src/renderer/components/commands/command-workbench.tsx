@@ -3,6 +3,7 @@ import { Alert, Button, Card, Typography } from "antd";
 import { AlertCircle, History } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+import type { CommandInputState, CommandInputValue } from "@/renderer/app/command-input";
 import { CommandInputForm } from "@/renderer/components/commands/command-input-form";
 import { CommandOutput } from "@/renderer/components/commands/command-output";
 import { EmptyCard } from "@/renderer/components/common/empty-card";
@@ -22,11 +23,11 @@ export function CommandWorkbench({
 }: {
   command?: DesktopCommand;
   plugin?: DesktopPlugin;
-  input: Record<string, string>;
+  input: CommandInputState;
   isLoading: boolean;
   result?: CommandResult;
   runError?: string;
-  onChangeInput(key: string, value: string): void;
+  onChangeInput(key: string, value: CommandInputValue): void;
   onOpenHistory(commandId: string): void;
 }) {
   const { t } = useTranslation();

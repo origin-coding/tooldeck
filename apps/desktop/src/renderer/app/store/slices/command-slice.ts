@@ -1,4 +1,5 @@
 import { buildCommandInput } from "@/renderer/app/command-input";
+import type { CommandInputValue } from "@/renderer/app/command-input";
 import { getErrorMessage } from "@/renderer/app/selectors";
 import { getCurrentAppLocale } from "@/renderer/i18n";
 
@@ -6,7 +7,7 @@ import { mergeLoadedState } from "../helpers";
 import type { DesktopStoreSlice } from "../types";
 
 export interface CommandSlice {
-  updateInput(key: string, value: string): void;
+  updateInput(key: string, value: CommandInputValue): void;
   runSelectedCommand(): Promise<void>;
 }
 

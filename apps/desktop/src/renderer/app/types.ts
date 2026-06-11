@@ -1,5 +1,6 @@
 import type { CommandResult } from "@tooldeck/protocol";
 
+import type { CommandInputState } from "@/renderer/app/command-input";
 import type {
   CommandRunRecord,
   DesktopCommand,
@@ -18,7 +19,7 @@ export interface AppState {
   selectedCommandId?: string;
   selectedPluginId?: string;
   historyCommandId?: string;
-  input: Record<string, string>;
+  input: CommandInputState;
   result?: CommandResult;
   history: CommandRunRecord[];
   isLoadingData: boolean;

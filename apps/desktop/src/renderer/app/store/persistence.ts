@@ -12,7 +12,7 @@ type PersistedDesktopStore = Pick<
 export const persistenceOptions: PersistOptions<DesktopStore, PersistedDesktopStore> = {
   name: "tooldeck.desktop.ui",
   storage: createJSONStorage(() => localStorage),
-  version: 3,
+  version: 4,
   migrate: (persisted) => normalizePersistedState(persisted) as PersistedDesktopStore,
   partialize: (state) => ({
     view: state.view,

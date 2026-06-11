@@ -1,4 +1,5 @@
-type RawCliOptionValue = string | boolean;
+type RawCliScalarOptionValue = string | boolean;
+type RawCliOptionValue = RawCliScalarOptionValue | RawCliScalarOptionValue[];
 
 export function parseRawCliInputOptions(options: {
   rawArgs: string[];
@@ -37,26 +38,47 @@ export function parseRawCliInputOptions(options: {
     }
 
     if (optionName.startsWith("no-")) {
-      input[toCamelCase(optionName.slice(3))] = false;
+      setInputOption(input, optionName.slice(3), false);
       continue;
     }
 
     if (equalsIndex >= 0) {
-      input[toCamelCase(optionName)] = optionToken.slice(equalsIndex + 1);
+      setInputOption(input, optionName, optionToken.slice(equalsIndex + 1));
       continue;
     }
 
     const nextToken = options.rawArgs[index + 1];
 
     if (nextToken !== undefined && !nextToken.startsWith("--")) {
-      input[toCamelCase(optionName)] = nextToken;
+      setInputOption(input, optionName, nextToken);
       index += 1;
     } else {
-      input[toCamelCase(optionName)] = true;
+      setInputOption(input, optionName, true);
     }
   }
 
   return input;
+}
+
+function setInputOption(
+  input: Record<string, RawCliOptionValue>,
+  optionName: string,
+  value: RawCliScalarOptionValue,
+): void {
+  const key = toCamelCase(optionName);
+  const existingValue = input[key];
+
+  if (existingValue === undefined) {
+    input[key] = value;
+    return;
+  }
+
+  if (Array.isArray(existingValue)) {
+    existingValue.push(value);
+    return;
+  }
+
+  input[key] = [existingValue, value];
 }
 
 function toCamelCase(value: string): string {

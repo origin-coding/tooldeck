@@ -463,15 +463,15 @@ multiSelect
 
 如果字段未声明 `x-ui.control`，宿主应按 JSON Schema 语义选择默认控件：
 
-| JSON Schema 形态 | 默认控件 |
-| ---------------- | -------- |
-| `type: "boolean"` | `checkbox` |
-| `type: "string"` + `enum`，选项数 `<= 4` | `radio` |
-| `type: "string"` + `enum`，选项数 `> 4` | `select` |
+| JSON Schema 形态                              | 默认控件        |
+| --------------------------------------------- | --------------- |
+| `type: "boolean"`                             | `checkbox`      |
+| `type: "string"` + `enum`，选项数 `<= 4`      | `radio`         |
+| `type: "string"` + `enum`，选项数 `> 4`       | `select`        |
 | `type: "array"` + `items.enum`，选项数 `<= 6` | `checkboxGroup` |
-| `type: "array"` + `items.enum`，选项数 `> 6` | `multiSelect` |
-| `type: "integer"` / `type: "number"` | `number` |
-| `type: "string"` 且无 `enum` | `textarea` |
+| `type: "array"` + `items.enum`，选项数 `> 6`  | `multiSelect`   |
+| `type: "integer"` / `type: "number"`          | `number`        |
+| `type: "string"` 且无 `enum`                  | `textarea`      |
 
 `text`、`textarea`、`number`、`select` 和 `multiSelect` 可以声明 `placeholder`。`textarea` 还可以声明 `rows`。这些字段同样只影响交互展示，不影响输入校验、默认值填充或 CLI 参数语义。
 

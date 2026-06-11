@@ -1,7 +1,14 @@
-import { Form, Input, InputNumber, Tag } from "antd";
+import type { JsonPrimitive } from "@tooldeck/shared";
+import { Form, Tag } from "antd";
 import { useTranslation } from "react-i18next";
 
 import { getInputFields } from "@/renderer/app/command-input";
+import type {
+  CommandInputState,
+  CommandInputValue,
+  InputField,
+} from "@/renderer/app/command-input";
+import { CommandInputControl } from "@/renderer/components/commands/command-input-control";
 import { EmptyState } from "@/renderer/components/common/empty-state";
 import type { DesktopCommand } from "@/shared/desktop-api";
 
@@ -11,8 +18,8 @@ export function CommandInputForm({
   onChange,
 }: {
   command?: DesktopCommand;
-  input: Record<string, string>;
-  onChange(key: string, value: string): void;
+  input: CommandInputState;
+  onChange(key: string, value: CommandInputValue): void;
 }) {
   const { t } = useTranslation();
   const fields = getInputFields(command);
@@ -49,35 +56,110 @@ export function CommandInputForm({
           }
           required={field.required}
         >
-          {field.kind === "textarea" ? (
-            <Input.TextArea
-              id={`command-input-${field.key}`}
-              placeholder={field.placeholder}
-              rows={field.rows ?? 12}
-              spellCheck={false}
-              value={input[field.key] ?? ""}
-              className="!resize-none font-mono"
-              onChange={(event) => onChange(field.key, event.target.value)}
-            />
-          ) : field.kind === "number" ? (
-            <InputNumber
-              id={`command-input-${field.key}`}
-              max={field.maximum}
-              min={field.minimum}
-              placeholder={field.placeholder}
-              value={input[field.key] === "" ? null : Number(input[field.key])}
-              onChange={(value) => onChange(field.key, value === null ? "" : String(value))}
-            />
-          ) : (
-            <Input
-              id={`command-input-${field.key}`}
-              placeholder={field.placeholder}
-              value={input[field.key] ?? ""}
-              onChange={(event) => onChange(field.key, event.target.value)}
-            />
-          )}
+          {renderInputControl(field, input[field.key], (value) => onChange(field.key, value))}
         </Form.Item>
       ))}
     </Form>
+  );
+}
+
+function renderInputControl(
+  field: InputField,
+  value: CommandInputValue | undefined,
+  onChange: (value: CommandInputValue) => void,
+) {
+  if (field.kind === "checkbox") {
+    return (
+      <CommandInputControl
+        kind={field.kind}
+        field={field}
+        value={value === true}
+        onChange={(nextValue: boolean) => onChange(nextValue)}
+      />
+    );
+  }
+
+  if (field.kind === "checkboxGroup") {
+    return (
+      <CommandInputControl
+        kind={field.kind}
+        field={field}
+        value={Array.isArray(value) ? value : []}
+        onChange={(nextValue: JsonPrimitive[]) => onChange(nextValue)}
+      />
+    );
+  }
+
+  if (field.kind === "multiSelect") {
+    return (
+      <CommandInputControl
+        kind={field.kind}
+        field={field}
+        value={Array.isArray(value) ? value : []}
+        onChange={(nextValue: JsonPrimitive[]) => onChange(nextValue)}
+      />
+    );
+  }
+
+  if (field.kind === "number") {
+    return (
+      <CommandInputControl
+        kind={field.kind}
+        field={field}
+        value={typeof value === "number" ? value : ""}
+        onChange={(nextValue: number | "") => onChange(nextValue)}
+      />
+    );
+  }
+
+  if (field.kind === "radio") {
+    return (
+      <CommandInputControl
+        kind={field.kind}
+        field={field}
+        value={isJsonPrimitive(value) ? value : ""}
+        onChange={(nextValue: JsonPrimitive | "") => onChange(nextValue)}
+      />
+    );
+  }
+
+  if (field.kind === "select") {
+    return (
+      <CommandInputControl
+        kind={field.kind}
+        field={field}
+        value={isJsonPrimitive(value) ? value : ""}
+        onChange={(nextValue: JsonPrimitive | "") => onChange(nextValue)}
+      />
+    );
+  }
+
+  if (field.kind === "textarea") {
+    return (
+      <CommandInputControl
+        kind={field.kind}
+        field={field}
+        value={typeof value === "string" ? value : ""}
+        onChange={(nextValue: string) => onChange(nextValue)}
+      />
+    );
+  }
+
+  return (
+    <CommandInputControl
+      kind={field.kind}
+      field={field}
+      value={typeof value === "string" ? value : ""}
+      onChange={(nextValue: string) => onChange(nextValue)}
+    />
+  );
+}
+
+function isJsonPrimitive(value: unknown): value is JsonPrimitive {
+  return (
+    value === null ||
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
   );
 }
