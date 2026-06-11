@@ -131,9 +131,7 @@ export function DesktopShell() {
           state.view === "main" && selectedCommand ? (
             <Button
               key="run"
-              disabled={
-                !selectedCommand.pluginEnabled || state.isLoadingData || state.isRunning
-              }
+              disabled={!selectedCommand.pluginEnabled || state.isLoadingData || state.isRunning}
               htmlType="button"
               icon={<Play size={15} />}
               loading={state.isRunning}

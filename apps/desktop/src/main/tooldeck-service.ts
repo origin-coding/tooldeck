@@ -1,35 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import path from "node:path";
-import { performance } from "node:perf_hooks";
-
-import {
-  CommandRegistry,
-  CommandService,
-  ManifestIndex,
-  PluginManager,
-  scanPluginDirectory,
-  type IndexedCommand,
-  type IndexedPlugin,
-} from "@tooldeck/core";
-import { NodePluginHost } from "@tooldeck/host-node";
-import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
-import {
-  listPreferenceDefinitions,
-  requirePreferenceDefinition,
-  validatePreferenceValue,
-  type PreferenceDefinition,
-} from "@tooldeck/shared";
-import {
-  openTooldeckDatabase,
-  type TooldeckDatabase,
-  CommandRunRepository,
-  PluginRepository,
-  type PluginRow,
-  type PreferenceRow,
-  PluginKvRepository,
-  PreferenceRepository,
-} from "@tooldeck/storage";
+import type { CommandResult } from "@tooldeck/protocol";
 
 import type {
   CommandRunRecord,
@@ -43,599 +12,77 @@ import type {
   SetPluginEnabledRequest,
 } from "@/shared/desktop-api";
 
-export interface TooldeckDesktopServiceOptions {
-  workspaceRoot?: string;
-  pluginsRoot?: string;
-  storagePath?: string;
-}
+import { TooldeckDesktopCatalogService } from "./tooldeck-service/catalog";
+import { TooldeckDesktopCommandRunService } from "./tooldeck-service/commands";
+import { TooldeckDesktopServiceContext } from "./tooldeck-service/context";
+import { TooldeckDesktopPreferenceService } from "./tooldeck-service/preferences";
+import { TooldeckDesktopRuntimeService } from "./tooldeck-service/runtime";
+import type {
+  TooldeckDesktopServiceFacade,
+  TooldeckDesktopServiceOptions,
+} from "./tooldeck-service/types";
 
-export class TooldeckDesktopService {
-  private readonly workspaceRoot: string;
-  private readonly pluginsRoot: string;
-  private readonly storagePath: string;
-  private database?: TooldeckDatabase;
-  private commandRuns?: CommandRunRepository;
-  private preferences?: PreferenceRepository;
-  private plugins?: PluginRepository;
-  private pluginKv?: PluginKvRepository;
-  private pluginHost?: NodePluginHost;
-  private pluginManager?: PluginManager;
-  private commandService?: CommandService;
-  private manifestIndex?: ManifestIndex;
+export type { TooldeckDesktopServiceOptions } from "./tooldeck-service/types";
+
+export class TooldeckDesktopService implements TooldeckDesktopServiceFacade {
+  private readonly runtime: TooldeckDesktopRuntimeService;
+  private readonly catalog: TooldeckDesktopCatalogService;
+  private readonly preferences: TooldeckDesktopPreferenceService;
+  private readonly commands: TooldeckDesktopCommandRunService;
 
   constructor(options: TooldeckDesktopServiceOptions = {}) {
-    this.workspaceRoot = options.workspaceRoot ?? findWorkspaceRoot();
-    this.pluginsRoot = options.pluginsRoot ?? path.join(this.workspaceRoot, "plugins");
-    this.storagePath =
-      options.storagePath ?? path.join(this.workspaceRoot, ".data", "tooldeck.sqlite");
+    const context = new TooldeckDesktopServiceContext(options);
+
+    this.runtime = new TooldeckDesktopRuntimeService(context);
+    this.catalog = new TooldeckDesktopCatalogService(context, this.runtime);
+    this.preferences = new TooldeckDesktopPreferenceService(context);
+    this.commands = new TooldeckDesktopCommandRunService(context);
   }
 
-  async start(): Promise<void> {
-    await mkdir(path.dirname(this.storagePath), { recursive: true });
+  start(): Promise<void> {
+    return this.runtime.start();
+  }
 
-    this.database = openTooldeckDatabase({ path: this.storagePath });
-    this.commandRuns = new CommandRunRepository(this.database.db);
-    this.preferences = new PreferenceRepository(this.database.db);
-    this.plugins = new PluginRepository(this.database.db);
-    this.pluginKv = new PluginKvRepository(this.database.db);
-
-    await this.scanAndCreateRuntime();
+  dispose(): Promise<void> {
+    return this.runtime.dispose();
   }
 
   listCommands(): DesktopCommand[] {
-    const plugins = this.requirePlugins();
-    const pluginManager = this.requirePluginManager();
-    const manifestIndex = this.requireManifestIndex();
-
-    return manifestIndex.listCommands().map((command) =>
-      formatDesktopCommand({
-        command,
-        indexedPlugin: manifestIndex.getPlugin(command.pluginId),
-        plugin: plugins.getById(command.pluginId),
-        pluginManager,
-      }),
-    );
+    return this.catalog.listCommands();
   }
 
   listPlugins(): DesktopPlugin[] {
-    const manifestIndex = this.requireManifestIndex();
-    const pluginManager = this.requirePluginManager();
-
-    return this.requirePlugins()
-      .list()
-      .map((plugin) =>
-        formatDesktopPlugin({
-          plugin,
-          indexedPlugin: manifestIndex.getPlugin(plugin.id),
-          commandCount: manifestIndex
-            .listCommands()
-            .filter((command) => command.pluginId === plugin.id).length,
-          pluginManager,
-        }),
-      );
+    return this.catalog.listPlugins();
   }
 
-  listPreferences(): DesktopPreference[] {
-    const preferences = this.requirePreferences();
-
-    return listPreferenceDefinitions()
-      .filter(isDesktopVisiblePreference)
-      .map((definition) =>
-        formatDesktopPreference(definition, preferences.getRow(definition.scope, definition.key)),
-      );
-  }
-
-  getPreference(request: GetPreferenceRequest): DesktopPreference {
-    const definition = requirePreferenceDefinition(request.scope, request.key);
-
-    if (!isDesktopVisiblePreference(definition)) {
-      throw new Error(`Desktop cannot manage preference: ${request.scope}.${request.key}`);
-    }
-
-    return formatDesktopPreference(
-      definition,
-      this.requirePreferences().getRow(definition.scope, definition.key),
-    );
-  }
-
-  setPreference(request: SetPreferenceRequest): DesktopPreference {
-    const definition = requirePreferenceDefinition(request.scope, request.key);
-
-    if (!isDesktopVisiblePreference(definition)) {
-      throw new Error(`Desktop cannot manage preference: ${request.scope}.${request.key}`);
-    }
-
-    const value = validatePreferenceValue(definition.scope, definition.key, request.value);
-    const row = this.requirePreferences().set({
-      scope: definition.scope,
-      key: definition.key,
-      value,
-    });
-
-    return formatDesktopPreference(definition, row);
-  }
-
-  async rescanPlugins(): Promise<{
+  rescanPlugins(): Promise<{
     commands: DesktopCommand[];
     plugins: DesktopPlugin[];
   }> {
-    await this.scanAndCreateRuntime();
-
-    return {
-      commands: this.listCommands(),
-      plugins: this.listPlugins(),
-    };
+    return this.catalog.rescanPlugins();
   }
 
-  async setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin> {
-    await this.syncScannedPlugins();
-
-    const plugin = this.requirePlugins().setEnabled(request.pluginId, request.enabled);
-
-    if (!plugin) {
-      throw new Error(`Plugin is not registered: ${request.pluginId}`);
-    }
-
-    await this.scanAndCreateRuntime();
-
-    const updatedPlugin = this.requirePlugins().getById(request.pluginId);
-
-    if (!updatedPlugin) {
-      throw new Error(`Plugin is not registered: ${request.pluginId}`);
-    }
-
-    const manifestIndex = this.requireManifestIndex();
-
-    return formatDesktopPlugin({
-      plugin: updatedPlugin,
-      indexedPlugin: manifestIndex.getPlugin(updatedPlugin.id),
-      commandCount: manifestIndex
-        .listCommands()
-        .filter((command) => command.pluginId === updatedPlugin.id).length,
-      pluginManager: this.requirePluginManager(),
-    });
+  setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin> {
+    return this.catalog.setPluginEnabled(request);
   }
 
-  async runCommand(request: RunCommandRequest): Promise<CommandResult> {
-    const commandRuns = this.requireCommandRuns();
-    const manifestIndex = this.requireManifestIndex();
-    const startedAt = performance.now();
-    const pluginId = manifestIndex.getCommandOwner(request.commandId);
-
-    try {
-      this.assertCommandPluginEnabled(request.commandId, pluginId);
-
-      const run = await this.requireCommandService().runCommand({
-        commandId: request.commandId,
-        input: request.input,
-      });
-
-      commandRuns.create({
-        commandId: request.commandId,
-        pluginId,
-        source: "desktop",
-        status: run.result.status,
-        input: run.input,
-        output: run.result,
-        durationMs: elapsedMilliseconds(startedAt),
-      });
-
-      return run.result;
-    } catch (error) {
-      commandRuns.create({
-        commandId: request.commandId,
-        pluginId,
-        source: "desktop",
-        status: "error",
-        input: request.input,
-        error: serializeError(error),
-        durationMs: elapsedMilliseconds(startedAt),
-      });
-
-      throw error;
-    }
+  listPreferences(): DesktopPreference[] {
+    return this.preferences.listPreferences();
   }
 
-  listCommandRuns(request: ListCommandRunsRequest = {}): CommandRunRecord[] {
-    return this.requireCommandRuns()
-      .listRecent(request)
-      .map((row) => ({
-        id: row.id,
-        commandId: row.commandId,
-        pluginId: row.pluginId ?? undefined,
-        source: row.source,
-        status: row.status as CommandResult["status"],
-        input: parseJson(row.inputJson),
-        output: parseJson(row.outputJson) as CommandResult | undefined,
-        error: parseJson(row.errorJson),
-        durationMs: row.durationMs ?? undefined,
-        createdAt: row.createdAt,
-      }));
+  getPreference(request: GetPreferenceRequest): DesktopPreference {
+    return this.preferences.getPreference(request);
   }
 
-  async dispose(): Promise<void> {
-    try {
-      await this.pluginHost?.disposeAll();
-    } finally {
-      this.database?.close();
-    }
+  setPreference(request: SetPreferenceRequest): DesktopPreference {
+    return this.preferences.setPreference(request);
   }
 
-  private async scanAndCreateRuntime(): Promise<void> {
-    await this.pluginHost?.disposeAll();
-
-    const commandRegistry = new CommandRegistry();
-    const manifestIndex = new ManifestIndex();
-    const pluginKv = this.requirePluginKv();
-
-    const pluginHost = new NodePluginHost({
-      commandRegistry,
-      createPluginStorage(pluginId) {
-        return {
-          async get(key) {
-            return pluginKv.get(pluginId, key);
-          },
-          async set(key, value) {
-            pluginKv.set({
-              pluginId,
-              key,
-              value,
-            });
-          },
-          async delete(key) {
-            pluginKv.delete(pluginId, key);
-          },
-        };
-      },
-    });
-
-    await scanPluginDirectory({
-      pluginsRoot: this.pluginsRoot,
-      manifestIndex,
-    });
-    this.syncScannedPluginIndex(manifestIndex);
-
-    const pluginManager = new PluginManager({
-      manifestIndex,
-      commandRegistry,
-      pluginHost,
-    });
-
-    this.pluginHost = pluginHost;
-    this.pluginManager = pluginManager;
-    this.manifestIndex = manifestIndex;
-    this.commandService = new CommandService({
-      pluginManager,
-      coercion: "none",
-    });
+  runCommand(request: RunCommandRequest): Promise<CommandResult> {
+    return this.commands.runCommand(request);
   }
 
-  private async syncScannedPlugins(): Promise<ManifestIndex> {
-    const manifestIndex = new ManifestIndex();
-
-    await scanPluginDirectory({
-      pluginsRoot: this.pluginsRoot,
-      manifestIndex,
-    });
-    this.syncScannedPluginIndex(manifestIndex);
-
-    return manifestIndex;
-  }
-
-  private syncScannedPluginIndex(manifestIndex: ManifestIndex): void {
-    this.requirePlugins().syncScannedPlugins({
-      plugins: manifestIndex.listPlugins().map((plugin) => ({
-        manifest: plugin.manifest,
-        manifestPath: plugin.manifestPath,
-      })),
-    });
-  }
-
-  private assertCommandPluginEnabled(commandId: string, pluginId: string | undefined): void {
-    if (!pluginId) {
-      return;
-    }
-
-    const plugin = this.requirePlugins().getById(pluginId);
-
-    if (!plugin?.enabled) {
-      throw new Error(`Plugin is disabled for command ${commandId}: ${pluginId}`);
-    }
-  }
-
-  private requireCommandService(): CommandService {
-    if (!this.commandService) {
-      throw new Error("Tooldeck desktop service has not started.");
-    }
-
-    return this.commandService;
-  }
-
-  private requirePluginManager(): PluginManager {
-    if (!this.pluginManager) {
-      throw new Error("Tooldeck desktop service has not started.");
-    }
-
-    return this.pluginManager;
-  }
-
-  private requireManifestIndex(): ManifestIndex {
-    if (!this.manifestIndex) {
-      throw new Error("Tooldeck desktop service has not started.");
-    }
-
-    return this.manifestIndex;
-  }
-
-  private requireCommandRuns(): CommandRunRepository {
-    if (!this.commandRuns) {
-      throw new Error("Tooldeck desktop service has not started.");
-    }
-
-    return this.commandRuns;
-  }
-
-  private requirePreferences(): PreferenceRepository {
-    if (!this.preferences) {
-      throw new Error("Tooldeck desktop service has not started.");
-    }
-
-    return this.preferences;
-  }
-
-  private requirePlugins(): PluginRepository {
-    if (!this.plugins) {
-      throw new Error("Tooldeck desktop service has not started.");
-    }
-
-    return this.plugins;
-  }
-
-  private requirePluginKv(): PluginKvRepository {
-    if (!this.pluginKv) {
-      throw new Error("Tooldeck desktop service has not started.");
-    }
-
-    return this.pluginKv;
-  }
-}
-
-function formatDesktopCommand(options: {
-  command: IndexedCommand;
-  indexedPlugin: IndexedPlugin | undefined;
-  plugin: PluginRow | undefined;
-  pluginManager: PluginManager;
-}): DesktopCommand {
-  const { command, indexedPlugin, plugin, pluginManager } = options;
-  const localeResources = readManifestLocaleResources(indexedPlugin);
-  const title = resolveLocalizedString(command.definition.title);
-  const description = command.definition.description
-    ? resolveLocalizedString(command.definition.description)
-    : undefined;
-
-  return {
-    id: command.id,
-    pluginId: command.pluginId,
-    pluginEnabled: plugin?.enabled ?? false,
-    pluginRuntimeState: pluginManager.getPluginRuntimeState(command.pluginId),
-    title,
-    description,
-    inputSchema: command.definition.inputSchema,
-    searchText: uniqueStrings([
-      command.id,
-      command.pluginId,
-      title,
-      description,
-      ...collectLocalizedStringSearchText(command.definition.title, localeResources),
-      ...(command.definition.description
-        ? collectLocalizedStringSearchText(command.definition.description, localeResources)
-        : []),
-      ...(indexedPlugin
-        ? collectPluginLocalizedSearchText(indexedPlugin.manifest, localeResources)
-        : []),
-    ]),
-  };
-}
-
-function formatDesktopPlugin(options: {
-  plugin: PluginRow;
-  indexedPlugin: IndexedPlugin | undefined;
-  commandCount: number;
-  pluginManager: PluginManager;
-}): DesktopPlugin {
-  const { plugin, indexedPlugin, commandCount, pluginManager } = options;
-  const localeResources = readManifestLocaleResources(indexedPlugin);
-  const name = resolveStoredLocalizedString(plugin.nameJson);
-  const description = indexedPlugin?.manifest.description
-    ? resolveLocalizedString(indexedPlugin.manifest.description)
-    : undefined;
-
-  return {
-    id: plugin.id,
-    name,
-    description,
-    version: plugin.version,
-    manifestPath: plugin.manifestPath,
-    enabled: plugin.enabled,
-    runtimeState: indexedPlugin ? pluginManager.getPluginRuntimeState(plugin.id) : "inactive",
-    commandCount,
-    updatedAt: plugin.updatedAt,
-    searchText: uniqueStrings([
-      plugin.id,
-      name,
-      description,
-      plugin.version,
-      plugin.manifestPath,
-      ...(indexedPlugin
-        ? collectPluginLocalizedSearchText(indexedPlugin.manifest, localeResources)
-        : []),
-    ]),
-  };
-}
-
-function formatDesktopPreference(
-  definition: PreferenceDefinition,
-  preference: PreferenceRow | undefined,
-): DesktopPreference {
-  return {
-    scope: definition.scope,
-    key: definition.key,
-    value: preference
-      ? validatePreferenceValue(definition.scope, definition.key, JSON.parse(preference.valueJson))
-      : definition.defaultValue,
-    defaultValue: definition.defaultValue,
-    description: definition.description,
-    valueType: definition.valueType,
-    ...(definition.values ? { values: definition.values } : {}),
-    ...(preference ? { updatedAt: preference.updatedAt } : {}),
-  };
-}
-
-function isDesktopVisiblePreference(definition: PreferenceDefinition): boolean {
-  return definition.scope === "shared" || definition.scope === "desktop";
-}
-
-function resolveLocalizedString(value: LocalizedString): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  return value.default;
-}
-
-function resolveStoredLocalizedString(value: string): string {
-  try {
-    return resolveLocalizedString(JSON.parse(value) as LocalizedString);
-  } catch {
-    return value;
-  }
-}
-
-type LocaleResources = Record<string, string>[];
-
-function readManifestLocaleResources(indexedPlugin: IndexedPlugin | undefined): LocaleResources {
-  if (!indexedPlugin?.manifest.locales) {
-    return [];
-  }
-
-  const manifestDir = path.dirname(indexedPlugin.manifestPath);
-  const resources: LocaleResources = [];
-
-  for (const localePath of Object.values(indexedPlugin.manifest.locales)) {
-    if (!localePath) {
-      continue;
-    }
-
-    try {
-      const text = readFileSync(path.resolve(manifestDir, localePath), "utf8");
-      resources.push(flattenLocaleResource(JSON.parse(text)));
-    } catch {
-      // Locale files are optional search enrichment; manifest defaults remain searchable.
-    }
-  }
-
-  return resources;
-}
-
-function flattenLocaleResource(value: unknown, prefix = ""): Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return {};
-  }
-
-  const flattened: Record<string, string> = {};
-
-  for (const [key, entry] of Object.entries(value)) {
-    const nextKey = prefix ? `${prefix}.${key}` : key;
-
-    if (typeof entry === "string") {
-      flattened[nextKey] = entry;
-      continue;
-    }
-
-    if (entry && typeof entry === "object" && !Array.isArray(entry)) {
-      Object.assign(flattened, flattenLocaleResource(entry, nextKey));
-    }
-  }
-
-  return flattened;
-}
-
-function collectPluginLocalizedSearchText(
-  manifest: IndexedPlugin["manifest"],
-  resources: LocaleResources,
-): string[] {
-  return [
-    manifest.id,
-    manifest.version,
-    ...collectLocalizedStringSearchText(manifest.name, resources),
-    ...(manifest.description
-      ? collectLocalizedStringSearchText(manifest.description, resources)
-      : []),
-  ];
-}
-
-function collectLocalizedStringSearchText(
-  value: LocalizedString,
-  resources: LocaleResources,
-): string[] {
-  if (typeof value === "string") {
-    return [value];
-  }
-
-  return uniqueStrings([
-    value.default,
-    ...resources.map((resource) => resource[value.key]).filter(isSearchString),
-  ]);
-}
-
-function uniqueStrings(values: Array<string | undefined>): string[] {
-  return [...new Set(values.map((value) => value?.trim()).filter(isSearchString))];
-}
-
-function isSearchString(value: string | undefined): value is string {
-  return typeof value === "string" && value.length > 0;
-}
-
-function elapsedMilliseconds(startedAt: number): number {
-  return Math.max(0, Math.round(performance.now() - startedAt));
-}
-
-function serializeError(error: unknown): Record<string, unknown> {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
-  }
-
-  return {
-    message: String(error),
-  };
-}
-
-function parseJson(value: string | null): unknown {
-  if (value === null) {
-    return undefined;
-  }
-
-  return JSON.parse(value);
-}
-
-function findWorkspaceRoot(): string {
-  let current = process.cwd();
-
-  for (;;) {
-    if (existsSync(path.join(current, "pnpm-workspace.yaml"))) {
-      return current;
-    }
-
-    const parent = path.dirname(current);
-
-    if (parent === current) {
-      return process.cwd();
-    }
-
-    current = parent;
+  listCommandRuns(request?: ListCommandRunsRequest): CommandRunRecord[] {
+    return this.commands.listCommandRuns(request);
   }
 }
