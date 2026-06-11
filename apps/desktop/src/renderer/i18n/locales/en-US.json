@@ -47,6 +47,7 @@
       "choose": "Choose a command from the list."
     },
     "history": "History",
+    "sourceLine": "{{pluginName}} / {{commandId}}",
     "pluginDisabled": {
       "title": "Plugin disabled",
       "description": "Enable {{pluginName}} before running this command."

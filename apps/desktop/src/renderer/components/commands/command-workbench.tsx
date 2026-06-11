@@ -1,5 +1,5 @@
 import type { CommandResult } from "@tooldeck/protocol";
-import { Alert, Button, Card, Tag, Typography } from "antd";
+import { Alert, Button, Card, Typography } from "antd";
 import { AlertCircle, History } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -40,13 +40,18 @@ export function CommandWorkbench({
     );
   }
 
+  const pluginName = plugin?.name ?? command.pluginId;
+  const showRuntimeStatus =
+    command.pluginEnabled &&
+    command.pluginRuntimeState !== "active" &&
+    command.pluginRuntimeState !== "inactive";
+
   return (
     <>
       <Card
         extra={
           <div className="flex items-center gap-2">
-            <StatusBadge status={command.pluginEnabled ? command.pluginRuntimeState : "disabled"} />
-            {plugin ? <Tag>{plugin.name}</Tag> : null}
+            {showRuntimeStatus ? <StatusBadge status={command.pluginRuntimeState} /> : null}
             <Button
               htmlType="button"
               icon={<History size={15} />}
@@ -59,12 +64,18 @@ export function CommandWorkbench({
         title={command.title}
       >
         <Typography.Text type="secondary">{command.description ?? command.id}</Typography.Text>
+        <Typography.Text className="mt-2 block" type="secondary">
+          {t("command.sourceLine", {
+            commandId: command.id,
+            pluginName,
+          })}
+        </Typography.Text>
         {!command.pluginEnabled ? (
           <Alert
             showIcon
             className="mt-3.5"
             description={t("command.pluginDisabled.description", {
-              pluginName: plugin?.name ?? command.pluginId,
+              pluginName,
             })}
             icon={<AlertCircle size={16} />}
             title={t("command.pluginDisabled.title")}

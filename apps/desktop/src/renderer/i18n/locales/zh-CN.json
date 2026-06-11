@@ -47,6 +47,7 @@
       "choose": "请从列表中选择一个命令。"
     },
     "history": "历史",
+    "sourceLine": "{{pluginName}} / {{commandId}}",
     "pluginDisabled": {
       "title": "插件已禁用",
       "description": "请先启用 {{pluginName}}，再运行此命令。"
