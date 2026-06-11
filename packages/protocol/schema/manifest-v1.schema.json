@@ -134,6 +134,37 @@
           "properties": {
             "x-ui": {
               "$ref": "#/definitions/jsonSchemaUi"
+            },
+            "properties": {
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/definitions/tooldeckInputFieldJsonSchemaDefinition"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "tooldeckInputFieldJsonSchemaDefinition": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "$ref": "#/definitions/tooldeckInputFieldJsonSchema"
+        }
+      ]
+    },
+    "tooldeckInputFieldJsonSchema": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/tooldeckJsonSchema"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x-ui": {
+              "$ref": "#/definitions/jsonSchemaFieldUi"
             }
           }
         }
@@ -179,6 +210,52 @@
           "uniqueItems": true
         }
       }
+    },
+    "jsonSchemaFieldUi": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control"],
+          "properties": {
+            "control": {
+              "const": "text"
+            },
+            "placeholder": {
+              "$ref": "#/definitions/localizedString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control"],
+          "properties": {
+            "control": {
+              "const": "textarea"
+            },
+            "rows": {
+              "type": "number"
+            },
+            "placeholder": {
+              "$ref": "#/definitions/localizedString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["control"],
+          "properties": {
+            "control": {
+              "const": "number"
+            },
+            "placeholder": {
+              "$ref": "#/definitions/localizedString"
+            }
+          }
+        }
+      ]
     }
   }
 }

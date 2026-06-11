@@ -29,7 +29,24 @@ export interface JsonContentBlockV1 {
   value: JsonValue;
 }
 
-export type ContentBlockV1 = TextContentBlockV1 | CodeContentBlockV1 | JsonContentBlockV1;
+export type PropertyValueV1 = string | number | boolean | null;
+
+export interface PropertyItemV1 {
+  label: LocalizedString;
+  value: PropertyValueV1;
+  note?: LocalizedString;
+}
+
+export interface PropertiesContentBlockV1 {
+  type: "properties";
+  items: PropertyItemV1[];
+}
+
+export type ContentBlockV1 =
+  | TextContentBlockV1
+  | CodeContentBlockV1
+  | JsonContentBlockV1
+  | PropertiesContentBlockV1;
 
 export interface CommandErrorV1 {
   message: string;
@@ -48,6 +65,9 @@ export type CommandStatus = CommandStatusV1;
 export type ContentBlock = ContentBlockV1;
 export type CodeContentBlock = CodeContentBlockV1;
 export type JsonContentBlock = JsonContentBlockV1;
+export type PropertiesContentBlock = PropertiesContentBlockV1;
+export type PropertyItem = PropertyItemV1;
+export type PropertyValue = PropertyValueV1;
 export type TextContentBlock = TextContentBlockV1;
 export type CommandError = CommandErrorV1;
 export type CommandResult = CommandResultV1;
