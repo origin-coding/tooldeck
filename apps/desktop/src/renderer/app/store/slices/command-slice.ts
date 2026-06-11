@@ -1,5 +1,6 @@
 import { buildCommandInput } from "@/renderer/app/command-input";
 import { getErrorMessage } from "@/renderer/app/selectors";
+import { getCurrentAppLocale } from "@/renderer/i18n";
 
 import { mergeLoadedState } from "../helpers";
 import type { DesktopStoreSlice } from "../types";
@@ -46,9 +47,10 @@ export const createCommandSlice: DesktopStoreSlice<CommandSlice> = (set, get) =>
         commandId: selectedCommand.id,
         input,
       });
+      const locale = getCurrentAppLocale();
       const [commands, plugins, history] = await Promise.all([
-        window.tooldeck.listCommands(),
-        window.tooldeck.listPlugins(),
+        window.tooldeck.listCommands({ locale }),
+        window.tooldeck.listPlugins({ locale }),
         window.tooldeck.listCommandRuns({
           limit: get().view === "history" ? 50 : 25,
           commandId: get().view === "history" ? get().historyCommandId : undefined,
@@ -73,9 +75,10 @@ export const createCommandSlice: DesktopStoreSlice<CommandSlice> = (set, get) =>
       let plugins = state.plugins;
 
       try {
+        const locale = getCurrentAppLocale();
         [commands, plugins, history] = await Promise.all([
-          window.tooldeck.listCommands(),
-          window.tooldeck.listPlugins(),
+          window.tooldeck.listCommands({ locale }),
+          window.tooldeck.listPlugins({ locale }),
           window.tooldeck.listCommandRuns({
             limit: state.view === "history" ? 50 : 25,
             commandId: state.view === "history" ? state.historyCommandId : undefined,

@@ -1,7 +1,12 @@
 import type { LocalizedString } from "@tooldeck/protocol";
 import { describe, expect, it } from "vitest";
 
-import { createLocaleFallbacks, flattenLocaleResource, resolveLocalizedString } from "../src";
+import {
+  createLocaleFallbacks,
+  flattenLocaleResource,
+  resolveJsonSchemaI18n,
+  resolveLocalizedString,
+} from "../src";
 
 describe("locale resolution", () => {
   it("returns plain strings unchanged", () => {
@@ -105,6 +110,42 @@ describe("locale resolution", () => {
       "plugin.name": "JSON 工具",
       "plugin.description": "用于格式化 JSON 的工具。",
       "commands.format.title": "格式化 JSON",
+    });
+  });
+
+  it("resolves JSON Schema x-i18n display fields", () => {
+    expect(
+      resolveJsonSchemaI18n({
+        schema: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              title: "JSON Text",
+              description: "Input JSON text.",
+              "x-i18n": {
+                title: "schema.format.text.title",
+                description: "schema.format.text.description",
+              },
+            },
+          },
+        },
+        locale: "zh-CN",
+        defaultLocale: "en",
+        resources: {
+          "zh-CN": {
+            "schema.format.text.title": "JSON 文本",
+            "schema.format.text.description": "输入 JSON 文本。",
+          },
+        },
+      }),
+    ).toMatchObject({
+      properties: {
+        text: {
+          title: "JSON 文本",
+          description: "输入 JSON 文本。",
+        },
+      },
     });
   });
 });

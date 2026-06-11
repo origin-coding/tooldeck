@@ -7,9 +7,10 @@ import {
   type IndexedPlugin,
   type LocaleResourceIndex,
   PluginManager,
+  resolveJsonSchemaI18n,
   resolveLocalizedString,
 } from "@tooldeck/core";
-import type { LocalizedString } from "@tooldeck/protocol";
+import type { LocalizedString, TooldeckJsonSchema } from "@tooldeck/protocol";
 import { validatePreferenceValue, type PreferenceDefinition } from "@tooldeck/shared";
 import type { PluginRow, PreferenceRow } from "@tooldeck/storage";
 
@@ -47,7 +48,14 @@ export function formatDesktopCommand(options: {
     pluginRuntimeState: pluginManager.getPluginRuntimeState(command.pluginId),
     title,
     description,
-    inputSchema: command.definition.inputSchema,
+    inputSchema: command.definition.inputSchema
+      ? (resolveJsonSchemaI18n({
+          schema: command.definition.inputSchema,
+          resources: localeResources,
+          locale,
+          defaultLocale,
+        }) as TooldeckJsonSchema)
+      : undefined,
     searchText: uniqueStrings([
       command.id,
       command.pluginId,

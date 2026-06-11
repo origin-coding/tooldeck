@@ -1,5 +1,5 @@
 import { getErrorMessage } from "@/renderer/app/selectors";
-import { applyLocalePreference } from "@/renderer/i18n";
+import { applyLocalePreference, getCurrentAppLocale } from "@/renderer/i18n";
 
 import { getPreferenceValue, mergeLoadedState } from "../helpers";
 import type { DesktopStoreSlice } from "../types";
@@ -19,13 +19,17 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set) => ({
     }));
 
     try {
-      const [commands, plugins, history, preferences] = await Promise.all([
-        window.tooldeck.listCommands(),
-        window.tooldeck.listPlugins(),
+      const [history, preferences] = await Promise.all([
         window.tooldeck.listCommandRuns({ limit: 25 }),
         window.tooldeck.listPreferences(),
       ]);
-      applyLocalePreference(getPreferenceValue(preferences, "shared", "locale"));
+      const locale = await applyLocalePreference(
+        getPreferenceValue(preferences, "shared", "locale"),
+      );
+      const [commands, plugins] = await Promise.all([
+        window.tooldeck.listCommands({ locale }),
+        window.tooldeck.listPlugins({ locale }),
+      ]);
 
       set((current) =>
         mergeLoadedState({
@@ -53,7 +57,7 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set) => ({
 
     try {
       const [{ commands, plugins }, history] = await Promise.all([
-        window.tooldeck.rescanPlugins(),
+        window.tooldeck.rescanPlugins({ locale: getCurrentAppLocale() }),
         window.tooldeck.listCommandRuns({ limit: 25 }),
       ]);
 
@@ -87,8 +91,8 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set) => ({
         enabled,
       });
       const [commands, plugins] = await Promise.all([
-        window.tooldeck.listCommands(),
-        window.tooldeck.listPlugins(),
+        window.tooldeck.listCommands({ locale: getCurrentAppLocale() }),
+        window.tooldeck.listPlugins({ locale: getCurrentAppLocale() }),
       ]);
 
       set((current) =>

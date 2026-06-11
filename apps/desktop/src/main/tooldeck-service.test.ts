@@ -46,6 +46,16 @@ describe("TooldeckDesktopService", () => {
             id: "json.format",
             title: "格式化 JSON",
             description: "使用可配置缩进格式化 JSON 文本。",
+            inputSchema: expect.objectContaining({
+              properties: expect.objectContaining({
+                text: expect.objectContaining({
+                  title: "JSON 文本",
+                }),
+                indent: expect.objectContaining({
+                  title: "缩进大小",
+                }),
+              }),
+            }),
           }),
         ]),
       );

@@ -26,8 +26,16 @@ void i18n.use(initReactI18next).init({
   returnNull: false,
 });
 
-export function applyLocalePreference(value: unknown): void {
-  void i18n.changeLanguage(resolveAppLocale(value));
+export async function applyLocalePreference(value: unknown): Promise<TooldeckAppLocale> {
+  const locale = resolveAppLocale(value);
+
+  await i18n.changeLanguage(locale);
+
+  return locale;
+}
+
+export function getCurrentAppLocale(): TooldeckAppLocale {
+  return resolveAppLocale(i18n.resolvedLanguage ?? i18n.language);
 }
 
 export function isTooldeckLocalePreference(value: unknown): value is TooldeckLocalePreference {
@@ -39,7 +47,7 @@ export function resolveAppLocale(value: unknown): TooldeckAppLocale {
     return value;
   }
 
-  const systemLanguage = navigator.language;
+  const systemLanguage = globalThis.navigator?.language ?? "en-US";
 
   if (systemLanguage === "zh-CN" || systemLanguage.startsWith("zh")) {
     return "zh-CN";
