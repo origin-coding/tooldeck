@@ -1,6 +1,6 @@
 import { PageContainer, ProLayout } from "@ant-design/pro-components";
 import { Button } from "antd";
-import { Play, RefreshCw, Settings } from "lucide-react";
+import { Play, Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
@@ -41,25 +41,17 @@ export function DesktopShell() {
       view: state.view,
     })),
   );
-  const {
-    loadData,
-    rescanPlugins,
-    runSelectedCommand,
-    selectCommand,
-    selectPlugin,
-    setPreference,
-    setView,
-  } = useDesktopStore(
-    useShallow((state) => ({
-      loadData: state.loadData,
-      rescanPlugins: state.rescanPlugins,
-      runSelectedCommand: state.runSelectedCommand,
-      selectCommand: state.selectCommand,
-      selectPlugin: state.selectPlugin,
-      setPreference: state.setPreference,
-      setView: state.setView,
-    })),
-  );
+  const { loadData, runSelectedCommand, selectCommand, selectPlugin, setPreference, setView } =
+    useDesktopStore(
+      useShallow((state) => ({
+        loadData: state.loadData,
+        runSelectedCommand: state.runSelectedCommand,
+        selectCommand: state.selectCommand,
+        selectPlugin: state.selectPlugin,
+        setPreference: state.setPreference,
+        setView: state.setView,
+      })),
+    );
   const [searchOpen, setSearchOpen] = useState(false);
   const navigationMode = getNavigationMode(preferences);
   const sidebarCollapsed = getSidebarCollapsed(preferences);
@@ -164,15 +156,6 @@ export function DesktopShell() {
         className="tooldeck-page-container"
         content={pageDescription}
         extra={[
-          <Button
-            key="refresh"
-            disabled={isLoadingData}
-            htmlType="button"
-            icon={<RefreshCw className={isLoadingData ? "animate-spin" : undefined} size={15} />}
-            onClick={rescanPlugins}
-          >
-            {t("common.rescan")}
-          </Button>,
           view === "main" && selectedCommand ? (
             <Button
               key="run"

@@ -1,6 +1,6 @@
 import type { PreferenceScope } from "@tooldeck/shared";
-import { Button, Card, Divider, Segmented, Select, Switch, Typography } from "antd";
-import { Database, FolderSearch, History, Languages, PanelLeftClose, RotateCw } from "lucide-react";
+import { Button, Card, Divider, Segmented, Select, Switch, Tooltip, Typography } from "antd";
+import { FolderSearch, History, Languages, PanelLeftClose, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { DesktopNavigationMode } from "@/renderer/app/types";
@@ -55,7 +55,7 @@ export function SettingsWorkbench({
                   </Typography.Text>
                 </div>
                 <Select
-                  className="w-full md:w-[180px]"
+                  className="w-full md:w-45"
                   disabled={isLoading}
                   options={[
                     { label: t("common.system"), value: "system" },
@@ -119,14 +119,18 @@ export function SettingsWorkbench({
 
       <Card
         extra={
-          <Button
-            disabled={isLoading}
-            htmlType="button"
-            icon={<RotateCw className={isLoading ? "animate-spin" : undefined} size={15} />}
-            onClick={onRefresh}
-          >
-            {t("common.rescan")}
-          </Button>
+          <Tooltip title={t("settings.workspace.rescanTooltip")}>
+            <span>
+              <Button
+                disabled={isLoading}
+                htmlType="button"
+                icon={<RotateCw className={isLoading ? "animate-spin" : undefined} size={15} />}
+                onClick={onRefresh}
+              >
+                {t("common.rescan")}
+              </Button>
+            </span>
+          </Tooltip>
         }
         title={t("settings.workspace.title")}
       >
@@ -146,31 +150,6 @@ export function SettingsWorkbench({
                 <History size={16} />
               </span>
             </button>
-          </div>
-        </div>
-      </Card>
-
-      <Card title={t("settings.scope.title")}>
-        <Typography.Text type="secondary">{t("settings.scope.description")}</Typography.Text>
-        <div className="mt-3.5 grid gap-3.5">
-          <div className="flex items-start gap-2.5">
-            <FolderSearch size={16} />
-            <div>
-              <div className="font-semibold">{t("settings.scope.manifestScanning")}</div>
-              <Typography.Text type="secondary">
-                {t("settings.scope.manifestScanningDescription")}
-              </Typography.Text>
-            </div>
-          </div>
-          <Divider />
-          <div className="flex items-start gap-2.5">
-            <Database size={16} />
-            <div>
-              <div className="font-semibold">{t("settings.scope.sqliteState")}</div>
-              <Typography.Text type="secondary">
-                {t("settings.scope.sqliteStateDescription")}
-              </Typography.Text>
-            </div>
           </div>
         </div>
       </Card>

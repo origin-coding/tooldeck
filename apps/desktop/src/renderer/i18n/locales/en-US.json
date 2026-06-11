@@ -144,6 +144,7 @@
     "workspace": {
       "title": "Local Workspace",
       "description": "Trusted plugin data for this desktop instance.",
+      "rescanTooltip": "Rescan local plugin manifests and refresh the plugin and command lists without activating plugin code.",
       "recentRuns": "Recent Runs"
     },
     "scope": {

@@ -144,6 +144,7 @@
     "workspace": {
       "title": "本地工作区",
       "description": "此桌面实例使用的可信插件数据。",
+      "rescanTooltip": "重新扫描本地插件 manifest，刷新插件和命令列表；不会激活插件代码。",
       "recentRuns": "最近运行"
     },
     "scope": {
