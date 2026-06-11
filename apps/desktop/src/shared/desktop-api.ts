@@ -73,6 +73,11 @@ export interface SetPreferenceRequest {
   value: unknown;
 }
 
+export interface GetPreferenceRequest {
+  scope: PreferenceScope;
+  key: string;
+}
+
 export interface SetPluginEnabledRequest {
   pluginId: string;
   enabled: boolean;
@@ -82,6 +87,7 @@ export interface DesktopApi {
   listCommands(): Promise<DesktopCommand[]>;
   listPlugins(): Promise<DesktopPlugin[]>;
   listPreferences(): Promise<DesktopPreference[]>;
+  getPreference(request: GetPreferenceRequest): Promise<DesktopPreference>;
   setPreference(request: SetPreferenceRequest): Promise<DesktopPreference>;
   setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin>;
   rescanPlugins(): Promise<{
@@ -96,6 +102,7 @@ export const desktopIpcChannels = {
   listCommands: "tooldeck:list-commands",
   listPlugins: "tooldeck:list-plugins",
   listPreferences: "tooldeck:list-preferences",
+  getPreference: "tooldeck:get-preference",
   setPreference: "tooldeck:set-preference",
   setPluginEnabled: "tooldeck:set-plugin-enabled",
   rescanPlugins: "tooldeck:rescan-plugins",

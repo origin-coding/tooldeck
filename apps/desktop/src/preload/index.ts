@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import {
   desktopIpcChannels,
   type DesktopApi,
+  type GetPreferenceRequest,
   type ListCommandRunsRequest,
   type RunCommandRequest,
   type SetPreferenceRequest,
@@ -18,6 +19,9 @@ const api: DesktopApi = {
   },
   listPreferences() {
     return ipcRenderer.invoke(desktopIpcChannels.listPreferences);
+  },
+  getPreference(request: GetPreferenceRequest) {
+    return ipcRenderer.invoke(desktopIpcChannels.getPreference, request);
   },
   setPreference(request: SetPreferenceRequest) {
     return ipcRenderer.invoke(desktopIpcChannels.setPreference, request);

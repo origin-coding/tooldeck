@@ -208,6 +208,16 @@ describe("TooldeckDesktopService", () => {
           value: false,
         }),
       ]);
+      expect(
+        service.getPreference({
+          scope: "shared",
+          key: "locale",
+        }),
+      ).toMatchObject({
+        scope: "shared",
+        key: "locale",
+        value: "system",
+      });
 
       expect(
         service.setPreference({
@@ -239,6 +249,16 @@ describe("TooldeckDesktopService", () => {
         }),
       ]);
       expect(
+        service.getPreference({
+          scope: "shared",
+          key: "locale",
+        }),
+      ).toMatchObject({
+        scope: "shared",
+        key: "locale",
+        value: "zh-CN",
+      });
+      expect(
         service.setPreference({
           scope: "desktop",
           key: "navigation.mode",
@@ -265,6 +285,12 @@ describe("TooldeckDesktopService", () => {
           scope: "cli",
           key: "output.format",
           value: "json",
+        }),
+      ).toThrow("Desktop cannot manage preference: cli.output.format");
+      expect(() =>
+        service.getPreference({
+          scope: "cli",
+          key: "output.format",
         }),
       ).toThrow("Desktop cannot manage preference: cli.output.format");
     } finally {

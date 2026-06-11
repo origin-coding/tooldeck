@@ -2,6 +2,7 @@ import { ipcMain } from "electron";
 
 import {
   desktopIpcChannels,
+  type GetPreferenceRequest,
   type ListCommandRunsRequest,
   type RunCommandRequest,
   type SetPreferenceRequest,
@@ -14,6 +15,9 @@ export function registerTooldeckIpc(service: TooldeckDesktopService): () => void
   ipcMain.handle(desktopIpcChannels.listCommands, () => service.listCommands());
   ipcMain.handle(desktopIpcChannels.listPlugins, () => service.listPlugins());
   ipcMain.handle(desktopIpcChannels.listPreferences, () => service.listPreferences());
+  ipcMain.handle(desktopIpcChannels.getPreference, (_event, request: GetPreferenceRequest) =>
+    service.getPreference(request),
+  );
   ipcMain.handle(desktopIpcChannels.setPreference, (_event, request: SetPreferenceRequest) =>
     service.setPreference(request),
   );
@@ -32,6 +36,7 @@ export function registerTooldeckIpc(service: TooldeckDesktopService): () => void
     ipcMain.removeHandler(desktopIpcChannels.listCommands);
     ipcMain.removeHandler(desktopIpcChannels.listPlugins);
     ipcMain.removeHandler(desktopIpcChannels.listPreferences);
+    ipcMain.removeHandler(desktopIpcChannels.getPreference);
     ipcMain.removeHandler(desktopIpcChannels.setPreference);
     ipcMain.removeHandler(desktopIpcChannels.setPluginEnabled);
     ipcMain.removeHandler(desktopIpcChannels.rescanPlugins);

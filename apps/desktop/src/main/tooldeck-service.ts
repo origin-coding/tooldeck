@@ -36,6 +36,7 @@ import type {
   DesktopCommand,
   DesktopPreference,
   DesktopPlugin,
+  GetPreferenceRequest,
   ListCommandRunsRequest,
   RunCommandRequest,
   SetPreferenceRequest,
@@ -122,6 +123,19 @@ export class TooldeckDesktopService {
       .map((definition) =>
         formatDesktopPreference(definition, preferences.getRow(definition.scope, definition.key)),
       );
+  }
+
+  getPreference(request: GetPreferenceRequest): DesktopPreference {
+    const definition = requirePreferenceDefinition(request.scope, request.key);
+
+    if (!isDesktopVisiblePreference(definition)) {
+      throw new Error(`Desktop cannot manage preference: ${request.scope}.${request.key}`);
+    }
+
+    return formatDesktopPreference(
+      definition,
+      this.requirePreferences().getRow(definition.scope, definition.key),
+    );
   }
 
   setPreference(request: SetPreferenceRequest): DesktopPreference {
