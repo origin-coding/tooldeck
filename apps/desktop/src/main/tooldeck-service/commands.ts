@@ -9,6 +9,7 @@ import type {
 } from "@/shared/desktop-api";
 
 import { TooldeckDesktopServiceContext } from "./context";
+import { resolveCommandResultI18n } from "./formatters";
 import type { DesktopCommandRunService } from "./types";
 
 export class TooldeckDesktopCommandRunService implements DesktopCommandRunService {
@@ -27,18 +28,23 @@ export class TooldeckDesktopCommandRunService implements DesktopCommandRunServic
         commandId: request.commandId,
         input: request.input,
       });
+      const result = resolveCommandResultI18n({
+        result: run.result,
+        indexedPlugin: pluginId ? manifestIndex.getPlugin(pluginId) : undefined,
+        locale: request.locale,
+      });
 
       commandRuns.create({
         commandId: request.commandId,
         pluginId,
         source: "desktop",
-        status: run.result.status,
+        status: result.status,
         input: run.input,
-        output: run.result,
+        output: result,
         durationMs: elapsedMilliseconds(startedAt),
       });
 
-      return run.result;
+      return result;
     } catch (error) {
       commandRuns.create({
         commandId: request.commandId,

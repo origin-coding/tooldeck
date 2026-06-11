@@ -72,7 +72,7 @@ export function CommandWorkbench({
         <Typography.Text type="secondary">{command.description ?? command.id}</Typography.Text>
         <Typography.Text className="mt-2 block" type="secondary">
           {t("command.sourceLine", {
-            commandId: command.id,
+            commandTitle: command.title,
             pluginName,
           })}
         </Typography.Text>

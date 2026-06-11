@@ -47,7 +47,7 @@
       "choose": "Choose a command from the list."
     },
     "history": "History",
-    "sourceLine": "{{pluginName}} / {{commandId}}",
+    "sourceLine": "{{pluginName}} / {{commandTitle}}",
     "pluginDisabled": {
       "title": "Plugin disabled",
       "description": "Enable {{pluginName}} before running this command."
@@ -69,6 +69,9 @@
       "errorWithoutOutput": "The command returned an error without output.",
       "completedWithoutOutput": "The command completed without output.",
       "errorResult": "Command returned an error result.",
+      "text": "text",
+      "json": "json",
+      "properties": "properties",
       "code": "code"
     },
     "historyList": {

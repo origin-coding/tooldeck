@@ -73,8 +73,9 @@ function schemaValueToType(schema: TooldeckJsonSchema): string {
 
   if (type === "array") {
     const itemSchema = normalizeSchema(schema.items);
+    const itemType = itemSchema ? schemaValueToType(itemSchema) : "unknown";
 
-    return `${itemSchema ? schemaValueToType(itemSchema) : "unknown"}[]`;
+    return `${wrapArrayItemType(itemType)}[]`;
   }
 
   if (type === "object") {
@@ -130,4 +131,8 @@ function quotePropertyName(propertyName: string): string {
   }
 
   return JSON.stringify(propertyName);
+}
+
+function wrapArrayItemType(type: string): string {
+  return type.includes(" | ") ? `(${type})` : type;
 }

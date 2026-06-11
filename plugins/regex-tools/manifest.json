@@ -1,0 +1,407 @@
+{
+  "$schema": "../../packages/protocol/schema/manifest-v1.schema.json",
+  "schemaVersion": "1.0",
+  "id": "dev.tooldeck.regex-tools",
+  "name": {
+    "key": "plugin.name",
+    "default": "Regex Tools"
+  },
+  "description": {
+    "key": "plugin.description",
+    "default": "Tools for testing, extracting, replacing, and escaping regular expressions."
+  },
+  "version": "1.0.0",
+  "runtime": {
+    "kind": "node",
+    "entry": "./dist/index.js"
+  },
+  "defaultLocale": "en",
+  "locales": {
+    "en": "./locales/en.json",
+    "zh-CN": "./locales/zh-CN.json"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "regex.test",
+        "title": {
+          "key": "commands.test.title",
+          "default": "Test Regex"
+        },
+        "description": {
+          "key": "commands.test.description",
+          "default": "Check whether a regular expression matches text."
+        },
+        "x-ui": {
+          "layout": "split"
+        },
+        "inputSchema": {
+          "type": "object",
+          "required": ["pattern", "text"],
+          "additionalProperties": false,
+          "x-ui": {
+            "fieldOrder": ["pattern", "text", "flags", "mode"]
+          },
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "title": "Pattern",
+              "minLength": 1,
+              "x-i18n": {
+                "title": "schema.common.pattern.title"
+              },
+              "x-ui": {
+                "control": "text",
+                "placeholder": {
+                  "key": "schema.common.pattern.placeholder",
+                  "default": "\\bword\\b"
+                }
+              }
+            },
+            "text": {
+              "type": "string",
+              "title": "Text",
+              "minLength": 1,
+              "x-i18n": {
+                "title": "schema.common.text.title"
+              },
+              "x-ui": {
+                "control": "textarea",
+                "rows": 8,
+                "placeholder": {
+                  "key": "schema.common.text.placeholder",
+                  "default": "Paste text to inspect"
+                }
+              }
+            },
+            "flags": {
+              "type": "array",
+              "title": "Flags",
+              "default": [],
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": ["g", "i", "m", "s", "u", "y"]
+              },
+              "x-i18n": {
+                "title": "schema.common.flags.title"
+              },
+              "x-ui": {
+                "control": "checkboxGroup"
+              }
+            },
+            "mode": {
+              "type": "string",
+              "title": "Match Mode",
+              "default": "contains",
+              "enum": ["contains", "full"],
+              "x-i18n": {
+                "title": "schema.test.mode.title",
+                "enumLabels": {
+                  "contains": "schema.test.mode.options.contains",
+                  "full": "schema.test.mode.options.full"
+                }
+              },
+              "x-ui": {
+                "control": "radio"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "regex.extract",
+        "title": {
+          "key": "commands.extract.title",
+          "default": "Extract Regex Matches"
+        },
+        "description": {
+          "key": "commands.extract.description",
+          "default": "Extract matching text, indexes, groups, and summary details."
+        },
+        "x-ui": {
+          "layout": "split"
+        },
+        "inputSchema": {
+          "type": "object",
+          "required": ["pattern", "text"],
+          "additionalProperties": false,
+          "x-ui": {
+            "fieldOrder": ["pattern", "text", "flags", "maxMatches", "includeGroups", "sections"]
+          },
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "title": "Pattern",
+              "minLength": 1,
+              "x-i18n": {
+                "title": "schema.common.pattern.title"
+              },
+              "x-ui": {
+                "control": "text",
+                "placeholder": {
+                  "key": "schema.common.pattern.placeholder",
+                  "default": "\\bword\\b"
+                }
+              }
+            },
+            "text": {
+              "type": "string",
+              "title": "Text",
+              "minLength": 1,
+              "x-i18n": {
+                "title": "schema.common.text.title"
+              },
+              "x-ui": {
+                "control": "textarea",
+                "rows": 10,
+                "placeholder": {
+                  "key": "schema.common.text.placeholder",
+                  "default": "Paste text to inspect"
+                }
+              }
+            },
+            "flags": {
+              "type": "array",
+              "title": "Flags",
+              "default": ["g"],
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": ["g", "i", "m", "s", "u", "y"]
+              },
+              "x-i18n": {
+                "title": "schema.common.flags.title"
+              },
+              "x-ui": {
+                "control": "checkboxGroup"
+              }
+            },
+            "maxMatches": {
+              "type": "integer",
+              "title": "Max Matches",
+              "default": 50,
+              "minimum": 1,
+              "maximum": 500,
+              "x-i18n": {
+                "title": "schema.extract.maxMatches.title"
+              },
+              "x-ui": {
+                "control": "number",
+                "placeholder": {
+                  "key": "schema.extract.maxMatches.placeholder",
+                  "default": "50"
+                }
+              }
+            },
+            "includeGroups": {
+              "type": "boolean",
+              "title": "Include Groups",
+              "default": true,
+              "x-i18n": {
+                "title": "schema.extract.includeGroups.title"
+              },
+              "x-ui": {
+                "control": "checkbox"
+              }
+            },
+            "sections": {
+              "type": "array",
+              "title": "Output Sections",
+              "default": ["match", "index", "groups", "stats"],
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": ["match", "index", "groups", "namedGroups", "context", "stats", "json"]
+              },
+              "x-i18n": {
+                "title": "schema.extract.sections.title"
+              },
+              "x-ui": {
+                "control": "multiSelect",
+                "placeholder": {
+                  "key": "schema.extract.sections.placeholder",
+                  "default": "Choose output sections"
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "regex.replace",
+        "title": {
+          "key": "commands.replace.title",
+          "default": "Replace Regex Matches"
+        },
+        "description": {
+          "key": "commands.replace.description",
+          "default": "Replace regex matches with a replacement string."
+        },
+        "x-ui": {
+          "layout": "split"
+        },
+        "inputSchema": {
+          "type": "object",
+          "required": ["pattern", "replacement", "text"],
+          "additionalProperties": false,
+          "x-ui": {
+            "fieldOrder": ["pattern", "replacement", "text", "flags", "scope"]
+          },
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "title": "Pattern",
+              "minLength": 1,
+              "x-i18n": {
+                "title": "schema.common.pattern.title"
+              },
+              "x-ui": {
+                "control": "text",
+                "placeholder": {
+                  "key": "schema.common.pattern.placeholder",
+                  "default": "\\bword\\b"
+                }
+              }
+            },
+            "replacement": {
+              "type": "string",
+              "title": "Replacement",
+              "default": "",
+              "x-i18n": {
+                "title": "schema.replace.replacement.title"
+              },
+              "x-ui": {
+                "control": "text",
+                "placeholder": {
+                  "key": "schema.replace.replacement.placeholder",
+                  "default": "$&"
+                }
+              }
+            },
+            "text": {
+              "type": "string",
+              "title": "Text",
+              "minLength": 1,
+              "x-i18n": {
+                "title": "schema.common.text.title"
+              },
+              "x-ui": {
+                "control": "textarea",
+                "rows": 10,
+                "placeholder": {
+                  "key": "schema.common.text.placeholder",
+                  "default": "Paste text to inspect"
+                }
+              }
+            },
+            "flags": {
+              "type": "array",
+              "title": "Flags",
+              "default": [],
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "enum": ["g", "i", "m", "s", "u", "y"]
+              },
+              "x-i18n": {
+                "title": "schema.common.flags.title"
+              },
+              "x-ui": {
+                "control": "checkboxGroup"
+              }
+            },
+            "scope": {
+              "type": "string",
+              "title": "Replacement Scope",
+              "default": "all",
+              "enum": ["first", "all"],
+              "x-i18n": {
+                "title": "schema.replace.scope.title",
+                "enumLabels": {
+                  "first": "schema.replace.scope.options.first",
+                  "all": "schema.replace.scope.options.all"
+                }
+              },
+              "x-ui": {
+                "control": "radio"
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "regex.escape",
+        "title": {
+          "key": "commands.escape.title",
+          "default": "Escape Regex Text"
+        },
+        "description": {
+          "key": "commands.escape.description",
+          "default": "Escape literal text so it can be used safely in a regular expression."
+        },
+        "x-ui": {
+          "layout": "split"
+        },
+        "inputSchema": {
+          "type": "object",
+          "required": ["text"],
+          "additionalProperties": false,
+          "x-ui": {
+            "fieldOrder": ["text", "target", "wrapWithSlashes"]
+          },
+          "properties": {
+            "text": {
+              "type": "string",
+              "title": "Text",
+              "minLength": 1,
+              "x-i18n": {
+                "title": "schema.common.text.title"
+              },
+              "x-ui": {
+                "control": "textarea",
+                "rows": 8,
+                "placeholder": {
+                  "key": "schema.escape.text.placeholder",
+                  "default": "Text such as a+b?(c)"
+                }
+              }
+            },
+            "target": {
+              "type": "string",
+              "title": "Output Target",
+              "default": "pattern",
+              "enum": ["pattern", "javascript-string", "javascript-regexp"],
+              "x-i18n": {
+                "title": "schema.escape.target.title",
+                "enumLabels": {
+                  "pattern": "schema.escape.target.options.pattern",
+                  "javascript-string": "schema.escape.target.options.javascriptString",
+                  "javascript-regexp": "schema.escape.target.options.javascriptRegexp"
+                }
+              },
+              "x-ui": {
+                "control": "select",
+                "placeholder": {
+                  "key": "schema.escape.target.placeholder",
+                  "default": "Choose output target"
+                }
+              }
+            },
+            "wrapWithSlashes": {
+              "type": "boolean",
+              "title": "Wrap With Slashes",
+              "default": false,
+              "x-i18n": {
+                "title": "schema.escape.wrapWithSlashes.title"
+              },
+              "x-ui": {
+                "control": "checkbox"
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

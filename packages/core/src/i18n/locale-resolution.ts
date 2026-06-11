@@ -16,6 +16,12 @@ interface JsonSchemaObject {
   definitions?: Record<string, JsonSchemaDefinition>;
 }
 
+interface JsonSchemaI18n {
+  title?: string;
+  description?: string;
+  enumLabels?: Record<string, string>;
+}
+
 export type FlatLocaleResource = Record<string, string>;
 
 export type LocaleResourceIndex = Partial<Record<LocaleCode, FlatLocaleResource>>;
@@ -137,6 +143,21 @@ function resolveSchemaDefinitionI18n(
     });
   }
 
+  if (i18n?.enumLabels) {
+    resolved["x-enumLabels"] = Object.fromEntries(
+      Object.entries(i18n.enumLabels).map(([value, key]) => [
+        value,
+        resolveTranslationKey({
+          key,
+          fallback: value,
+          resources,
+          locale,
+          defaultLocale,
+        }),
+      ]),
+    );
+  }
+
   if (schema.properties) {
     resolved.properties = Object.fromEntries(
       Object.entries(schema.properties).map(([key, value]) => [
@@ -211,25 +232,37 @@ function resolveTranslationKey({
   return fallback;
 }
 
-function readSchemaI18n(
-  schema: JsonSchemaObject,
-): { title?: string; description?: string } | undefined {
+function readSchemaI18n(schema: JsonSchemaObject): JsonSchemaI18n | undefined {
   const value = (schema as { "x-i18n"?: unknown })["x-i18n"];
 
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return undefined;
   }
 
-  const i18n = value as { title?: unknown; description?: unknown };
+  const i18n = value as {
+    title?: unknown;
+    description?: unknown;
+    enumLabels?: unknown;
+  };
 
   return {
     ...(typeof i18n.title === "string" ? { title: i18n.title } : {}),
     ...(typeof i18n.description === "string" ? { description: i18n.description } : {}),
+    ...(isStringRecord(i18n.enumLabels) ? { enumLabels: i18n.enumLabels } : {}),
   };
 }
 
 function isSchemaObject(value: unknown): value is JsonSchemaObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((entry) => typeof entry === "string")
+  );
 }
 
 function appendLocaleFallback(candidates: LocaleCode[], locale: LocaleCode | undefined): void {

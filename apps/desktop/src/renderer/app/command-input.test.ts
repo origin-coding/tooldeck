@@ -166,6 +166,75 @@ describe("command input fields", () => {
     ]);
   });
 
+  it("uses resolved enum labels for choice controls", () => {
+    const fields = getInputFields({
+      id: "example.run",
+      pluginId: "dev.tooldeck.example",
+      pluginEnabled: true,
+      pluginRuntimeState: "inactive",
+      title: "Example",
+      searchText: [],
+      inputSchema: {
+        type: "object",
+        properties: {
+          scope: {
+            type: "string",
+            enum: ["first", "all"],
+            "x-enumLabels": {
+              first: "首次",
+              all: "全部",
+            },
+          },
+          sections: {
+            type: "array",
+            items: {
+              type: "string",
+              enum: ["match", "json"],
+            },
+            "x-enumLabels": {
+              match: "匹配文本",
+              json: "JSON",
+            },
+          },
+        },
+      },
+    });
+
+    expect(
+      fields.map((field) => ({
+        key: field.key,
+        options: "options" in field ? field.options : undefined,
+      })),
+    ).toEqual([
+      {
+        key: "scope",
+        options: [
+          {
+            label: "首次",
+            value: "first",
+          },
+          {
+            label: "全部",
+            value: "all",
+          },
+        ],
+      },
+      {
+        key: "sections",
+        options: [
+          {
+            label: "匹配文本",
+            value: "match",
+          },
+          {
+            label: "JSON",
+            value: "json",
+          },
+        ],
+      },
+    ]);
+  });
+
   it("uses compatible explicit controls and falls back for incompatible hints", () => {
     expect(
       getInputFields({

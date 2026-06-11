@@ -92,7 +92,12 @@ function OutputState({
 
 function ContentBlockView({ block }: { block: ContentBlock }) {
   const { t } = useTranslation();
-  const label = getContentBlockLabel(block, t("command.outputState.code"));
+  const label = getContentBlockLabel(block, {
+    text: t("command.outputState.text"),
+    code: t("command.outputState.code"),
+    json: t("command.outputState.json"),
+    properties: t("command.outputState.properties"),
+  });
 
   return (
     <section className="min-h-0 overflow-hidden rounded-md border border-slate-200 bg-white">
@@ -150,12 +155,20 @@ function classes(...values: Array<string | false | undefined>): string {
   return values.filter(Boolean).join(" ");
 }
 
-function getContentBlockLabel(block: ContentBlock, codeFallback: string): string {
+function getContentBlockLabel(
+  block: ContentBlock,
+  labels: {
+    text: string;
+    code: string;
+    json: string;
+    properties: string;
+  },
+): string {
   if (block.type === "code") {
-    return block.language ?? codeFallback;
+    return block.language ?? labels.code;
   }
 
-  return block.type;
+  return labels[block.type];
 }
 
 function formatContentBlockText(block: Exclude<ContentBlock, PropertiesContentBlock>): string {

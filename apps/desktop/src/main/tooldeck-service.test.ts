@@ -229,6 +229,48 @@ describe("TooldeckDesktopService", () => {
     }
   });
 
+  it("localizes command result properties", async () => {
+    const service = new TooldeckDesktopService({
+      pluginsRoot: path.resolve("../..", "plugins"),
+      storagePath: createDatabasePath(),
+    });
+
+    await service.start();
+
+    try {
+      await expect(
+        service.runCommand({
+          commandId: "regex.test",
+          locale: "zh-CN",
+          input: {
+            pattern: "[0-9]+",
+            text: "abc123",
+            flags: [],
+            mode: "contains",
+          },
+        }),
+      ).resolves.toMatchObject({
+        status: "success",
+        blocks: [
+          {
+            type: "properties",
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                label: "是否匹配",
+                value: true,
+              }),
+            ]),
+          },
+          {
+            type: "json",
+          },
+        ],
+      });
+    } finally {
+      await service.dispose();
+    }
+  });
+
   it("stores desktop-visible preferences", async () => {
     const service = new TooldeckDesktopService({
       pluginsRoot: path.resolve("../..", "plugins"),

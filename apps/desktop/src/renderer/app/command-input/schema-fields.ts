@@ -258,13 +258,14 @@ function getFieldOptions(fieldSchema: Record<string, unknown>): InputFieldOption
     Array.isArray(fieldSchema.enum) && fieldSchema.enum.every(isJsonPrimitive)
       ? fieldSchema.enum
       : getArrayEnumValues(fieldSchema);
+  const enumLabels = getEnumLabels(fieldSchema);
 
   if (!enumValues?.length) {
     return undefined;
   }
 
   return enumValues.map((value) => ({
-    label: formatOptionLabel(value),
+    label: enumLabels.get(formatEnumLabelKey(value)) ?? formatOptionLabel(value),
     value,
   }));
 }
@@ -281,6 +282,24 @@ function getArrayEnumValues(fieldSchema: Record<string, unknown>): JsonPrimitive
 
 function formatOptionLabel(value: JsonPrimitive): string {
   return value === null ? "null" : String(value);
+}
+
+function formatEnumLabelKey(value: JsonPrimitive): string {
+  return value === null ? "null" : String(value);
+}
+
+function getEnumLabels(fieldSchema: Record<string, unknown>): Map<string, string> {
+  const labels = fieldSchema["x-enumLabels"];
+
+  if (!isRecord(labels)) {
+    return new Map();
+  }
+
+  return new Map(
+    Object.entries(labels).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string",
+    ),
+  );
 }
 
 function isInputFieldKind(value: unknown): value is InputFieldKind {

@@ -114,6 +114,32 @@ describe("CommandOutput", () => {
     expect(html).toContain("bytes");
   });
 
+  it("localizes built-in content block labels", async () => {
+    await i18n.changeLanguage("zh-CN");
+
+    const html = renderToStaticMarkup(
+      <CommandOutput
+        hasError={false}
+        result={{
+          status: "success",
+          blocks: [
+            {
+              type: "properties",
+              items: [
+                {
+                  label: "Valid",
+                  value: true,
+                },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(html).toContain("属性");
+  });
+
   it("renders an explicit empty output state", () => {
     const html = renderToStaticMarkup(
       <CommandOutput

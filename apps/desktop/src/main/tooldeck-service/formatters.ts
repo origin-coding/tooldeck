@@ -10,7 +10,14 @@ import {
   resolveJsonSchemaI18n,
   resolveLocalizedString,
 } from "@tooldeck/core";
-import type { LocalizedString, TooldeckJsonSchema } from "@tooldeck/protocol";
+import type {
+  CommandResult,
+  ContentBlock,
+  LocalizedString,
+  PropertiesContentBlock,
+  PropertyItem,
+  TooldeckJsonSchema,
+} from "@tooldeck/protocol";
 import { validatePreferenceValue, type PreferenceDefinition } from "@tooldeck/shared";
 import type { PluginRow, PreferenceRow } from "@tooldeck/storage";
 
@@ -120,6 +127,27 @@ export function formatDesktopPlugin(options: {
   };
 }
 
+export function resolveCommandResultI18n(options: {
+  result: CommandResult;
+  indexedPlugin: IndexedPlugin | undefined;
+  locale?: string;
+}): CommandResult {
+  const localeResources = readManifestLocaleResources(options.indexedPlugin);
+  const defaultLocale = options.indexedPlugin?.manifest.defaultLocale;
+
+  return {
+    ...options.result,
+    blocks: options.result.blocks.map((block) =>
+      resolveContentBlockI18n({
+        block,
+        resources: localeResources,
+        locale: options.locale,
+        defaultLocale,
+      }),
+    ),
+  };
+}
+
 export function formatDesktopPreference(
   definition: PreferenceDefinition,
   preference: PreferenceRow | undefined,
@@ -180,6 +208,49 @@ function readManifestLocaleResources(
   }
 
   return resources;
+}
+
+function resolveContentBlockI18n(options: {
+  block: ContentBlock;
+  resources: LocaleResourceIndex;
+  locale?: string;
+  defaultLocale?: string;
+}): ContentBlock {
+  if (options.block.type !== "properties") {
+    return options.block;
+  }
+
+  return {
+    ...options.block,
+    items: options.block.items.map((item) => resolvePropertyItemI18n({ ...options, item })),
+  } satisfies PropertiesContentBlock;
+}
+
+function resolvePropertyItemI18n(options: {
+  item: PropertyItem;
+  resources: LocaleResourceIndex;
+  locale?: string;
+  defaultLocale?: string;
+}): PropertyItem {
+  return {
+    ...options.item,
+    label: resolveLocalizedString({
+      value: options.item.label,
+      resources: options.resources,
+      locale: options.locale,
+      defaultLocale: options.defaultLocale,
+    }),
+    ...(options.item.note
+      ? {
+          note: resolveLocalizedString({
+            value: options.item.note,
+            resources: options.resources,
+            locale: options.locale,
+            defaultLocale: options.defaultLocale,
+          }),
+        }
+      : {}),
+  };
 }
 
 function collectPluginLocalizedSearchText(

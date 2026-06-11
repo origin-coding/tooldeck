@@ -61,6 +61,7 @@ export interface DesktopPreference {
 export interface RunCommandRequest {
   commandId: string;
   input?: JsonObject;
+  locale?: string;
 }
 
 export interface CatalogLocaleRequest {

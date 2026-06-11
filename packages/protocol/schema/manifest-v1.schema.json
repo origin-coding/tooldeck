@@ -207,6 +207,12 @@
         },
         "description": {
           "type": "string"
+        },
+        "enumLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },

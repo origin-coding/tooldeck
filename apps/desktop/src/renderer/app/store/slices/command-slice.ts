@@ -44,11 +44,12 @@ export const createCommandSlice: DesktopStoreSlice<CommandSlice> = (set, get) =>
 
     try {
       const input = buildCommandInput(selectedCommand, current.input);
+      const locale = getCurrentAppLocale();
       const result = await window.tooldeck.runCommand({
         commandId: selectedCommand.id,
         input,
+        locale,
       });
-      const locale = getCurrentAppLocale();
       const [commands, plugins, history] = await Promise.all([
         window.tooldeck.listCommands({ locale }),
         window.tooldeck.listPlugins({ locale }),

@@ -66,6 +66,9 @@ importers:
       '@tooldeck/json-tools':
         specifier: workspace:*
         version: link:../../plugins/json-tools
+      '@tooldeck/regex-tools':
+        specifier: workspace:*
+        version: link:../../plugins/regex-tools
       '@types/node':
         specifier: ^25.9.1
         version: 25.9.1
@@ -106,12 +109,21 @@ importers:
       '@tooldeck/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@tooldeck/hello-world':
+        specifier: workspace:*
+        version: link:../../plugins/hello-world
       '@tooldeck/host-node':
         specifier: workspace:*
         version: link:../../packages/host-node
+      '@tooldeck/json-tools':
+        specifier: workspace:*
+        version: link:../../plugins/json-tools
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@tooldeck/regex-tools':
+        specifier: workspace:*
+        version: link:../../plugins/regex-tools
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -247,6 +259,15 @@ importers:
         version: link:../../packages/sdk-node
 
   plugins/json-tools:
+    dependencies:
+      '@tooldeck/plugin-tools':
+        specifier: workspace:*
+        version: link:../../packages/plugin-tools
+      '@tooldeck/sdk-node':
+        specifier: workspace:*
+        version: link:../../packages/sdk-node
+
+  plugins/regex-tools:
     dependencies:
       '@tooldeck/plugin-tools':
         specifier: workspace:*

@@ -148,4 +148,46 @@ describe("locale resolution", () => {
       },
     });
   });
+
+  it("resolves JSON Schema x-i18n enum labels", () => {
+    expect(
+      resolveJsonSchemaI18n({
+        schema: {
+          type: "object",
+          properties: {
+            scope: {
+              type: "string",
+              enum: ["first", "all"],
+              "x-i18n": {
+                title: "schema.scope.title",
+                enumLabels: {
+                  first: "schema.scope.options.first",
+                  all: "schema.scope.options.all",
+                },
+              },
+            },
+          },
+        },
+        locale: "zh-CN",
+        defaultLocale: "en",
+        resources: {
+          "zh-CN": {
+            "schema.scope.title": "替换范围",
+            "schema.scope.options.first": "首次",
+            "schema.scope.options.all": "全部",
+          },
+        },
+      }),
+    ).toMatchObject({
+      properties: {
+        scope: {
+          title: "替换范围",
+          "x-enumLabels": {
+            first: "首次",
+            all: "全部",
+          },
+        },
+      },
+    });
+  });
 });

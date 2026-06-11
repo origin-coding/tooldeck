@@ -16,6 +16,7 @@
   },
   "scripts": {
     "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
