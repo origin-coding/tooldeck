@@ -1,4 +1,4 @@
-import type { TooldeckInputJsonSchema } from "@tooldeck/protocol";
+import type { LocalizedString, TooldeckInputJsonSchema } from "@tooldeck/protocol";
 import type { JsonObject } from "@tooldeck/shared";
 
 import type { DesktopCommand } from "@/shared/desktop-api";
@@ -12,6 +12,8 @@ export interface InputField {
   defaultValue?: unknown;
   minimum?: number;
   maximum?: number;
+  placeholder?: string;
+  rows?: number;
 }
 
 export function getInputFields(command: DesktopCommand | undefined): InputField[] {
@@ -31,6 +33,7 @@ export function getInputFields(command: DesktopCommand | undefined): InputField[
     .map(([key, value]) => {
       const fieldSchema = isRecord(value) ? value : {};
       const type = typeof fieldSchema.type === "string" ? fieldSchema.type : "string";
+      const ui = readFieldUi(fieldSchema);
       const title = typeof fieldSchema.title === "string" ? fieldSchema.title : key;
       const description =
         typeof fieldSchema.description === "string" ? fieldSchema.description : undefined;
@@ -39,18 +42,53 @@ export function getInputFields(command: DesktopCommand | undefined): InputField[
         key,
         title,
         description,
-        kind:
-          type === "integer" || type === "number"
-            ? "number"
-            : type === "string"
-              ? "textarea"
-              : "text",
+        kind: getFieldKind(type, ui?.control),
         required: required.includes(key),
         defaultValue: fieldSchema.default,
         minimum: typeof fieldSchema.minimum === "number" ? fieldSchema.minimum : undefined,
         maximum: typeof fieldSchema.maximum === "number" ? fieldSchema.maximum : undefined,
+        placeholder: ui?.placeholder ? resolveLocalizedString(ui.placeholder) : undefined,
+        rows: typeof ui?.rows === "number" && ui.rows > 0 ? ui.rows : undefined,
       };
     });
+}
+
+function getFieldKind(
+  type: string,
+  control: "text" | "textarea" | "number" | undefined,
+): InputField["kind"] {
+  if (type === "integer" || type === "number") {
+    return "number";
+  }
+
+  if (type === "string") {
+    return control === "text" || control === "textarea" ? control : "textarea";
+  }
+
+  return "text";
+}
+
+function readFieldUi(fieldSchema: Record<string, unknown>):
+  | {
+      control?: "text" | "textarea" | "number";
+      placeholder?: LocalizedString;
+      rows?: number;
+    }
+  | undefined {
+  const ui = fieldSchema["x-ui"];
+
+  if (!isRecord(ui)) {
+    return undefined;
+  }
+
+  return {
+    control:
+      ui.control === "text" || ui.control === "textarea" || ui.control === "number"
+        ? ui.control
+        : undefined,
+    placeholder: isLocalizedString(ui.placeholder) ? ui.placeholder : undefined,
+    rows: typeof ui.rows === "number" ? ui.rows : undefined,
+  };
 }
 
 function getFieldOrder(
@@ -130,4 +168,18 @@ function isObjectSchema(
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isLocalizedString(value: unknown): value is LocalizedString {
+  if (typeof value === "string") {
+    return true;
+  }
+
+  return (
+    isRecord(value) && typeof value.key === "string" && typeof value.default === "string"
+  );
+}
+
+function resolveLocalizedString(value: LocalizedString): string {
+  return typeof value === "string" ? value : value.default;
 }

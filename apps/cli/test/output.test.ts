@@ -57,7 +57,7 @@ describe("CLI list output", () => {
 });
 
 describe("CLI command output", () => {
-  it("prints text, code, and json content blocks", () => {
+  it("prints text, code, json, and properties content blocks", () => {
     const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
 
     try {
@@ -79,13 +79,31 @@ describe("CLI command output", () => {
               a: 1,
             },
           },
+          {
+            type: "properties",
+            items: [
+              {
+                label: "Valid",
+                value: true,
+              },
+              {
+                label: {
+                  key: "result.size.label",
+                  default: "Size",
+                },
+                value: 12,
+                note: "bytes",
+              },
+            ],
+          },
         ],
       });
 
-      expect(log).toHaveBeenCalledTimes(3);
+      expect(log).toHaveBeenCalledTimes(4);
       expect(log).toHaveBeenNthCalledWith(1, "plain output");
       expect(log).toHaveBeenNthCalledWith(2, "const value = 1;");
       expect(log).toHaveBeenNthCalledWith(3, '{\n  "a": 1\n}');
+      expect(log).toHaveBeenNthCalledWith(4, "Valid: true\nSize: 12 (bytes)");
     } finally {
       log.mockRestore();
     }

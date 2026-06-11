@@ -1,4 +1,10 @@
-import type { CommandResult, ContentBlock } from "@tooldeck/protocol";
+import type {
+  CommandResult,
+  ContentBlock,
+  LocalizedString,
+  PropertiesContentBlock,
+  PropertyValue,
+} from "@tooldeck/protocol";
 import { Tag } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -87,25 +93,56 @@ function OutputState({
 function ContentBlockView({ block }: { block: ContentBlock }) {
   const { t } = useTranslation();
   const label = getContentBlockLabel(block, t("command.outputState.code"));
-  const text = formatContentBlockText(block);
-  const isText = block.type === "text";
 
   return (
     <section className="min-h-0 overflow-hidden rounded-md border border-slate-200 bg-white">
       <div className="flex h-8 items-center border-b border-slate-200 bg-slate-50 px-2.5">
         <Tag>{label}</Tag>
       </div>
-      <pre
-        className={classes(
-          "content-block-body m-0 max-h-96 min-h-0 overflow-auto p-3 text-[13px] leading-relaxed",
-          isText
-            ? "whitespace-pre-wrap font-sans"
-            : "content-block-body-code min-w-full whitespace-pre bg-slate-50 font-mono",
-        )}
-      >
-        {text}
-      </pre>
+      {block.type === "properties" ? (
+        <PropertiesBlockView block={block} />
+      ) : (
+        <TextLikeBlockView block={block} />
+      )}
     </section>
+  );
+}
+
+function TextLikeBlockView({ block }: { block: Exclude<ContentBlock, PropertiesContentBlock> }) {
+  const text = formatContentBlockText(block);
+  const isText = block.type === "text";
+
+  return (
+    <pre
+      className={classes(
+        "content-block-body m-0 max-h-96 min-h-0 overflow-auto p-3 text-[13px] leading-relaxed",
+        isText
+          ? "whitespace-pre-wrap font-sans"
+          : "content-block-body-code min-w-full whitespace-pre bg-slate-50 font-mono",
+      )}
+    >
+      {text}
+    </pre>
+  );
+}
+
+function PropertiesBlockView({ block }: { block: PropertiesContentBlock }) {
+  return (
+    <dl className="content-block-body m-0 grid max-h-96 min-h-0 grid-cols-[minmax(8rem,14rem)_1fr] overflow-auto p-3 text-[13px]">
+      {block.items.map((item, index) => (
+        <div key={`${resolveLocalizedString(item.label)}-${index}`} className="contents">
+          <dt className="border-b border-slate-100 py-2 pr-4 font-medium text-slate-600">
+            {resolveLocalizedString(item.label)}
+          </dt>
+          <dd className="m-0 border-b border-slate-100 py-2 text-slate-900">
+            <span>{formatPropertyValue(item.value)}</span>
+            {item.note ? (
+              <span className="ml-2 text-slate-500">{resolveLocalizedString(item.note)}</span>
+            ) : null}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -121,10 +158,18 @@ function getContentBlockLabel(block: ContentBlock, codeFallback: string): string
   return block.type;
 }
 
-function formatContentBlockText(block: ContentBlock): string {
+function formatContentBlockText(block: Exclude<ContentBlock, PropertiesContentBlock>): string {
   if (block.type === "json") {
     return JSON.stringify(block.value, null, 2);
   }
 
   return block.text;
+}
+
+function resolveLocalizedString(value: LocalizedString): string {
+  return typeof value === "string" ? value : value.default;
+}
+
+function formatPropertyValue(value: PropertyValue): string {
+  return value === null ? "null" : String(value);
 }

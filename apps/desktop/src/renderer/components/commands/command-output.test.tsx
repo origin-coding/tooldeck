@@ -77,6 +77,43 @@ describe("CommandOutput", () => {
     expect(html).toContain("&quot;ok&quot;: true");
   });
 
+  it("renders properties content blocks", () => {
+    const html = renderToStaticMarkup(
+      <CommandOutput
+        hasError={false}
+        result={{
+          status: "success",
+          blocks: [
+            {
+              type: "properties",
+              items: [
+                {
+                  label: "Valid",
+                  value: true,
+                },
+                {
+                  label: {
+                    key: "result.size.label",
+                    default: "Size",
+                  },
+                  value: 12,
+                  note: "bytes",
+                },
+              ],
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(html).toContain("properties");
+    expect(html).toContain("Valid");
+    expect(html).toContain("true");
+    expect(html).toContain("Size");
+    expect(html).toContain("12");
+    expect(html).toContain("bytes");
+  });
+
   it("renders an explicit empty output state", () => {
     const html = renderToStaticMarkup(
       <CommandOutput

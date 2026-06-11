@@ -10,7 +10,12 @@ import {
   scanPluginDirectory,
 } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
-import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
+import type {
+  CommandResult,
+  LocalizedString,
+  PropertiesContentBlock,
+  PropertyValue,
+} from "@tooldeck/protocol";
 import { validatePreferenceValue, type JsonObject } from "@tooldeck/shared";
 import {
   CommandRunRepository,
@@ -321,6 +326,8 @@ export function printContentBlocks(
       consola.log(block.text);
     } else if (block.type === "json") {
       consola.log(JSON.stringify(block.value, null, 2));
+    } else if (block.type === "properties") {
+      consola.log(formatPropertiesBlock(block));
     }
   }
 }
@@ -416,6 +423,20 @@ function resolveLocalizedString(value: LocalizedString): string {
   }
 
   return value.default;
+}
+
+function formatPropertiesBlock(block: PropertiesContentBlock): string {
+  return block.items
+    .map((item) => {
+      const note = item.note ? ` (${resolveLocalizedString(item.note)})` : "";
+
+      return `${resolveLocalizedString(item.label)}: ${formatPropertyValue(item.value)}${note}`;
+    })
+    .join("\n");
+}
+
+function formatPropertyValue(value: PropertyValue): string {
+  return value === null ? "null" : String(value);
 }
 
 function elapsedMilliseconds(startedAt: number): number {

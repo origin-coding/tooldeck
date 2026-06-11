@@ -42,9 +42,11 @@ export function CommandInputForm({
           {field.kind === "textarea" ? (
             <Input.TextArea
               id={`command-input-${field.key}`}
+              placeholder={field.placeholder}
+              rows={field.rows ?? 12}
               spellCheck={false}
               value={input[field.key] ?? ""}
-              className="!min-h-[280px] !resize-none font-mono"
+              className="!resize-none font-mono"
               onChange={(event) => onChange(field.key, event.target.value)}
             />
           ) : field.kind === "number" ? (
@@ -52,12 +54,14 @@ export function CommandInputForm({
               id={`command-input-${field.key}`}
               max={field.maximum}
               min={field.minimum}
+              placeholder={field.placeholder}
               value={input[field.key] === "" ? null : Number(input[field.key])}
               onChange={(value) => onChange(field.key, value === null ? "" : String(value))}
             />
           ) : (
             <Input
               id={`command-input-${field.key}`}
+              placeholder={field.placeholder}
               value={input[field.key] ?? ""}
               onChange={(event) => onChange(field.key, event.target.value)}
             />

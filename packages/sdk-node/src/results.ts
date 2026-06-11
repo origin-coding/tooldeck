@@ -3,6 +3,8 @@ import type {
   CommandResult,
   ContentBlock,
   JsonContentBlock,
+  PropertiesContentBlock,
+  PropertyItem,
   TextContentBlock,
 } from "@tooldeck/protocol";
 import type { JsonValue } from "@tooldeck/shared";
@@ -26,6 +28,13 @@ export function jsonBlock(value: JsonValue): JsonContentBlock {
   return {
     type: "json",
     value,
+  };
+}
+
+export function propertiesBlock(items: PropertyItem[]): PropertiesContentBlock {
+  return {
+    type: "properties",
+    items,
   };
 }
 

@@ -1,4 +1,13 @@
-import { codeBlock, fail, failText, jsonBlock, ok, okText, textBlock } from "@tooldeck/sdk-node";
+import {
+  codeBlock,
+  fail,
+  failText,
+  jsonBlock,
+  ok,
+  okText,
+  propertiesBlock,
+  textBlock,
+} from "@tooldeck/sdk-node";
 import { describe, expect, it } from "vitest";
 
 describe("command result helpers", () => {
@@ -23,6 +32,33 @@ describe("command result helpers", () => {
       value: {
         a: 1,
       },
+    });
+  });
+
+  it("creates properties content blocks", () => {
+    expect(
+      propertiesBlock([
+        {
+          label: "Status",
+          value: "valid",
+          note: {
+            key: "result.status.note",
+            default: "Parsed successfully",
+          },
+        },
+      ]),
+    ).toEqual({
+      type: "properties",
+      items: [
+        {
+          label: "Status",
+          value: "valid",
+          note: {
+            key: "result.status.note",
+            default: "Parsed successfully",
+          },
+        },
+      ],
     });
   });
 

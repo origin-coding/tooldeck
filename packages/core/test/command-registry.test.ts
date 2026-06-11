@@ -35,7 +35,7 @@ describe("CommandRegistry", () => {
     });
   });
 
-  it("runs commands that return code and json content blocks", async () => {
+  it("runs commands that return code, json, and properties content blocks", async () => {
     const registry = new CommandRegistry();
 
     registry.register("json.inspect", () => ({
@@ -51,6 +51,23 @@ describe("CommandRegistry", () => {
           value: {
             a: 1,
           },
+        },
+        {
+          type: "properties",
+          items: [
+            {
+              label: "Valid",
+              value: true,
+            },
+            {
+              label: {
+                key: "result.size.label",
+                default: "Size",
+              },
+              value: 12,
+              note: "bytes",
+            },
+          ],
         },
       ],
     }));
@@ -68,6 +85,23 @@ describe("CommandRegistry", () => {
           value: {
             a: 1,
           },
+        },
+        {
+          type: "properties",
+          items: [
+            {
+              label: "Valid",
+              value: true,
+            },
+            {
+              label: {
+                key: "result.size.label",
+                default: "Size",
+              },
+              value: 12,
+              note: "bytes",
+            },
+          ],
         },
       ],
     });
@@ -104,6 +138,35 @@ describe("CommandRegistry", () => {
 
     await expect(registry.run({ commandId: "json.bad-value" })).rejects.toThrow(
       "Invalid command result for json.bad-value: --blocks[0].value",
+    );
+  });
+
+  it("throws when a properties content block item has an unsupported value", async () => {
+    const registry = new CommandRegistry();
+
+    registry.register(
+      "json.bad-properties",
+      () =>
+        ({
+          status: "success",
+          blocks: [
+            {
+              type: "properties",
+              items: [
+                {
+                  label: "Nested",
+                  value: {
+                    a: 1,
+                  },
+                },
+              ],
+            },
+          ],
+        }) as never,
+    );
+
+    await expect(registry.run({ commandId: "json.bad-properties" })).rejects.toThrow(
+      "Invalid command result for json.bad-properties: --blocks[0].items[0].value",
     );
   });
 

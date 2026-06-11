@@ -2,6 +2,9 @@ import type {
   CommandError,
   CommandResult,
   ContentBlock,
+  LocalizedString,
+  PropertyItem,
+  PropertyValue,
   TooldeckJsonSchema,
 } from "@tooldeck/protocol";
 import { TooldeckError, type JsonObject, type JsonValue } from "@tooldeck/shared";
@@ -106,14 +109,37 @@ function validateContentBlock(options: {
   if (
     options.block.type !== "text" &&
     options.block.type !== "code" &&
-    options.block.type !== "json"
+    options.block.type !== "json" &&
+    options.block.type !== "properties"
   ) {
     throwInvalidCommandResult({
       commandId: options.commandId,
       propertyPath: `${options.propertyPath}.type`,
-      expected: "text | code | json",
+      expected: "text | code | json | properties",
       actual: describeActualValue(options.block.type),
     });
+  }
+
+  if (options.block.type === "properties") {
+    if (!Array.isArray(options.block.items)) {
+      throwInvalidCommandResult({
+        commandId: options.commandId,
+        propertyPath: `${options.propertyPath}.items`,
+        expected: "array",
+        actual: describeActualValue(options.block.items),
+      });
+    }
+
+    return {
+      type: "properties",
+      items: options.block.items.map((item, index) =>
+        validatePropertyItem({
+          commandId: options.commandId,
+          item,
+          propertyPath: `${options.propertyPath}.items[${index}]`,
+        }),
+      ),
+    };
   }
 
   if (options.block.type === "json") {
@@ -162,6 +188,110 @@ function validateContentBlock(options: {
     type: "text",
     text: options.block.text,
   };
+}
+
+function validatePropertyItem(options: {
+  commandId: string;
+  item: unknown;
+  propertyPath: string;
+}): PropertyItem {
+  if (!isRecord(options.item)) {
+    throwInvalidCommandResult({
+      commandId: options.commandId,
+      propertyPath: options.propertyPath,
+      expected: "object",
+      actual: describeActualValue(options.item),
+    });
+  }
+
+  const label = validateLocalizedString({
+    commandId: options.commandId,
+    value: options.item.label,
+    propertyPath: `${options.propertyPath}.label`,
+  });
+  const value = validatePropertyValue({
+    commandId: options.commandId,
+    value: options.item.value,
+    propertyPath: `${options.propertyPath}.value`,
+  });
+  const note =
+    options.item.note === undefined
+      ? undefined
+      : validateLocalizedString({
+          commandId: options.commandId,
+          value: options.item.note,
+          propertyPath: `${options.propertyPath}.note`,
+        });
+
+  return {
+    label,
+    value,
+    ...(note === undefined ? {} : { note }),
+  };
+}
+
+function validateLocalizedString(options: {
+  commandId: string;
+  value: unknown;
+  propertyPath: string;
+}): LocalizedString {
+  if (typeof options.value === "string") {
+    return options.value;
+  }
+
+  if (!isRecord(options.value)) {
+    throwInvalidCommandResult({
+      commandId: options.commandId,
+      propertyPath: options.propertyPath,
+      expected: "LocalizedString",
+      actual: describeActualValue(options.value),
+    });
+  }
+
+  if (typeof options.value.key !== "string") {
+    throwInvalidCommandResult({
+      commandId: options.commandId,
+      propertyPath: `${options.propertyPath}.key`,
+      expected: "string",
+      actual: describeActualValue(options.value.key),
+    });
+  }
+
+  if (typeof options.value.default !== "string") {
+    throwInvalidCommandResult({
+      commandId: options.commandId,
+      propertyPath: `${options.propertyPath}.default`,
+      expected: "string",
+      actual: describeActualValue(options.value.default),
+    });
+  }
+
+  return {
+    key: options.value.key,
+    default: options.value.default,
+  };
+}
+
+function validatePropertyValue(options: {
+  commandId: string;
+  value: unknown;
+  propertyPath: string;
+}): PropertyValue {
+  if (
+    options.value === null ||
+    typeof options.value === "string" ||
+    typeof options.value === "number" ||
+    typeof options.value === "boolean"
+  ) {
+    return options.value;
+  }
+
+  throwInvalidCommandResult({
+    commandId: options.commandId,
+    propertyPath: options.propertyPath,
+    expected: "string | number | boolean | null",
+    actual: describeActualValue(options.value),
+  });
 }
 
 function validateCommandError(options: {
