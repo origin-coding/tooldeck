@@ -71,6 +71,45 @@ describe("manifest validation", () => {
     ).toThrow("Invalid plugin manifest: / must have required property 'name'");
   });
 
+  it("accepts command-level x-ui layout hints", () => {
+    expect(
+      validatePluginManifest({
+        manifest: {
+          schemaVersion: "1.0",
+          id: "dev.tooldeck.layout",
+          name: "Layout",
+          version: "0.0.0",
+          runtime: {
+            kind: "node",
+            entry: "./dist/index.js",
+          },
+          contributes: {
+            commands: [
+              {
+                id: "layout.run",
+                title: "Layout",
+                "x-ui": {
+                  layout: "split",
+                },
+              },
+            ],
+          },
+        },
+      }),
+    ).toMatchObject({
+      contributes: {
+        commands: [
+          {
+            id: "layout.run",
+            "x-ui": {
+              layout: "split",
+            },
+          },
+        ],
+      },
+    });
+  });
+
   it("rejects invalid plugin ids, command ids, and runtime kinds", () => {
     expect(() =>
       validatePluginManifest({
@@ -196,6 +235,34 @@ describe("manifest validation", () => {
         },
       }),
     ).toThrow("is not a supported input schema x-ui property");
+  });
+
+  it("rejects unsupported command-level x-ui layout values", () => {
+    expect(() =>
+      validatePluginManifest({
+        manifest: {
+          schemaVersion: "1.0",
+          id: "dev.tooldeck.bad",
+          name: "Bad",
+          version: "0.0.0",
+          runtime: {
+            kind: "node",
+            entry: "./dist/index.js",
+          },
+          contributes: {
+            commands: [
+              {
+                id: "bad.run",
+                title: "Bad",
+                "x-ui": {
+                  layout: "grid",
+                },
+              },
+            ],
+          },
+        },
+      }),
+    ).toThrow("Invalid plugin manifest");
   });
 
   it("rejects x-ui on command output schemas", () => {

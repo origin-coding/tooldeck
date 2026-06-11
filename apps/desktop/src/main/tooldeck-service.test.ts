@@ -37,6 +37,9 @@ describe("TooldeckDesktopService", () => {
             pluginEnabled: true,
             pluginRuntimeState: "inactive",
             title: "Format JSON",
+            "x-ui": {
+              layout: "split",
+            },
           }),
         ]),
       );

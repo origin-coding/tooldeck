@@ -32,6 +32,9 @@
           "key": "commands.format.description",
           "default": "Format JSON text with configurable indentation."
         },
+        "x-ui": {
+          "layout": "split"
+        },
         "inputSchema": {
           "type": "object",
           "required": ["text"],

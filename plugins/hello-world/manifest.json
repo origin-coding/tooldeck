@@ -31,6 +31,9 @@
         "description": {
           "key": "commands.helloWorld.description",
           "default": "Return a friendly greeting."
+        },
+        "x-ui": {
+          "layout": "split"
         }
       }
     ]

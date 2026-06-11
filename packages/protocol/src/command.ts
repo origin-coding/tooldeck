@@ -3,10 +3,17 @@ import type { JsonObject, JsonValue } from "@tooldeck/shared";
 import type { LocalizedString } from "./i18n";
 import type { TooldeckInputJsonSchema, TooldeckJsonSchema } from "./schema";
 
+export type CommandUiLayoutV1 = "stacked" | "split";
+
+export interface CommandUiV1 {
+  layout?: CommandUiLayoutV1;
+}
+
 export interface CommandDefinitionV1 {
   id: string;
   title: LocalizedString;
   description?: LocalizedString;
+  "x-ui"?: CommandUiV1;
   inputSchema?: TooldeckInputJsonSchema;
   outputSchema?: TooldeckJsonSchema;
 }
@@ -61,6 +68,8 @@ export interface CommandResultV1 {
 }
 
 export type CommandDefinition = CommandDefinitionV1;
+export type CommandUi = CommandUiV1;
+export type CommandUiLayout = CommandUiLayoutV1;
 export type CommandStatus = CommandStatusV1;
 export type ContentBlock = ContentBlockV1;
 export type CodeContentBlock = CodeContentBlockV1;

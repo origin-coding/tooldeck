@@ -175,9 +175,7 @@ function isLocalizedString(value: unknown): value is LocalizedString {
     return true;
   }
 
-  return (
-    isRecord(value) && typeof value.key === "string" && typeof value.default === "string"
-  );
+  return isRecord(value) && typeof value.key === "string" && typeof value.default === "string";
 }
 
 function resolveLocalizedString(value: LocalizedString): string {

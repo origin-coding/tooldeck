@@ -45,6 +45,11 @@ export function CommandWorkbench({
     command.pluginEnabled &&
     command.pluginRuntimeState !== "active" &&
     command.pluginRuntimeState !== "inactive";
+  const commandLayout = command["x-ui"]?.layout ?? "stacked";
+  const commandLayoutClass =
+    commandLayout === "split"
+      ? "grid min-h-96 grid-cols-1 gap-4 lg:grid-cols-2"
+      : "grid min-h-96 grid-cols-1 gap-4";
 
   return (
     <>
@@ -84,7 +89,7 @@ export function CommandWorkbench({
         ) : null}
       </Card>
 
-      <div className="grid min-h-96 grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className={commandLayoutClass}>
         <Card title={t("command.input")}>
           <CommandInputForm command={command} input={input} onChange={onChangeInput} />
         </Card>

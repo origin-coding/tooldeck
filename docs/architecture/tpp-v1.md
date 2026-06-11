@@ -378,9 +378,16 @@ interface CommandContribution {
   title: LocalizedString;
   description?: LocalizedString;
   category?: LocalizedString;
+  "x-ui"?: CommandUiHint;
   inputSchema?: JsonSchema;
   outputSchema?: JsonSchema;
   resultView?: ResultViewHint;
+}
+
+type CommandUiLayout = "stacked" | "split";
+
+interface CommandUiHint {
+  layout?: CommandUiLayout;
 }
 ```
 
@@ -396,6 +403,9 @@ interface CommandContribution {
   "description": {
     "key": "commands.format.description",
     "default": "Format JSON text with custom indentation."
+  },
+  "x-ui": {
+    "layout": "split"
   },
   "inputSchema": {
     "type": "object",
@@ -432,7 +442,9 @@ interface CommandContribution {
 
 `outputSchema` 是可选的命令输出契约。宿主始终校验命令返回值是否符合基础 `CommandResult` / `ContentBlock` 结构；如果 manifest 声明了 `outputSchema`，宿主必须在命令返回后继续用该 schema 校验完整 `CommandResult`。校验失败属于插件执行失败，应该进入统一错误处理和命令运行历史记录。
 
-MVP 实现备忘：当前实现标准 JSON Schema 语义、`x-i18n` 翻译 key，以及 `inputSchema.x-ui.fieldOrder` 表单字段排序提示。`x-ui` 只作为宿主展示和交互提示扩展，不改变数据校验语义。除 `fieldOrder` 以外的 `x-ui` 字段、以及 `x-cli` 暂时不作为 v1 MVP 的实现目标。
+MVP 实现备忘：当前实现标准 JSON Schema 语义、`x-i18n` 翻译 key、`inputSchema.x-ui.fieldOrder` 表单字段排序提示，以及 command 级 `x-ui.layout` 展示提示。`x-ui` 只作为宿主展示和交互提示扩展，不改变数据校验语义。除 command 级 `layout` 和 input schema 级 `fieldOrder` 以外的 `x-ui` 字段、以及 `x-cli` 暂时不作为 v1 MVP 的实现目标。
+
+`command.x-ui.layout` 只影响 Desktop 中命令输入区和输出区的整体排布，不影响 command 输入/输出校验，CLI 忽略该字段。`stacked` 是默认值，表示输入区在上、输出区在下；`split` 表示输入区和输出区并排，宿主可在窄屏降级为 `stacked`。该字段不描述输入字段内部布局，也不描述输出 block 内部布局。
 
 `inputSchema.x-ui.fieldOrder` 只能引用同一 `inputSchema.properties` 中已经声明的字段，可以只声明部分字段；未声明字段由宿主按 `properties` 顺序追加展示。输出结果不使用 `fieldOrder`，宿主按 `CommandResult.blocks` 数组顺序展示。
 

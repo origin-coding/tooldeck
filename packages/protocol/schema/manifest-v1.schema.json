@@ -116,11 +116,24 @@
         "description": {
           "$ref": "#/definitions/localizedString"
         },
+        "x-ui": {
+          "$ref": "#/definitions/commandUi"
+        },
         "inputSchema": {
           "$ref": "#/definitions/tooldeckInputJsonSchema"
         },
         "outputSchema": {
           "$ref": "#/definitions/tooldeckJsonSchema"
+        }
+      }
+    },
+    "commandUi": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "layout": {
+          "enum": ["stacked", "split"],
+          "description": "Desktop layout hint for the command input and output areas. Defaults to stacked."
         }
       }
     },

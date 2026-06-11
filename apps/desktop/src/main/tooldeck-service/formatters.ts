@@ -48,6 +48,7 @@ export function formatDesktopCommand(options: {
     pluginRuntimeState: pluginManager.getPluginRuntimeState(command.pluginId),
     title,
     description,
+    ...(command.definition["x-ui"] ? { "x-ui": command.definition["x-ui"] } : {}),
     inputSchema: command.definition.inputSchema
       ? (resolveJsonSchemaI18n({
           schema: command.definition.inputSchema,
