@@ -2,6 +2,7 @@ import { PageContainer, ProLayout } from "@ant-design/pro-components";
 import { Button } from "antd";
 import { Play, RefreshCw, Settings } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { getNavigationMode, getSidebarCollapsed } from "@/renderer/app/selectors";
 import { useDesktopStore } from "@/renderer/app/store";
@@ -13,50 +14,85 @@ import { createSidebarRoutes } from "./sidebar-routes";
 import { WorkbenchSwitch } from "./workbench-switch";
 
 export function DesktopShell() {
-  const state = useDesktopStore();
+  const {
+    commands,
+    plugins,
+    preferences,
+    selectedCommandId,
+    selectedPluginId,
+    historyCommandId,
+    isLoadingData,
+    isRunning,
+    loadError,
+    view,
+  } = useDesktopStore(
+    useShallow((state) => ({
+      commands: state.commands,
+      plugins: state.plugins,
+      preferences: state.preferences,
+      selectedCommandId: state.selectedCommandId,
+      selectedPluginId: state.selectedPluginId,
+      historyCommandId: state.historyCommandId,
+      isLoadingData: state.isLoadingData,
+      isRunning: state.isRunning,
+      loadError: state.loadError,
+      view: state.view,
+    })),
+  );
+  const {
+    loadData,
+    rescanPlugins,
+    runSelectedCommand,
+    selectCommand,
+    selectPlugin,
+    setPreference,
+    setView,
+  } = useDesktopStore(
+    useShallow((state) => ({
+      loadData: state.loadData,
+      rescanPlugins: state.rescanPlugins,
+      runSelectedCommand: state.runSelectedCommand,
+      selectCommand: state.selectCommand,
+      selectPlugin: state.selectPlugin,
+      setPreference: state.setPreference,
+      setView: state.setView,
+    })),
+  );
   const [searchOpen, setSearchOpen] = useState(false);
-  const navigationMode = getNavigationMode(state.preferences);
-  const sidebarCollapsed = getSidebarCollapsed(state.preferences);
+  const navigationMode = getNavigationMode(preferences);
+  const sidebarCollapsed = getSidebarCollapsed(preferences);
 
   const selectedCommand = useMemo(
-    () => state.commands.find((command) => command.id === state.selectedCommandId),
-    [state.commands, state.selectedCommandId],
+    () => commands.find((command) => command.id === selectedCommandId),
+    [commands, selectedCommandId],
   );
   const selectedPlugin = useMemo(
     () =>
-      state.plugins.find((plugin) => plugin.id === state.selectedPluginId) ??
-      state.plugins.find((plugin) => plugin.id === selectedCommand?.pluginId),
-    [selectedCommand?.pluginId, state.plugins, state.selectedPluginId],
-  );
-  const selectedCommandPlugin = useMemo(
-    () => state.plugins.find((plugin) => plugin.id === selectedCommand?.pluginId),
-    [selectedCommand?.pluginId, state.plugins],
-  );
-  const selectedPluginCommands = useMemo(
-    () => state.commands.filter((command) => command.pluginId === selectedPlugin?.id),
-    [selectedPlugin?.id, state.commands],
+      plugins.find((plugin) => plugin.id === selectedPluginId) ??
+      plugins.find((plugin) => plugin.id === selectedCommand?.pluginId),
+    [selectedCommand?.pluginId, plugins, selectedPluginId],
   );
 
   useEffect(() => {
-    void state.loadData();
-  }, [state.loadData]);
+    void loadData();
+  }, [loadData]);
 
   const pageTitle = getPageTitle({
-    view: state.view,
+    view,
     selectedCommand,
     selectedPlugin,
-    isLoading: state.isLoadingData,
-    historyCommandId: state.historyCommandId,
+    isLoading: isLoadingData,
+    historyCommandId,
     navigationMode,
   });
   const pageDescription = getPageDescription({
-    view: state.view,
+    view,
     selectedCommand,
     selectedPlugin,
   });
   const locationPathname = getLocationPathname({
-    view: state.view,
-    selectedCommandId: state.selectedCommandId,
+    view,
+    selectedCommandId,
     selectedPluginId: selectedPlugin?.id,
     navigationMode,
   });
@@ -64,20 +100,20 @@ export function DesktopShell() {
     () =>
       createSidebarRoutes({
         mode: navigationMode,
-        commands: state.commands,
-        plugins: state.plugins,
+        commands,
+        plugins,
         onOpenSearch: () => setSearchOpen(true),
-        onSelectCommand: state.selectCommand,
-        onSelectPlugin: state.selectPlugin,
+        onSelectCommand: selectCommand,
+        onSelectPlugin: selectPlugin,
       }),
-    [navigationMode, state.commands, state.plugins, state.selectCommand, state.selectPlugin],
+    [navigationMode, commands, plugins, selectCommand, selectPlugin],
   );
 
   return (
     <ProLayout
       className="tooldeck-pro-layout"
       collapsed={sidebarCollapsed}
-      collapsedButtonRender={(collapsed, defaultDom) => defaultDom}
+      collapsedButtonRender={(_collapsed, defaultDom) => defaultDom}
       contentStyle={{ minHeight: 0 }}
       disableMobile
       fixedHeader
@@ -95,17 +131,17 @@ export function DesktopShell() {
       menuFooterRender={(props) => (
         <button
           type="button"
-          aria-current={state.view === "settings" ? "page" : undefined}
+          aria-current={view === "settings" ? "page" : undefined}
           className={`tooldeck-sidebar-footer-action ${
-            state.view === "settings" ? "tooldeck-sidebar-footer-action-selected" : ""
+            view === "settings" ? "tooldeck-sidebar-footer-action-selected" : ""
           } ${props?.collapsed ? "tooldeck-sidebar-footer-action-collapsed" : ""}`}
-          onClick={() => state.setView("settings")}
+          onClick={() => setView("settings")}
         >
           <Settings size={15} />
           {props?.collapsed ? null : <span>Settings</span>}
         </button>
       )}
-      onCollapse={(collapsed) => state.setPreference("desktop", "sidebar.collapsed", collapsed)}
+      onCollapse={(collapsed) => setPreference("desktop", "sidebar.collapsed", collapsed)}
       pageTitleRender={false}
       route={{
         path: "/",
@@ -119,23 +155,21 @@ export function DesktopShell() {
         extra={[
           <Button
             key="refresh"
-            disabled={state.isLoadingData}
+            disabled={isLoadingData}
             htmlType="button"
-            icon={
-              <RefreshCw className={state.isLoadingData ? "animate-spin" : undefined} size={15} />
-            }
-            onClick={state.rescanPlugins}
+            icon={<RefreshCw className={isLoadingData ? "animate-spin" : undefined} size={15} />}
+            onClick={rescanPlugins}
           >
             Rescan
           </Button>,
-          state.view === "main" && selectedCommand ? (
+          view === "main" && selectedCommand ? (
             <Button
               key="run"
-              disabled={!selectedCommand.pluginEnabled || state.isLoadingData || state.isRunning}
+              disabled={!selectedCommand.pluginEnabled || isLoadingData || isRunning}
               htmlType="button"
               icon={<Play size={15} />}
-              loading={state.isRunning}
-              onClick={state.runSelectedCommand}
+              loading={isRunning}
+              onClick={runSelectedCommand}
               type="primary"
             >
               Run
@@ -145,41 +179,18 @@ export function DesktopShell() {
         title={pageTitle}
       >
         <div className="grid w-full gap-4">
-          {state.loadError ? <ErrorNotice message={state.loadError} title="Load failed" /> : null}
+          {loadError ? <ErrorNotice message={loadError} title="Load failed" /> : null}
 
-          <WorkbenchSwitch
-            view={state.view}
-            navigationMode={navigationMode}
-            selectedCommand={selectedCommand}
-            selectedCommandPlugin={selectedCommandPlugin}
-            selectedPlugin={selectedPlugin}
-            selectedPluginCommands={selectedPluginCommands}
-            input={state.input}
-            isLoading={state.isLoadingData}
-            result={state.result}
-            runError={state.runError}
-            historyCommandId={state.historyCommandId}
-            history={state.history}
-            commands={state.commands}
-            plugins={state.plugins}
-            preferences={state.preferences}
-            sidebarCollapsed={sidebarCollapsed}
-            onChangeInput={state.updateInput}
-            onOpenHistory={state.openCommandHistory}
-            onSelectCommand={state.selectCommand}
-            onSetPluginEnabled={state.setPluginEnabled}
-            onRefresh={state.rescanPlugins}
-            onSetPreference={state.setPreference}
-          />
+          <WorkbenchSwitch view={view} navigationMode={navigationMode} />
         </div>
       </PageContainer>
       <SearchDialog
         open={searchOpen}
-        commands={state.commands}
-        plugins={state.plugins}
+        commands={commands}
+        plugins={plugins}
         onClose={() => setSearchOpen(false)}
-        onSelectCommand={state.selectCommand}
-        onSelectPlugin={state.selectPlugin}
+        onSelectCommand={selectCommand}
+        onSelectPlugin={selectPlugin}
       />
     </ProLayout>
   );
