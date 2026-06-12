@@ -2,9 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
-
 import { openTooldeckDatabase, PluginRepository } from "@tooldeck/storage";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { TooldeckDesktopService } from "./tooldeck-service";
 

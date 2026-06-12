@@ -78,7 +78,9 @@ function createPlugin(id: string): DesktopPlugin {
   };
 }
 
-function createNavigationModePreference(value: "entry-first" | "provider-first"): DesktopPreference {
+function createNavigationModePreference(
+  value: "entry-first" | "provider-first",
+): DesktopPreference {
   return {
     scope: "desktop",
     key: "navigation.mode",
