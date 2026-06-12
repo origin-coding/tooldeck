@@ -1,5 +1,5 @@
 import type { PluginManifest } from "@tooldeck/protocol";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, notInArray } from "drizzle-orm";
 
 import type { TooldeckDrizzleDatabase } from "../database";
 import { plugins, type PluginRow } from "../schema";
@@ -20,6 +20,14 @@ export class PluginRepository {
   constructor(private readonly db: TooldeckDrizzleDatabase) {}
 
   syncScannedPlugins(input: SyncScannedPluginsInput): PluginRow[] {
+    const pluginIds = input.plugins.map((plugin) => plugin.manifest.id);
+
+    if (pluginIds.length === 0) {
+      this.db.delete(plugins).run();
+    } else {
+      this.db.delete(plugins).where(notInArray(plugins.id, pluginIds)).run();
+    }
+
     return input.plugins.map((plugin) =>
       this.upsertScannedPlugin({
         ...plugin,

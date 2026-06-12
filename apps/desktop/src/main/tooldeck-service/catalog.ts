@@ -41,6 +41,7 @@ export class TooldeckDesktopCatalogService implements DesktopCatalogService {
     return this.context
       .requirePlugins()
       .list()
+      .filter((plugin) => manifestIndex.getPlugin(plugin.id))
       .map((plugin) =>
         formatDesktopPlugin({
           plugin,

@@ -1,8 +1,10 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
+
+import { openTooldeckDatabase, PluginRepository } from "@tooldeck/storage";
 
 import { TooldeckDesktopService } from "./tooldeck-service";
 
@@ -229,6 +231,39 @@ describe("TooldeckDesktopService", () => {
     }
   });
 
+  it("removes plugin registry rows missing from the scanned plugin directory", async () => {
+    const storagePath = createDatabasePath();
+    const pluginsRoot = path.join(createTempDir(), "plugins");
+
+    mkdirSync(pluginsRoot, { recursive: true });
+
+    const database = openTooldeckDatabase({ path: storagePath });
+
+    try {
+      new PluginRepository(database.db).upsertScannedPlugin({
+        manifest: createPluginManifest("dev.tooldeck.deleted-plugin", "Deleted Plugin", "1.0.0"),
+        manifestPath: path.join(pluginsRoot, "deleted-plugin", "manifest.json"),
+        now: 1000,
+      });
+    } finally {
+      database.close();
+    }
+
+    const service = new TooldeckDesktopService({
+      pluginsRoot,
+      storagePath,
+    });
+
+    await service.start();
+
+    try {
+      expect(service.listPlugins()).toEqual([]);
+      expect(service.listCommands()).toEqual([]);
+    } finally {
+      await service.dispose();
+    }
+  });
+
   it("localizes command result properties", async () => {
     const service = new TooldeckDesktopService({
       pluginsRoot: path.resolve("../..", "plugins"),
@@ -398,4 +433,17 @@ function createTempDir(): string {
   tempDirs.push(dir);
 
   return dir;
+}
+
+function createPluginManifest(id: string, name: string, version: string) {
+  return {
+    schemaVersion: "1.0" as const,
+    id,
+    name,
+    version,
+    runtime: {
+      kind: "node" as const,
+      entry: "./dist/index.js",
+    },
+  };
 }

@@ -248,7 +248,7 @@ describe("storage", () => {
     }
   });
 
-  it("syncs scanned plugins without deleting previously registered plugins", () => {
+  it("syncs scanned plugins and deletes plugins missing from the scan", () => {
     const database = openTooldeckDatabase({ path: createDatabasePath() });
 
     try {
@@ -282,13 +282,27 @@ describe("storage", () => {
       expect(repository.list().map((plugin) => plugin.id)).toEqual([
         "dev.tooldeck.hello-world",
         "dev.tooldeck.json-tools",
-        "dev.tooldeck.old-plugin",
       ]);
-      expect(repository.getById("dev.tooldeck.old-plugin")).toMatchObject({
-        enabled: false,
-        installedAt: 1000,
-        updatedAt: 1100,
+      expect(repository.getById("dev.tooldeck.old-plugin")).toBeUndefined();
+    } finally {
+      database.close();
+    }
+  });
+
+  it("syncs an empty scan by clearing the plugin registry", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PluginRepository(database.db);
+
+      repository.upsertScannedPlugin({
+        manifest: createPluginManifest("dev.tooldeck.json-tools", "JSON Tools", "0.0.1"),
+        manifestPath: "plugins/json-tools/manifest.json",
+        now: 1000,
       });
+
+      expect(repository.syncScannedPlugins({ plugins: [], now: 2000 })).toEqual([]);
+      expect(repository.list()).toEqual([]);
     } finally {
       database.close();
     }

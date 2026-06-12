@@ -1,7 +1,7 @@
 import type { PreferenceScope } from "@tooldeck/shared";
 
 import { createInputState } from "@/renderer/app/command-input";
-import { resolveSelectedCommandId, resolveSelectedPluginId } from "@/renderer/app/selectors";
+import { getNavigationMode } from "@/renderer/app/selectors";
 import type { AppState } from "@/renderer/app/types";
 import type { DesktopCommand, DesktopPlugin, DesktopPreference } from "@/shared/desktop-api";
 
@@ -18,8 +18,14 @@ export function mergeLoadedState({
   history: AppState["history"];
   preferences: DesktopPreference[];
 }): AppState {
-  const selectedCommandId = resolveSelectedCommandId(commands, current.selectedCommandId);
-  const selected = commands.find((command) => command.id === selectedCommandId);
+  const selection = resolveLoadedSelection({
+    commands,
+    plugins,
+    preferences,
+    selectedCommandId: current.selectedCommandId,
+    selectedPluginId: current.selectedPluginId,
+  });
+  const selected = commands.find((command) => command.id === selection.selectedCommandId);
 
   return {
     ...current,
@@ -27,10 +33,67 @@ export function mergeLoadedState({
     plugins,
     history,
     preferences,
-    selectedCommandId,
-    selectedPluginId: resolveSelectedPluginId(plugins, current.selectedPluginId, selected),
+    selectedCommandId: selection.selectedCommandId,
+    selectedPluginId: selection.selectedPluginId,
     input: createInputState(selected, current.input),
     isLoadingData: false,
+  };
+}
+
+export function resolveLoadedSelection({
+  commands,
+  plugins,
+  preferences,
+  selectedCommandId,
+  selectedPluginId,
+}: {
+  commands: DesktopCommand[];
+  plugins: DesktopPlugin[];
+  preferences: DesktopPreference[];
+  selectedCommandId?: string;
+  selectedPluginId?: string;
+}): {
+  selectedCommandId?: string;
+  selectedPluginId?: string;
+} {
+  const navigationMode = getNavigationMode(preferences);
+  const selectedCommand = selectedCommandId
+    ? commands.find((command) => command.id === selectedCommandId)
+    : undefined;
+  const selectedPlugin = selectedPluginId
+    ? plugins.find((plugin) => plugin.id === selectedPluginId)
+    : undefined;
+
+  if (navigationMode === "provider-first") {
+    if (selectedCommand) {
+      if (selectedPlugin && selectedPlugin.id !== selectedCommand.pluginId) {
+        return {
+          selectedPluginId: selectedPlugin.id,
+        };
+      }
+
+      return {
+        selectedCommandId: selectedCommand.id,
+        selectedPluginId:
+          selectedPlugin?.id ??
+          plugins.find((plugin) => plugin.id === selectedCommand.pluginId)?.id ??
+          plugins[0]?.id,
+      };
+    }
+
+    return {
+      selectedPluginId: selectedPlugin?.id ?? plugins[0]?.id,
+    };
+  }
+
+  const command = selectedCommand ?? commands[0];
+
+  return {
+    selectedCommandId: command?.id,
+    selectedPluginId:
+      selectedPlugin?.id ??
+      (command ? plugins.find((plugin) => plugin.id === command.pluginId)?.id : undefined) ??
+      plugins[0]?.id,
   };
 }
 
