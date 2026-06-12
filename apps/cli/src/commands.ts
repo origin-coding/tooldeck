@@ -237,7 +237,7 @@ export function defineListCommand(options: CreateCliCommandOptions) {
     async run({ args }) {
       const resource = normalizeListCliResource(args.resource);
       const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
-        workspaceRoot: options.workspaceRoot,
+        ...options,
         plugins: args.plugins,
         storage: args.storage,
       });
@@ -295,7 +295,7 @@ export function defineRunCommand(options: CreateCliCommandOptions) {
     },
     async run({ args, rawArgs }) {
       const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
-        workspaceRoot: options.workspaceRoot,
+        ...options,
         plugins: args.plugins,
         storage: args.storage,
       });

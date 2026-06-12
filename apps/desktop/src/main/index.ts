@@ -42,6 +42,14 @@ async function createWindow(): Promise<void> {
 }
 
 function createServiceOptions(): ConstructorParameters<typeof TooldeckDesktopService>[0] {
+  const pluginsRoot = process.env.TOOLDECK_PLUGINS_ROOT;
+
+  if (pluginsRoot) {
+    return {
+      pluginsRoot,
+    };
+  }
+
   if (!app.isPackaged) {
     return {};
   }

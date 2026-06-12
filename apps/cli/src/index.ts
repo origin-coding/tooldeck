@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,9 +7,15 @@ import { consola } from "consola";
 
 import { createCliCommand } from "./cli";
 
-const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const entryDirectory = path.dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = path.resolve(entryDirectory, "../../..");
+const bundledPluginsRoot = path.join(entryDirectory, "plugins");
+const hasBundledPlugins = existsSync(bundledPluginsRoot);
 
 const mainCommand = createCliCommand({
+  appInstallDir: hasBundledPlugins ? entryDirectory : undefined,
+  builtinPluginsDir: hasBundledPlugins ? bundledPluginsRoot : undefined,
+  mode: hasBundledPlugins ? "production" : "development",
   workspaceRoot,
 });
 

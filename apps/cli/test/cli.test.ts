@@ -59,6 +59,20 @@ describe("CLI command support", () => {
     expect(paths.storagePath).toBe(path.join(workspaceRoot, ".data", "test.sqlite"));
   });
 
+  it("resolves bundled builtin plugins in production mode", () => {
+    const appInstallDir = path.resolve("app", "cli", "dist");
+    const builtinPluginsDir = path.join(appInstallDir, "plugins");
+    const paths = resolveCliRuntimePaths({
+      appInstallDir,
+      builtinPluginsDir,
+      mode: "production",
+      workspaceRoot: path.resolve("workspace"),
+    });
+
+    expect(paths.pluginsRoot).toBe(builtinPluginsDir);
+    expect(paths.tooldeckPaths.appInstallDir).toBe(appInstallDir);
+  });
+
   it("preserves absolute CLI path overrides", () => {
     const workspaceRoot = path.resolve("workspace");
     const pluginsRoot = path.resolve("external", "plugins");

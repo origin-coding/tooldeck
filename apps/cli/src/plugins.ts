@@ -87,7 +87,7 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
         args: createPluginRuntimeCommandArgs("SQLite database path for plugin registry."),
         async run({ args }) {
           const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
-            workspaceRoot: options.workspaceRoot,
+            ...options,
             plugins: args.plugins,
             storage: args.storage,
           });
@@ -108,7 +108,7 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
         args: createPluginEnabledCommandArgs(),
         async run({ args }) {
           const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
-            workspaceRoot: options.workspaceRoot,
+            ...options,
             plugins: args.plugins,
             storage: args.storage,
           });
@@ -131,7 +131,7 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
         args: createPluginEnabledCommandArgs(),
         async run({ args }) {
           const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
-            workspaceRoot: options.workspaceRoot,
+            ...options,
             plugins: args.plugins,
             storage: args.storage,
           });

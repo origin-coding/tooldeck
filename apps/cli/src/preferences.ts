@@ -140,7 +140,7 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
         args: createPreferenceCommandArgs(),
         async run({ args }) {
           const { storagePath } = resolveCliRuntimePaths({
-            workspaceRoot: options.workspaceRoot,
+            ...options,
             storage: args.storage,
           });
           const preferences = await listCliPreferences({
@@ -167,7 +167,7 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
         },
         async run({ args }) {
           const { storagePath } = resolveCliRuntimePaths({
-            workspaceRoot: options.workspaceRoot,
+            ...options,
             storage: args.storage,
           });
           const value = await getCliPreference({
@@ -201,7 +201,7 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
         },
         async run({ args }) {
           const { storagePath } = resolveCliRuntimePaths({
-            workspaceRoot: options.workspaceRoot,
+            ...options,
             storage: args.storage,
           });
           const preference = await setCliPreference({
@@ -233,7 +233,7 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
         },
         async run({ args }) {
           const { storagePath } = resolveCliRuntimePaths({
-            workspaceRoot: options.workspaceRoot,
+            ...options,
             storage: args.storage,
           });
 

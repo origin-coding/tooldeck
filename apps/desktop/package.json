@@ -11,9 +11,9 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs",
-    "dist": "pnpm --dir ../.. --filter @tooldeck/hello-world --filter @tooldeck/json-tools --filter @tooldeck/regex-tools build && pnpm build && electron-builder",
+    "dist": "pnpm --dir ../.. builtin-plugins:stage -- --out apps/desktop/.vite/builtin-plugins && pnpm build && electron-builder",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "pretest": "pnpm --dir ../.. --filter @tooldeck/hello-world --filter @tooldeck/json-tools --filter @tooldeck/regex-tools build",
+    "pretest": "pnpm --dir ../.. builtin-plugins:build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -65,33 +65,10 @@
     ],
     "extraResources": [
       {
-        "from": "../../plugins/hello-world",
-        "to": "plugins/hello-world",
+        "from": ".vite/builtin-plugins",
+        "to": "plugins",
         "filter": [
-          "manifest.json",
-          "package.json",
-          "dist/**",
-          "locales/**"
-        ]
-      },
-      {
-        "from": "../../plugins/json-tools",
-        "to": "plugins/json-tools",
-        "filter": [
-          "manifest.json",
-          "package.json",
-          "dist/**",
-          "locales/**"
-        ]
-      },
-      {
-        "from": "../../plugins/regex-tools",
-        "to": "plugins/regex-tools",
-        "filter": [
-          "manifest.json",
-          "package.json",
-          "dist/**",
-          "locales/**"
+          "**/*"
         ]
       }
     ],

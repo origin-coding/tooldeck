@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
+    "builtin-plugins:list": "node scripts/builtin-plugins.mjs list",
+    "builtin-plugins:build": "node scripts/builtin-plugins.mjs build",
+    "builtin-plugins:stage": "node scripts/builtin-plugins.mjs stage",
     "check:desktop-boundaries": "pnpm --filter @tooldeck/desktop check:boundaries",
     "smoke:cli": "pnpm --filter @tooldeck/cli smoke:built",
     "dev:cli": "pnpm --filter @tooldeck/cli dev",

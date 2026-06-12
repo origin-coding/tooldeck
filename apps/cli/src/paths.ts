@@ -24,7 +24,7 @@ export function definePathsCommand(options: CreateCliCommandOptions) {
     },
     run({ args }) {
       const { tooldeckPaths, pluginsRoot, storagePath } = resolveCliRuntimePaths({
-        workspaceRoot: options.workspaceRoot,
+        ...options,
         plugins: args.plugins,
         storage: args.storage,
       });

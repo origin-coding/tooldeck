@@ -8,6 +8,9 @@ const waitOn = require("wait-on");
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const appRoot = path.resolve(scriptDir, "..");
+const workspaceRoot = path.resolve(appRoot, "../..");
+const builtinPluginsRoot = path.join(appRoot, ".vite", "builtin-plugins");
+const builtinPluginsScript = path.join(workspaceRoot, "scripts", "builtin-plugins.mjs");
 const vitePackageRoot = path.resolve(path.dirname(require.resolve("vite")), "../..");
 const viteCliPath = path.join(vitePackageRoot, "bin", "vite.js");
 const electronPath = require("electron");
@@ -16,6 +19,15 @@ const children = new Map();
 let shuttingDown = false;
 
 log("dev", "Starting renderer, main, and preload watchers...");
+
+await runProcess("builtin-plugins", process.execPath, [
+  builtinPluginsScript,
+  "stage",
+  "--out",
+  builtinPluginsRoot,
+  "--mode",
+  "development",
+]);
 
 startVite("renderer", ["--configLoader", "runner", "--config", "vite.renderer.config.ts"]);
 startVite("main", [
@@ -55,6 +67,7 @@ try {
   const electron = spawnProcess("electron", electronPath, ["."], {
     env: {
       ...process.env,
+      TOOLDECK_PLUGINS_ROOT: builtinPluginsRoot,
       TOOLDECK_RENDERER_URL: "http://localhost:5173",
     },
     windowsHide: false,
@@ -70,6 +83,31 @@ try {
 
 function startVite(name, args) {
   return spawnProcess(name, process.execPath, [viteCliPath, ...args]);
+}
+
+function runProcess(name, command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: appRoot,
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+      ...options,
+    });
+
+    pipeOutput(name, child.stdout);
+    pipeOutput(name, child.stderr);
+
+    child.once("error", reject);
+    child.once("exit", (code) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      reject(new Error(`${name} exited with code ${code ?? "unknown"}`));
+    });
+  });
 }
 
 function spawnProcess(name, command, args, options = {}) {

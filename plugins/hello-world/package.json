@@ -13,5 +13,10 @@
   },
   "dependencies": {
     "@tooldeck/sdk-node": "workspace:*"
+  },
+  "tooldeck": {
+    "builtinPlugin": {
+      "includeInProduction": false
+    }
   }
 }

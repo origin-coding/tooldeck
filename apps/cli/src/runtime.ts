@@ -3,12 +3,17 @@ import path from "node:path";
 import { resolveTooldeckPaths, type TooldeckPaths, type TooldeckRuntimeMode } from "@tooldeck/core";
 
 export interface CreateCliCommandOptions {
+  appInstallDir?: string;
+  builtinPluginsDir?: string;
+  mode?: TooldeckRuntimeMode;
   workspaceRoot: string;
 }
 
 export interface ResolveCliRuntimePathsOptions {
-  workspaceRoot: string;
+  appInstallDir?: string;
+  builtinPluginsDir?: string;
   mode?: TooldeckRuntimeMode;
+  workspaceRoot: string;
   plugins?: string;
   storage?: string;
 }
@@ -21,7 +26,11 @@ export interface CliRuntimePaths {
 
 export function resolveCliRuntimePaths(options: ResolveCliRuntimePathsOptions): CliRuntimePaths {
   const tooldeckPaths = resolveTooldeckPaths({
+    appInstallDir: options.appInstallDir,
     mode: options.mode ?? "development",
+    overrides: {
+      builtinPluginsDir: options.builtinPluginsDir,
+    },
     workspaceRoot: options.workspaceRoot,
   });
 
