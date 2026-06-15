@@ -20,6 +20,7 @@
     "format:check": "oxfmt . --check",
     "test": "turbo run test",
     "test:run": "turbo run test -- --run",
+    "publish:npm-trusted": "node scripts/publish-npm-trusted.mjs",
     "version-packages": "changeset version"
   },
   "devDependencies": {
