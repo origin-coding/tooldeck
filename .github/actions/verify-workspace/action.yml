@@ -1,0 +1,21 @@
+name: Verify workspace
+description: Run the shared workspace verification sequence.
+
+runs:
+  using: composite
+  steps:
+    - name: Build
+      shell: bash
+      run: pnpm build
+
+    - name: Typecheck desktop
+      shell: bash
+      run: pnpm --filter @tooldeck/desktop typecheck
+
+    - name: Typecheck
+      shell: bash
+      run: pnpm exec turbo run typecheck --concurrency=1
+
+    - name: Test
+      shell: bash
+      run: pnpm test

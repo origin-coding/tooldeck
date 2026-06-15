@@ -1,14 +1,19 @@
 {
   "name": "@tooldeck/cli",
   "version": "1.1.0",
-  "private": true,
   "description": "Command-line interface for Tooldeck.",
   "bin": {
     "tooldeck": "./dist/index.js"
   },
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": "./dist/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "dev": "tsx src/index.ts",
@@ -22,20 +27,20 @@
     "test": "vitest run test"
   },
   "dependencies": {
-    "@tooldeck/core": "workspace:*",
-    "@tooldeck/host-node": "workspace:*",
-    "@tooldeck/protocol": "workspace:*",
-    "@tooldeck/shared": "workspace:*",
-    "@tooldeck/storage": "workspace:*",
     "citty": "^0.2.2",
     "cli-table3": "^0.6.5",
     "consola": "^3.4.2",
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
+    "@tooldeck/core": "workspace:*",
     "@tooldeck/hello-world": "workspace:*",
+    "@tooldeck/host-node": "workspace:*",
     "@tooldeck/json-tools": "workspace:*",
+    "@tooldeck/protocol": "workspace:*",
     "@tooldeck/regex-tools": "workspace:*",
+    "@tooldeck/shared": "workspace:*",
+    "@tooldeck/storage": "workspace:*",
     "@types/node": "^25.9.1"
   }
 }

@@ -1,10 +1,13 @@
 {
   "name": "@tooldeck/protocol",
   "version": "1.1.0",
-  "private": true,
   "description": "Toolbox Plugin Protocol types for Tooldeck.",
   "type": "module",
   "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "schema"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -12,14 +15,15 @@
     },
     "./schema/manifest-v1.schema.json": "./schema/manifest-v1.schema.json"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "typecheck": "tsc --noEmit"
   },
-  "dependencies": {
-    "@tooldeck/shared": "workspace:*"
-  },
   "devDependencies": {
+    "@tooldeck/shared": "workspace:*",
     "@types/json-schema": "^7.0.15"
   }
 }

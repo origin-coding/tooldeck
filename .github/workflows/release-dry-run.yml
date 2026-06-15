@@ -1,0 +1,62 @@
+name: Release dry-run
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-dry-run-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify release dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Verify workspace
+        uses: ./.github/actions/verify-workspace
+
+  npm-dry-run:
+    name: npm dry-run (${{ matrix.package.name }})
+    runs-on: ubuntu-latest
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - name: "@tooldeck/cli"
+            path: apps/cli
+          - name: "@tooldeck/protocol"
+            path: packages/protocol
+          - name: "@tooldeck/sdk-node"
+            path: packages/sdk-node
+          - name: "@tooldeck/plugin-tools"
+            path: packages/plugin-tools
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup workspace
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Build
+        run: pnpm build
+
+      - name: npm pack dry-run
+        working-directory: ${{ matrix.package.path }}
+        run: npm pack --dry-run
+
+      - name: npm publish dry-run
+        working-directory: ${{ matrix.package.path }}
+        run: npm publish --dry-run --access public
