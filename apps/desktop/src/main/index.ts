@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow } from "electron";
 
+import { checkForDesktopUpdates } from "./auto-updates";
 import { registerTooldeckIpc } from "./ipc";
 import { TooldeckDesktopService } from "./tooldeck-service";
 
@@ -61,10 +62,14 @@ function createServiceOptions(): ConstructorParameters<typeof TooldeckDesktopSer
 }
 
 app.whenReady().then(() => {
-  void createWindow().catch((error) => {
-    console.error("Failed to start Tooldeck desktop.", error);
-    app.quit();
-  });
+  void createWindow()
+    .then(() => {
+      checkForDesktopUpdates();
+    })
+    .catch((error) => {
+      console.error("Failed to start Tooldeck desktop.", error);
+      app.quit();
+    });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

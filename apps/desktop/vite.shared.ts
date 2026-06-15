@@ -1,7 +1,11 @@
+import { builtinModules } from "node:module";
+
 import type { UserConfig } from "vite";
 
 export const mainProcessExternal = [
   "electron",
+  "electron-updater",
+  ...builtinModules,
   /^node:/,
   // "@tooldeck/core",
   // "@tooldeck/host-node",
