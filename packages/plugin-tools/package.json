@@ -3,7 +3,7 @@
   "version": "1.1.0",
   "description": "Development tools for Tooldeck plugins.",
   "bin": {
-    "tooldeck-plugin-types": "./dist/generate-command-types.js"
+    "tooldeck-plugin-types": "dist/generate-command-types.js"
   },
   "type": "module",
   "types": "./dist/index.d.ts",
