@@ -1,6 +1,6 @@
 # Plugin Authoring Workflow
 
-本文定义 Tooldeck 1.2 中外部插件开发的端到端工作流。为支撑该工作流所需的 workspace build / typecheck / test 确定性规则，单独见 [Turborepo Task Graph](./turborepo-task-graph.md)。
+本文定义 Tooldeck 1.2 中外部插件开发的端到端工作流。为支撑该工作流所需的外部插件目录扫描规则，单独见 [External Plugin Dirs](./external-plugin-dirs.md)；workspace build / typecheck / test 确定性规则，单独见 [Turborepo Task Graph](./turborepo-task-graph.md)。
 
 1.2 的目标不是引入插件市场、安装包或远程注册流程，而是让 commands-only Node 插件可以在 Tooldeck monorepo 外部开发，并通过发布后的 npm 包完成声明、校验、构建和运行验证。
 
@@ -113,7 +113,7 @@ my-tooldeck-plugin/
 
 ## Tooldeck Runtime Verification
 
-外部插件项目完成 `pnpm build` 后，Tooldeck CLI / Desktop 应能通过现有插件扫描流程读取该项目的 manifest。
+外部插件项目完成 `pnpm build` 后，Tooldeck CLI / Desktop 应能通过显式 external plugin dir 读取该项目的 manifest。具体 CLI / Desktop 参数、目录解释规则、扫描来源合并和验收标准见 [External Plugin Dirs](./external-plugin-dirs.md)。
 
 内置插件和外部插件采用不同来源：
 
@@ -128,26 +128,6 @@ external plugins
 ```
 
 `--plugin-dir` 是 1.2 推荐的开发态入口。它表示“额外加入扫描的可信本地插件项目或插件集合”，不替换内置插件目录，也不表示安装、注册、打包或 marketplace 分发。现有 `--plugins` root override 可以继续作为兼容或内部测试入口，但新的插件作者文档应使用 `--plugin-dir`。
-
-对 external plugin dir 的解释规则：
-
-- 如果路径指向插件项目根目录，Tooldeck 读取该目录下的 `manifest.json`。
-- 如果路径指向包含多个插件项目的目录，Tooldeck 可以扫描直接子目录中的 `manifest.json`。
-- 扫描阶段只读取 manifest、locale 和必要静态文件，不 import `runtime.entry`。
-
-CLI 规则：
-
-- 内置插件按当前 CLI runtime path 自动扫描。
-- `--plugin-dir <path>` 可以出现多次，每个路径都会额外加入扫描。
-- 外部目录中的 command 与内置插件 command 一起进入 manifest index。
-- 如果外部插件和内置插件声明重复 command id，沿用现有 duplicate command id 错误。
-
-Desktop 规则：
-
-- 内置插件按当前 Desktop runtime path 自动扫描。
-- 开发态支持 `pnpm --filter @tooldeck/desktop dev -- --plugin-dir <path>`，并允许重复传入多个 `--plugin-dir`。
-- 开发态可选支持 `TOOLDECK_PLUGIN_DIRS`，多个路径用平台 path delimiter 分隔。
-- 1.2 不要求 packaged Desktop 提供复杂 UI 来管理外部插件目录。
 
 运行规则：
 
