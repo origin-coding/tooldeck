@@ -144,7 +144,7 @@ tooldeck-plugin check --manifest manifest.json
 
 - `manifest.json` 符合 `@tooldeck/protocol` manifest schema。
 - `manifest.runtime.kind` 是当前支持的 `node`。
-- `manifest.runtime.entry` 存在且指向预期构建产物，例如 `./dist/index.js`。
+- `manifest.runtime.entry` 已声明、是相对路径，并指向预期构建产物路径，例如 `./dist/index.js`。
 - `contributes.commands[*].id` 在当前 manifest 内唯一。
 - 不要求 manifest 显式声明 `activationEvents`；commands 由 host 隐式映射为 `onCommand:<id>` 激活语义。
 - Command `inputSchema` 属于当前支持的 JSON Schema 子集。

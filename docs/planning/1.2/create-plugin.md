@@ -6,7 +6,7 @@
 
 `@tooldeck/create-plugin` 提供一个最小、可工作的 Tooldeck 插件 starter。生成项目应验证以下链路：
 
-```text0
+```text
 create project
   -> install npm dependencies
   -> write plugin code with @tooldeck/sdk-node
@@ -70,6 +70,8 @@ my-plugin/
   vite.config.ts
   src/
     index.ts
+    generated/
+      commands.ts
   locales/
     en.json
   README.md
@@ -153,9 +155,11 @@ pnpm dlx @tooldeck/create-plugin my-plugin
 ```json
 {
   "scripts": {
+    "generate": "tooldeck-plugin generate",
     "build": "tooldeck-plugin build --bundler vite",
     "check": "tooldeck-plugin check",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@tooldeck/sdk-node": "^1.2.0"
@@ -164,7 +168,8 @@ pnpm dlx @tooldeck/create-plugin my-plugin
     "@tooldeck/plugin-tools": "^1.2.0",
     "@tooldeck/vite-plugin": "^1.2.0",
     "typescript": "^6.0.0",
-    "vite": "^8.0.0"
+    "vite": "^8.0.0",
+    "vitest": "^4.0.0"
   }
 }
 ```
@@ -178,6 +183,8 @@ pnpm dlx @tooldeck/create-plugin my-plugin
 - `manifest.runtime.entry` 指向 `./dist/index.js`。
 - `src/index.ts` 使用 `@tooldeck/sdk-node` 的 `definePlugin`。
 - command input 类型从 `manifest.json` 生成，不手写重复类型。
+- `src/generated/commands.ts` 与初始 `manifest.json` 保持同步，后续由 `tooldeck-plugin generate` 更新。
+- 默认测试示例使用 Vitest 和 `@tooldeck/plugin-tools/testing` 验证示例 command handler。
 - 构建产物可以被 `@tooldeck/host-node` 通过 ESM default export 加载。
 
 ## 与其他包的关系
