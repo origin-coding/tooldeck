@@ -201,7 +201,7 @@ tooldeck-plugin build --bundler vite
 
 - manifest schema 完整校验。
 - command id 唯一性。
-- `activationEvents` 是否覆盖 command。
+- command id 到隐式 `onCommand:<id>` 激活语义的项目级说明和校验。
 - command `inputSchema` 是否属于当前支持的 JSON Schema 子集。
 - `x-i18n` 和 `x-ui` 支持字段校验。
 - locale 文件存在性和 key 完整性。

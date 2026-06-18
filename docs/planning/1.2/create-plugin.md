@@ -216,7 +216,6 @@ generated plugin project
 - 生成项目可以运行 `pnpm install`。
 - 生成项目可以运行 `pnpm check`。
 - 生成项目可以运行 `pnpm build`。
-- 生成项目的 manifest 可以被 Tooldeck CLI 通过 `--plugins` 扫描。
+- 生成项目的 manifest 可以被 Tooldeck CLI 通过 `--plugin-dir` 扫描。
 - Tooldeck CLI 可以运行生成项目里的示例 command。
 - 文档说明创建项目、构建项目和从 Tooldeck workspace 扫描外部插件的基本流程。
-

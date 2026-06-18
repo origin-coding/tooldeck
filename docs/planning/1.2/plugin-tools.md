@@ -146,7 +146,7 @@ tooldeck-plugin check --manifest manifest.json
 - `manifest.runtime.kind` 是当前支持的 `node`。
 - `manifest.runtime.entry` 存在且指向预期构建产物，例如 `./dist/index.js`。
 - `contributes.commands[*].id` 在当前 manifest 内唯一。
-- `activationEvents` 覆盖 manifest 中声明的 commands，例如 `onCommand:<id>`。
+- 不要求 manifest 显式声明 `activationEvents`；commands 由 host 隐式映射为 `onCommand:<id>` 激活语义。
 - Command `inputSchema` 属于当前支持的 JSON Schema 子集。
 - `x-i18n` 和 `x-ui` 只使用当前支持字段。
 - Locale 文件存在，`LocalizedString.key` 能在 locale 文件中解析。
@@ -257,28 +257,6 @@ tooldeck-plugin inspect
 
 `inspect` 应只读取项目文件，不执行插件 runtime code。
 
-### Watch
-
-命令：
-
-```bash
-tooldeck-plugin generate --watch
-```
-
-监听：
-
-```text
-manifest.json
-locales/*.json
-```
-
-行为：
-
-- Manifest 变化后重新生成 command types。
-- Locale 变化后可以重新执行轻量 check。
-- 不做插件热更新。
-- 不自动启动或重启 Tooldeck Desktop。
-
 ### Programmatic API
 
 `@tooldeck/plugin-tools` 应导出可复用 API，避免 `@tooldeck/create-plugin`、集成测试和内部脚本只能 shell out 到 CLI。
@@ -302,6 +280,7 @@ CLI 应调用同一套内部 API，避免 CLI 逻辑和库逻辑分叉。
 
 - `tooldeck.manifest.ts` 静态 manifest authoring API。
 - 从 manifest 生成 command handler skeleton。
+- `tooldeck-plugin generate --watch`。
 - 插件 package / release / publish helper。
 - 插件安装包格式。
 - 插件市场或 registry 集成。
@@ -345,10 +324,9 @@ CLI 应调用同一套内部 API，避免 CLI 逻辑和库逻辑分叉。
 ## 验收标准
 
 - 外部插件项目可以运行 `tooldeck-plugin generate` 生成 command input 类型和 command id 常量。
-- 外部插件项目可以运行 `tooldeck-plugin check` 校验 manifest、类型生成状态、locale、activation events 和 package 结构。
+- 外部插件项目可以运行 `tooldeck-plugin check` 校验 manifest、类型生成状态、locale、隐式 command 激活语义和 package 结构。
 - 外部插件项目可以运行 `tooldeck-plugin build --bundler vite` 完成 `generate -> check -> vite build -> check --built`。
 - 构建产物中的 `manifest.runtime.entry` 可以被 `@tooldeck/host-node` 通过 ESM default export 加载。
 - 插件项目可以用 Vitest 配合 `@tooldeck/plugin-tools/testing` 测试 command handler。
 - `tooldeck-plugin inspect` 可以输出可用于排查的插件项目报告。
-- `tooldeck-plugin generate --watch` 可以在 manifest 变化时刷新 generated types。
 - `@tooldeck/create-plugin` 生成的项目默认使用上述 P0/P1 能力。

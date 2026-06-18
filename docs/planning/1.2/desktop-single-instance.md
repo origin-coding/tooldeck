@@ -134,7 +134,7 @@ focusMainWindow()
 - 如果主窗口最小化，第二次启动会恢复并聚焦主窗口。
 - 如果主窗口在后台，第二次启动会聚焦主窗口。
 - 单实例实现不改变 Desktop command list、command run 和 command history 行为。
-- Desktop 仍可以扫描外部插件目录并运行 command。
+- Desktop 仍可以通过显式 `--plugin-dir` 开发入口扫描额外本地插件目录并运行 command。
 - CLI 行为不受影响。
 
 ## 测试建议

@@ -39,7 +39,7 @@ create external project
   -> check manifest and project structure
   -> build Node ESM runtime entry
   -> check built artifact
-  -> run through Tooldeck CLI / Desktop with --plugins
+  -> run through Tooldeck CLI / Desktop with explicit external plugin directories
 ```
 
 命令示例：
@@ -55,8 +55,9 @@ pnpm build
 然后从 Tooldeck workspace 验证：
 
 ```bash
-pnpm --filter @tooldeck/cli dev -- list commands --plugins ../my-tooldeck-plugin
-pnpm --filter @tooldeck/cli dev -- run hello.world --plugins ../my-tooldeck-plugin
+pnpm --filter @tooldeck/cli dev -- list commands --plugin-dir ../my-tooldeck-plugin
+pnpm --filter @tooldeck/cli dev -- run hello.world --plugin-dir ../my-tooldeck-plugin
+pnpm --filter @tooldeck/desktop dev -- --plugin-dir ../my-tooldeck-plugin
 ```
 
 具体 command id 以创建器模板生成的 manifest 为准。
@@ -114,17 +115,39 @@ my-tooldeck-plugin/
 
 外部插件项目完成 `pnpm build` 后，Tooldeck CLI / Desktop 应能通过现有插件扫描流程读取该项目的 manifest。
 
-扫描输入：
+内置插件和外部插件采用不同来源：
 
 ```text
---plugins ../my-tooldeck-plugin
+internal plugins
+  -> dev mode: workspace plugins
+  -> packaged app: bundled resources/plugins
+
+external plugins
+  -> CLI/Desktop explicit --plugin-dir arguments
+  -> Desktop dev env TOOLDECK_PLUGIN_DIRS
 ```
 
-对目录的解释规则：
+`--plugin-dir` 是 1.2 推荐的开发态入口。它表示“额外加入扫描的可信本地插件项目或插件集合”，不替换内置插件目录，也不表示安装、注册、打包或 marketplace 分发。现有 `--plugins` root override 可以继续作为兼容或内部测试入口，但新的插件作者文档应使用 `--plugin-dir`。
+
+对 external plugin dir 的解释规则：
 
 - 如果路径指向插件项目根目录，Tooldeck 读取该目录下的 `manifest.json`。
 - 如果路径指向包含多个插件项目的目录，Tooldeck 可以扫描直接子目录中的 `manifest.json`。
 - 扫描阶段只读取 manifest、locale 和必要静态文件，不 import `runtime.entry`。
+
+CLI 规则：
+
+- 内置插件按当前 CLI runtime path 自动扫描。
+- `--plugin-dir <path>` 可以出现多次，每个路径都会额外加入扫描。
+- 外部目录中的 command 与内置插件 command 一起进入 manifest index。
+- 如果外部插件和内置插件声明重复 command id，沿用现有 duplicate command id 错误。
+
+Desktop 规则：
+
+- 内置插件按当前 Desktop runtime path 自动扫描。
+- 开发态支持 `pnpm --filter @tooldeck/desktop dev -- --plugin-dir <path>`，并允许重复传入多个 `--plugin-dir`。
+- 开发态可选支持 `TOOLDECK_PLUGIN_DIRS`，多个路径用平台 path delimiter 分隔。
+- 1.2 不要求 packaged Desktop 提供复杂 UI 来管理外部插件目录。
 
 运行规则：
 
@@ -135,7 +158,7 @@ list commands
 
 run command
   -> matches command id
-  -> resolves activation event such as onCommand:<id>
+  -> derives implicit activation semantics such as onCommand:<id>
   -> dynamic imports manifest.runtime.entry
   -> calls activate(ctx)
   -> executes registered command handler
@@ -302,8 +325,8 @@ External plugin workflow:
 - 外部插件项目可以运行 `pnpm check`。
 - 外部插件项目可以运行 `pnpm build`。
 - `pnpm build` 完成 `generate -> check -> vite build -> check --built`。
-- Tooldeck CLI 可以通过 `--plugins` 扫描并运行外部插件 command。
-- Desktop 可以扫描同一个外部插件目录并运行 command。
+- Tooldeck CLI 可以通过一个或多个 `--plugin-dir` 扫描并运行外部插件 command。
+- Desktop 可以通过一个或多个 `--plugin-dir` 或 `TOOLDECK_PLUGIN_DIRS` 扫描同一个外部插件目录并运行 command。
 - manifest scan 不激活插件代码。
 
 Build / typecheck determinism:
@@ -329,4 +352,3 @@ Build / typecheck determinism:
 - 插件依赖解析。
 - 插件热更新。
 - Desktop 内复杂插件管理 UI。
-
