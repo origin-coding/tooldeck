@@ -1,55 +1,33 @@
 // This file is generated from manifest.json. Do not edit it by hand.
 
-export type Pattern = string;
-export type Text = string;
-export type Flags = ("g" | "i" | "m" | "s" | "u" | "y")[];
-export type MatchMode = "contains" | "full";
-
 export interface RegexTestInput {
-  pattern: Pattern;
-  text: Text;
-  flags?: Flags;
-  mode?: MatchMode;
+  pattern: string;
+  text: string;
+  flags?: ("g" | "i" | "m" | "s" | "u" | "y")[];
+  mode?: "contains" | "full";
 }
-
-export type Pattern = string;
-export type Text = string;
-export type Flags = ("g" | "i" | "m" | "s" | "u" | "y")[];
-export type MaxMatches = number;
-export type IncludeGroups = boolean;
-export type OutputSections = ("match" | "index" | "groups" | "namedGroups" | "context" | "stats" | "json")[];
 
 export interface RegexExtractInput {
-  pattern: Pattern;
-  text: Text;
-  flags?: Flags;
-  maxMatches?: MaxMatches;
-  includeGroups?: IncludeGroups;
-  sections?: OutputSections;
+  pattern: string;
+  text: string;
+  flags?: ("g" | "i" | "m" | "s" | "u" | "y")[];
+  maxMatches?: number;
+  includeGroups?: boolean;
+  sections?: ("match" | "index" | "groups" | "namedGroups" | "context" | "stats" | "json")[];
 }
-
-export type Pattern = string;
-export type Replacement = string;
-export type Text = string;
-export type Flags = ("g" | "i" | "m" | "s" | "u" | "y")[];
-export type ReplacementScope = "first" | "all";
 
 export interface RegexReplaceInput {
-  pattern: Pattern;
-  replacement: Replacement;
-  text: Text;
-  flags?: Flags;
-  scope?: ReplacementScope;
+  pattern: string;
+  replacement: string;
+  text: string;
+  flags?: ("g" | "i" | "m" | "s" | "u" | "y")[];
+  scope?: "first" | "all";
 }
 
-export type Text = string;
-export type OutputTarget = "pattern" | "javascript-string" | "javascript-regexp";
-export type WrapWithSlashes = boolean;
-
 export interface RegexEscapeInput {
-  text: Text;
-  target?: OutputTarget;
-  wrapWithSlashes?: WrapWithSlashes;
+  text: string;
+  target?: "pattern" | "javascript-string" | "javascript-regexp";
+  wrapWithSlashes?: boolean;
 }
 
 export interface PluginCommandInputs {
@@ -58,11 +36,6 @@ export interface PluginCommandInputs {
   "regex.replace": RegexReplaceInput;
   "regex.escape": RegexEscapeInput;
 }
-
-export type PluginCommandId = keyof PluginCommandInputs;
-
-export type PluginCommandInput<TCommandId extends PluginCommandId> =
-  PluginCommandInputs[TCommandId];
 
 export const commandIds = {
   regexTest: "regex.test",
