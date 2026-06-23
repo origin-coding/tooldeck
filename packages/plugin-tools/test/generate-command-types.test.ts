@@ -76,6 +76,50 @@ describe("generatePluginCommandTypes", () => {
     );
   });
 
+  it("does not generate standalone property types from schema titles", async () => {
+    const manifest = createManifest([
+      {
+        id: "text.first",
+        title: "First Text",
+        inputSchema: {
+          type: "object",
+          required: ["text"],
+          additionalProperties: false,
+          properties: {
+            text: {
+              type: "string",
+              title: "Text",
+              description: "Text shown in the command form.",
+              "x-i18n": {
+                title: "schema.text.title",
+              },
+            },
+          },
+        },
+      },
+      {
+        id: "text.second",
+        title: "Second Text",
+        inputSchema: {
+          type: "object",
+          required: ["text"],
+          additionalProperties: false,
+          properties: {
+            text: {
+              type: "string",
+              title: "Text",
+            },
+          },
+        },
+      },
+    ]);
+    const output = await generatePluginCommandTypes(manifest);
+
+    expect(output).not.toContain("export type Text");
+    expect(output).toContain("export interface TextFirstInput {\n  text: string;\n}");
+    expect(output).toContain("export interface TextSecondInput {\n  text: string;\n}");
+  });
+
   it("rejects command id constant key conflicts", async () => {
     const manifest = createManifest([
       {
