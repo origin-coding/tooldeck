@@ -8,9 +8,11 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "generate:types": "pnpm --dir ../.. --filter @tooldeck/plugin-tools build && node ../../packages/plugin-tools/dist/tooldeck-plugin.js generate",
-    "build": "pnpm generate:types && vite build --configLoader runner",
-    "typecheck": "pnpm generate:types && tsc --noEmit"
+    "generate": "pnpm --dir ../.. --filter @tooldeck/plugin-tools build && node ../../packages/plugin-tools/dist/tooldeck-plugin.js generate",
+    "generate:types": "pnpm generate",
+    "check": "pnpm generate && node ../../packages/plugin-tools/dist/tooldeck-plugin.js check",
+    "build": "pnpm generate && vite build --configLoader runner && node ../../packages/plugin-tools/dist/tooldeck-plugin.js check --built",
+    "typecheck": "pnpm generate && tsc --noEmit"
   },
   "dependencies": {
     "@tooldeck/plugin-tools": "workspace:*",

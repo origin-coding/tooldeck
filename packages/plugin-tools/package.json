@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@tooldeck/protocol": "workspace:*",
+    "ajv": "^8.20.0",
     "citty": "^0.2.2",
     "json-schema-to-typescript": "^15.0.4",
     "scule": "^1.3.0"

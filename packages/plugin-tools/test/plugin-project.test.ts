@@ -1,0 +1,215 @@
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import type { PluginManifest } from "@tooldeck/protocol";
+import { runCommand } from "citty";
+import { afterEach, describe, expect, it } from "vitest";
+
+import {
+  checkPluginProject,
+  createPluginToolsCommand,
+  generatePluginCommandTypesFile,
+  inspectPluginProject,
+} from "../src";
+
+const tempDirs: string[] = [];
+const originalCwd = process.cwd();
+const originalExitCode = process.exitCode;
+
+afterEach(() => {
+  process.chdir(originalCwd);
+  process.exitCode = originalExitCode;
+
+  for (const dir of tempDirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+describe("checkPluginProject", () => {
+  it("passes for a generated plugin project", async () => {
+    const projectDir = await createPluginProject();
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+
+    const result = await checkPluginProject();
+
+    expect(result.ok).toBe(true);
+    expect(result.diagnostics.filter((diagnostic) => diagnostic.severity === "error")).toEqual([]);
+  });
+
+  it("fails when generated command types are stale", async () => {
+    const projectDir = await createPluginProject();
+
+    process.chdir(projectDir);
+    await mkdir(path.join(projectDir, "src", "generated"), { recursive: true });
+    await writeFile(path.join(projectDir, "src", "generated", "commands.ts"), "stale", "utf8");
+
+    const result = await checkPluginProject();
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.some((diagnostic) => diagnostic.code === "GENERATED_STALE")).toBe(
+      true,
+    );
+  });
+
+  it("checks built ESM output without activating the plugin", async () => {
+    const projectDir = await createPluginProject();
+    const activationMarker = path.join(projectDir, "activated.txt").replaceAll("\\", "\\\\");
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+    await mkdir(path.join(projectDir, "dist"), { recursive: true });
+    await writeFile(
+      path.join(projectDir, "dist", "index.js"),
+      `import { writeFileSync } from "node:fs";\nexport default { activate() { writeFileSync("${activationMarker}", "activated"); } };\n`,
+      "utf8",
+    );
+
+    const result = await checkPluginProject({ built: true });
+
+    expect(result.ok).toBe(true);
+    expect(existsSync(path.join(projectDir, "activated.txt"))).toBe(false);
+  });
+
+  it("reports built output without a Tooldeck default export", async () => {
+    const projectDir = await createPluginProject();
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+    await mkdir(path.join(projectDir, "dist"), { recursive: true });
+    await writeFile(path.join(projectDir, "dist", "index.js"), "export const value = 1;\n", "utf8");
+
+    const result = await checkPluginProject({ built: true });
+
+    expect(result.ok).toBe(false);
+    expect(
+      result.diagnostics.some((diagnostic) => diagnostic.code === "BUILT_PLUGIN_DEFAULT_EXPORT"),
+    ).toBe(true);
+  });
+});
+
+describe("inspectPluginProject", () => {
+  it("reports project details without importing runtime code", async () => {
+    const projectDir = await createPluginProject();
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+    await mkdir(path.join(projectDir, "dist"), { recursive: true });
+    await writeFile(path.join(projectDir, "dist", "index.js"), "throw new Error('do not load');");
+
+    const result = await inspectPluginProject();
+
+    expect(result.plugin?.id).toBe("dev.tooldeck.test-tools");
+    expect(result.commands).toEqual(["json.format"]);
+    expect(result.buildOutput.exists).toBe(true);
+  });
+
+  it("wires the inspect subcommand", async () => {
+    const projectDir = await createPluginProject();
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+
+    await expect(
+      runCommand(createPluginToolsCommand(), {
+        rawArgs: ["inspect"],
+      }),
+    ).resolves.toEqual({ result: undefined });
+  });
+});
+
+async function createPluginProject(): Promise<string> {
+  const projectDir = createTempDir();
+
+  await writeManifest(path.join(projectDir, "manifest.json"));
+  await writePackageJson(path.join(projectDir, "package.json"));
+  await mkdir(path.join(projectDir, "locales"), { recursive: true });
+  await writeFile(
+    path.join(projectDir, "locales", "en.json"),
+    JSON.stringify({
+      "plugin.name": "Test Tools",
+      "commands.format.title": "Format JSON",
+    }),
+    "utf8",
+  );
+
+  return projectDir;
+}
+
+async function writeManifest(manifestPath: string): Promise<void> {
+  await mkdir(path.dirname(manifestPath), { recursive: true });
+  await writeFile(manifestPath, JSON.stringify(createManifest()), "utf8");
+}
+
+async function writePackageJson(packageJsonPath: string): Promise<void> {
+  await writeFile(
+    packageJsonPath,
+    JSON.stringify({
+      name: "test-tools",
+      version: "0.0.0",
+      type: "module",
+      scripts: {
+        generate: "tooldeck-plugin generate",
+        check: "tooldeck-plugin check",
+        build: "tooldeck-plugin build --bundler vite",
+      },
+      dependencies: {
+        "@tooldeck/plugin-tools": "workspace:*",
+        "@tooldeck/sdk-node": "workspace:*",
+      },
+    }),
+    "utf8",
+  );
+}
+
+function createManifest(): PluginManifest {
+  return {
+    schemaVersion: "1.0",
+    id: "dev.tooldeck.test-tools",
+    name: {
+      key: "plugin.name",
+      default: "Test Tools",
+    },
+    version: "0.0.0",
+    runtime: {
+      kind: "node",
+      entry: "./dist/index.js",
+    },
+    defaultLocale: "en",
+    locales: {
+      en: "./locales/en.json",
+    },
+    contributes: {
+      commands: [
+        {
+          id: "json.format",
+          title: {
+            key: "commands.format.title",
+            default: "Format JSON",
+          },
+          inputSchema: {
+            type: "object",
+            required: ["text"],
+            additionalProperties: false,
+            properties: {
+              text: {
+                type: "string",
+              },
+            },
+          },
+        },
+      ],
+    },
+  };
+}
+
+function createTempDir(): string {
+  const dir = mkdtempSync(path.join(tmpdir(), "tooldeck-plugin-project-"));
+
+  tempDirs.push(dir);
+
+  return dir;
+}

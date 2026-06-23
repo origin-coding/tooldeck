@@ -9,6 +9,7 @@ const nodeBuiltins = new Set([
 
 const externalPackages = new Set([
   "@tooldeck/protocol",
+  "ajv",
   "citty",
   "json-schema-to-typescript",
   "scule",
