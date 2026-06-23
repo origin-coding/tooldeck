@@ -219,6 +219,9 @@ importers:
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
+      citty:
+        specifier: ^0.2.2
+        version: 0.2.2
     devDependencies:
       '@types/node':
         specifier: ^25.9.1

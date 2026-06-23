@@ -5,11 +5,20 @@ import type { PluginManifest } from "@tooldeck/protocol";
 
 import { generatePluginCommandTypes } from "./generate-command-types-core";
 
-export async function runGenerateCommandTypesCli(args: string[]): Promise<void> {
+export interface RunGenerateCommandTypesCliOptions {
+  commandName?: string;
+}
+
+export async function runGenerateCommandTypesCli(
+  args: string[],
+  options: RunGenerateCommandTypesCliOptions = {},
+): Promise<void> {
   const [manifestArg, outputArg] = args;
 
   if (!manifestArg || !outputArg) {
-    throw new Error("Usage: tooldeck-plugin-types <manifest.json> <output.ts>");
+    const commandName = options.commandName ?? "tooldeck-plugin generate types";
+
+    throw new Error(`Usage: ${commandName} <manifest.json> <output.ts>`);
   }
 
   const manifestPath = path.resolve(manifestArg);

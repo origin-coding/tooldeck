@@ -20,6 +20,7 @@ export default defineConfig({
       external: (id) => nodeBuiltins.has(id) || id.startsWith("node:"),
       input: {
         index: "src/index.ts",
+        "tooldeck-plugin": "src/tooldeck-plugin.ts",
         "generate-command-types": "src/generate-command-types.ts",
       },
       output: {
