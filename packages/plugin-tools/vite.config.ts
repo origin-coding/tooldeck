@@ -7,6 +7,13 @@ const nodeBuiltins = new Set([
   ...builtinModules.map((moduleName) => `node:${moduleName}`),
 ]);
 
+const externalPackages = new Set([
+  "@tooldeck/protocol",
+  "citty",
+  "json-schema-to-typescript",
+  "scule",
+]);
+
 export default defineConfig({
   cacheDir: ".vite/cache",
   build: {
@@ -17,7 +24,8 @@ export default defineConfig({
     ssr: true,
     target: "node22",
     rollupOptions: {
-      external: (id) => nodeBuiltins.has(id) || id.startsWith("node:"),
+      external: (id) =>
+        nodeBuiltins.has(id) || id.startsWith("node:") || externalPackages.has(getPackageName(id)),
       input: {
         index: "src/index.ts",
         "tooldeck-plugin": "src/tooldeck-plugin.ts",
@@ -29,7 +37,12 @@ export default defineConfig({
       },
     },
   },
-  ssr: {
-    noExternal: true,
-  },
 });
+
+function getPackageName(id: string): string {
+  if (id.startsWith("@")) {
+    return id.split("/").slice(0, 2).join("/");
+  }
+
+  return id.split("/")[0] ?? id;
+}

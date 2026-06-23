@@ -5,7 +5,10 @@ export {
   defineGenerateCommand,
   defineGenerateTypesCommand,
 } from "./cli";
-export { generatePluginCommandTypes } from "./generate-command-types-core";
+export {
+  generatePluginCommandTypes,
+  type GeneratePluginCommandTypesOptions,
+} from "./generate-command-types-core";
 export {
   generateCommandTypesFile,
   runGenerateCommandTypesCli,

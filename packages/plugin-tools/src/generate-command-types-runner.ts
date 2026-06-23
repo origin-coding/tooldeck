@@ -23,7 +23,10 @@ export async function generateCommandTypesFile(
   const manifestPath = path.resolve(options.manifestPath ?? DEFAULT_MANIFEST_PATH);
   const outputPath = path.resolve(options.outputPath ?? DEFAULT_OUTPUT_PATH);
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as PluginManifest;
-  const output = generatePluginCommandTypes(manifest);
+  const output = await generatePluginCommandTypes(manifest, {
+    cwd: path.dirname(manifestPath),
+    sourceLabel: path.basename(manifestPath),
+  });
 
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, output, "utf8");

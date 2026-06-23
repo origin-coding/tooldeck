@@ -1,37 +1,54 @@
-import type { PluginManifest, TooldeckJsonSchema } from "@tooldeck/protocol";
+import { compile } from "json-schema-to-typescript";
 import { camelCase, pascalCase } from "scule";
 
-export function generatePluginCommandTypes(manifest: PluginManifest): string {
-  const commands = manifest.contributes?.commands ?? [];
-  const declarations: string[] = [];
-  const mapEntries: string[] = [];
-  const commandIdEntries: string[] = [];
-  const commandIdKeys = new Map<string, string>();
+import type { PluginManifest, TooldeckInputJsonSchema } from "@tooldeck/protocol";
 
-  for (const command of commands) {
-    const typeName = commandInputTypeName(command.id);
-    const commandIdKey = commandIdConstantKey(command.id);
-    const conflictingCommandId = commandIdKeys.get(commandIdKey);
+export interface GeneratePluginCommandTypesOptions {
+  cwd?: string;
+  sourceLabel?: string;
+}
 
-    if (conflictingCommandId) {
-      throw new Error(
-        `Generated commandIds key "${commandIdKey}" conflicts for command ids: ${conflictingCommandId}, ${command.id}`,
-      );
-    }
+interface GeneratedCommandTypesModel {
+  sourceLabel: string;
+  commands: GeneratedCommand[];
+}
 
-    commandIdKeys.set(commandIdKey, command.id);
-    declarations.push(`export interface ${typeName} ${schemaToType(command.inputSchema)}`);
-    mapEntries.push(`  ${JSON.stringify(command.id)}: ${typeName};`);
-    commandIdEntries.push(`  ${quotePropertyName(commandIdKey)}: ${JSON.stringify(command.id)},`);
-  }
+interface GeneratedCommand {
+  id: string;
+  inputTypeName: string;
+  commandIdKey: string;
+  inputSchema: TooldeckInputJsonSchema;
+}
+
+type JsonSchemaToTypescriptSchema = Parameters<typeof compile>[0];
+
+export async function generatePluginCommandTypes(
+  manifest: PluginManifest,
+  options: GeneratePluginCommandTypesOptions = {},
+): Promise<string> {
+  const model = createCommandTypesModel(manifest, options);
+  const declarations = await Promise.all(
+    model.commands.map((command) => renderCommandInputDeclaration(command, options)),
+  );
+  const mapEntries = model.commands.map(
+    (command) => `  ${JSON.stringify(command.id)}: ${command.inputTypeName};`,
+  );
+  const commandIdEntries = model.commands.map(
+    (command) => `  ${quotePropertyName(command.commandIdKey)}: ${JSON.stringify(command.id)},`,
+  );
 
   return [
-    "// This file is generated from manifest.json. Do not edit it by hand.",
+    `// This file is generated from ${model.sourceLabel}. Do not edit it by hand.`,
     "",
     ...declarations.flatMap((declaration) => [declaration, ""]),
     "export interface PluginCommandInputs {",
     ...mapEntries,
     "}",
+    "",
+    "export type PluginCommandId = keyof PluginCommandInputs;",
+    "",
+    "export type PluginCommandInput<TCommandId extends PluginCommandId> =",
+    "  PluginCommandInputs[TCommandId];",
     "",
     "export const commandIds = {",
     ...commandIdEntries,
@@ -40,107 +57,75 @@ export function generatePluginCommandTypes(manifest: PluginManifest): string {
   ].join("\n");
 }
 
+function createCommandTypesModel(
+  manifest: PluginManifest,
+  options: GeneratePluginCommandTypesOptions,
+): GeneratedCommandTypesModel {
+  const commands = manifest.contributes?.commands ?? [];
+  const generatedCommands: GeneratedCommand[] = [];
+  const inputTypeNames = new Map<string, string>();
+  const commandIdKeys = new Map<string, string>();
+
+  for (const command of commands) {
+    const inputTypeName = commandInputTypeName(command.id);
+    const commandIdKey = commandIdConstantKey(command.id);
+    const conflictingInputTypeName = inputTypeNames.get(inputTypeName);
+    const conflictingCommandId = commandIdKeys.get(commandIdKey);
+
+    if (conflictingCommandId) {
+      throw new Error(
+        `Generated commandIds key "${commandIdKey}" conflicts for command ids: ${conflictingCommandId}, ${command.id}`,
+      );
+    }
+
+    if (conflictingInputTypeName) {
+      throw new Error(
+        `Generated input type name "${inputTypeName}" conflicts for command ids: ${conflictingInputTypeName}, ${command.id}`,
+      );
+    }
+
+    inputTypeNames.set(inputTypeName, command.id);
+    commandIdKeys.set(commandIdKey, command.id);
+    generatedCommands.push({
+      id: command.id,
+      inputTypeName,
+      commandIdKey,
+      inputSchema: command.inputSchema ?? defaultInputSchema(),
+    });
+  }
+
+  return {
+    sourceLabel: options.sourceLabel ?? "manifest.json",
+    commands: generatedCommands,
+  };
+}
+
 function commandInputTypeName(commandId: string): string {
   const name = pascalCase(commandId);
 
-  return `${name || "Command"}Input`;
+  return toTypeIdentifier(`${name || "Command"}Input`);
 }
 
 function commandIdConstantKey(commandId: string): string {
-  return camelCase(commandId);
+  return camelCase(commandId) || "command";
 }
 
-function schemaToType(schema: TooldeckJsonSchema | undefined): string {
-  if (!schema) {
-    return "Record<string, unknown>;";
-  }
+async function renderCommandInputDeclaration(
+  command: GeneratedCommand,
+  options: GeneratePluginCommandTypesOptions,
+): Promise<string> {
+  const output = await compile(
+    command.inputSchema as JsonSchemaToTypescriptSchema,
+    command.inputTypeName,
+    {
+      additionalProperties: true,
+      bannerComment: "",
+      cwd: options.cwd,
+      unknownAny: true,
+    },
+  );
 
-  if (getSchemaType(schema) !== "object") {
-    return `${schemaValueToType(schema)};`;
-  }
-
-  const properties = normalizeProperties(schema.properties);
-  const required = new Set(schema.required ?? []);
-  const lines = Object.entries(properties).map(([propertyName, propertySchema]) => {
-    const optional = required.has(propertyName) ? "" : "?";
-
-    return `  ${quotePropertyName(propertyName)}${optional}: ${schemaValueToType(propertySchema)};`;
-  });
-
-  if (schema.additionalProperties !== false) {
-    lines.push("  [key: string]: unknown;");
-  }
-
-  return ["{", ...lines, "}"].join("\n");
-}
-
-function schemaValueToType(schema: TooldeckJsonSchema): string {
-  if (schema.enum?.length) {
-    return schema.enum.map((value) => JSON.stringify(value)).join(" | ");
-  }
-
-  const type = getSchemaType(schema);
-
-  if (type === "integer" || type === "number") {
-    return "number";
-  }
-
-  if (type === "boolean") {
-    return "boolean";
-  }
-
-  if (type === "array") {
-    const itemSchema = normalizeSchema(schema.items);
-    const itemType = itemSchema ? schemaValueToType(itemSchema) : "unknown";
-
-    return `${wrapArrayItemType(itemType)}[]`;
-  }
-
-  if (type === "object") {
-    return schemaToType(schema).replace(/;$/, "");
-  }
-
-  if (type === "null") {
-    return "null";
-  }
-
-  return "string";
-}
-
-function normalizeProperties(
-  properties: TooldeckJsonSchema["properties"],
-): Record<string, TooldeckJsonSchema> {
-  const normalized: Record<string, TooldeckJsonSchema> = {};
-
-  if (!properties) {
-    return normalized;
-  }
-
-  for (const [propertyName, propertySchema] of Object.entries(properties)) {
-    const normalizedSchema = normalizeSchema(propertySchema);
-
-    if (normalizedSchema) {
-      normalized[propertyName] = normalizedSchema;
-    }
-  }
-
-  return normalized;
-}
-
-function normalizeSchema(schema: unknown): TooldeckJsonSchema | undefined {
-  if (typeof schema !== "object" || schema === null || Array.isArray(schema)) {
-    return undefined;
-  }
-
-  return schema as TooldeckJsonSchema;
-}
-
-function getSchemaType(schema: TooldeckJsonSchema): string {
-  if (!schema.type) {
-    return "string";
-  }
-
-  return Array.isArray(schema.type) ? schema.type[0] : schema.type;
+  return output.trim();
 }
 
 function quotePropertyName(propertyName: string): string {
@@ -151,6 +136,27 @@ function quotePropertyName(propertyName: string): string {
   return JSON.stringify(propertyName);
 }
 
-function wrapArrayItemType(type: string): string {
-  return type.includes(" | ") ? `(${type})` : type;
+function toTypeIdentifier(value: string): string {
+  if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value)) {
+    return value;
+  }
+
+  const sanitized = value.replaceAll(/[^A-Za-z0-9_$]/g, "");
+
+  if (!sanitized) {
+    return "CommandInput";
+  }
+
+  if (/^[A-Za-z_$]/.test(sanitized)) {
+    return sanitized;
+  }
+
+  return `Command${sanitized}`;
+}
+
+function defaultInputSchema(): TooldeckInputJsonSchema {
+  return {
+    type: "object",
+    additionalProperties: true,
+  };
 }

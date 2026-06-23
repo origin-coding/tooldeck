@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe("generatePluginCommandTypes", () => {
-  it("wraps enum unions before array suffixes", () => {
+  it("wraps enum unions before array suffixes", async () => {
     const manifest = createManifest([
       {
         id: "test.controls",
@@ -47,10 +47,12 @@ describe("generatePluginCommandTypes", () => {
       },
     ]);
 
-    expect(generatePluginCommandTypes(manifest)).toContain('flags?: ("g" | "i")[];');
+    await expect(generatePluginCommandTypes(manifest)).resolves.toContain(
+      'flags?: ("g" | "i")[];',
+    );
   });
 
-  it("generates command id constants", () => {
+  it("generates command id constants", async () => {
     const manifest = createManifest([
       {
         id: "json.format",
@@ -58,12 +60,25 @@ describe("generatePluginCommandTypes", () => {
       },
     ]);
 
-    expect(generatePluginCommandTypes(manifest)).toContain(
+    await expect(generatePluginCommandTypes(manifest)).resolves.toContain(
       'export const commandIds = {\n  jsonFormat: "json.format",\n} as const;',
     );
   });
 
-  it("rejects command id constant key conflicts", () => {
+  it("generates a default object input type when inputSchema is omitted", async () => {
+    const manifest = createManifest([
+      {
+        id: "json.format",
+        title: "Format JSON",
+      },
+    ]);
+
+    await expect(generatePluginCommandTypes(manifest)).resolves.toContain(
+      "export interface JsonFormatInput {\n  [k: string]: unknown;\n}",
+    );
+  });
+
+  it("rejects command id constant key conflicts", async () => {
     const manifest = createManifest([
       {
         id: "json.format",
@@ -75,7 +90,7 @@ describe("generatePluginCommandTypes", () => {
       },
     ]);
 
-    expect(() => generatePluginCommandTypes(manifest)).toThrow(
+    await expect(generatePluginCommandTypes(manifest)).rejects.toThrow(
       'Generated commandIds key "jsonFormat" conflicts for command ids: json.format, json-format',
     );
   });
