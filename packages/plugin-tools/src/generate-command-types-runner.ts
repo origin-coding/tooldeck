@@ -1,11 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { PluginManifest } from "@tooldeck/protocol";
-
 import { generatePluginCommandTypes } from "./generate-command-types-core";
+import { readPluginManifest } from "./plugin-manifest";
 
-const DEFAULT_MANIFEST_PATH = "manifest.json";
 const DEFAULT_OUTPUT_PATH = path.join("src", "generated", "commands.ts");
 
 export interface GenerateCommandTypesOptions {
@@ -20,17 +18,18 @@ export interface RunGenerateCommandTypesCliOptions {
 export async function generateCommandTypesFile(
   options: GenerateCommandTypesOptions = {},
 ): Promise<void> {
-  const manifestPath = path.resolve(options.manifestPath ?? DEFAULT_MANIFEST_PATH);
+  const manifestResult = await readPluginManifest({ manifestPath: options.manifestPath });
   const outputPath = path.resolve(options.outputPath ?? DEFAULT_OUTPUT_PATH);
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as PluginManifest;
-  const output = await generatePluginCommandTypes(manifest, {
-    cwd: path.dirname(manifestPath),
-    sourceLabel: path.basename(manifestPath),
+  const output = await generatePluginCommandTypes(manifestResult.manifest, {
+    cwd: manifestResult.manifestDir,
+    sourceLabel: manifestResult.sourceLabel,
   });
 
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, output, "utf8");
 }
+
+export const generatePluginCommandTypesFile = generateCommandTypesFile;
 
 export async function runGenerateCommandTypesCli(
   args: string[],

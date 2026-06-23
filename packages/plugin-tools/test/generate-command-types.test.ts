@@ -10,7 +10,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   createPluginToolsCommand,
   generateCommandTypesFile,
+  generatePluginCommandTypesFile,
   generatePluginCommandTypes,
+  readPluginManifest,
   runGenerateCommandTypesCli,
 } from "../src";
 
@@ -152,6 +154,33 @@ describe("generate command type files", () => {
     await expect(
       readFile(path.join(projectDir, "src", "generated", "commands.ts"), "utf8"),
     ).resolves.toContain('jsonFormat: "json.format"');
+  });
+
+  it("exposes generatePluginCommandTypesFile as the recommended file API", async () => {
+    const projectDir = createTempDir();
+
+    process.chdir(projectDir);
+    await writeManifest(path.join(projectDir, "manifest.json"));
+
+    await generatePluginCommandTypesFile();
+
+    await expect(
+      readFile(path.join(projectDir, "src", "generated", "commands.ts"), "utf8"),
+    ).resolves.toContain('"json.format": JsonFormatInput;');
+  });
+
+  it("reads plugin manifests with path metadata", async () => {
+    const projectDir = createTempDir();
+    const manifestPath = path.join(projectDir, "plugin.manifest.json");
+
+    await writeManifest(manifestPath);
+
+    const result = await readPluginManifest({ manifestPath });
+
+    expect(result.manifest.id).toBe("dev.tooldeck.test-tools");
+    expect(result.manifestPath).toBe(path.resolve(manifestPath));
+    expect(result.manifestDir).toBe(path.dirname(path.resolve(manifestPath)));
+    expect(result.sourceLabel).toBe("plugin.manifest.json");
   });
 
   it("uses explicit --manifest and --out arguments", async () => {
