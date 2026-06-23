@@ -106,7 +106,7 @@ activation events。
 ```json
 {
   "scripts": {
-    "generate:types": "pnpm --dir ../.. --filter @tooldeck/plugin-tools build && node ../../packages/plugin-tools/dist/generate-command-types.js manifest.json src/generated/commands.ts",
+    "generate:types": "pnpm --dir ../.. --filter @tooldeck/plugin-tools build && node ../../packages/plugin-tools/dist/tooldeck-plugin.js generate",
     "build": "pnpm generate:types && tsc -p tsconfig.json",
     "typecheck": "pnpm generate:types && tsc --noEmit"
   },
@@ -129,6 +129,10 @@ export interface MyEchoInput {
 export interface PluginCommandInputs {
   "my.echo": MyEchoInput;
 }
+
+export const commandIds = {
+  myEcho: "my.echo",
+} as const;
 ```
 
 当前生成器支持 MVP 使用到的 JSON Schema 子集：object、required properties、

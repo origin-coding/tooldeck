@@ -5,27 +5,92 @@ import type { PluginManifest } from "@tooldeck/protocol";
 
 import { generatePluginCommandTypes } from "./generate-command-types-core";
 
+const DEFAULT_MANIFEST_PATH = "manifest.json";
+const DEFAULT_OUTPUT_PATH = path.join("src", "generated", "commands.ts");
+
+export interface GenerateCommandTypesOptions {
+  manifestPath?: string;
+  outputPath?: string;
+}
+
 export interface RunGenerateCommandTypesCliOptions {
   commandName?: string;
+}
+
+export async function generateCommandTypesFile(
+  options: GenerateCommandTypesOptions = {},
+): Promise<void> {
+  const manifestPath = path.resolve(options.manifestPath ?? DEFAULT_MANIFEST_PATH);
+  const outputPath = path.resolve(options.outputPath ?? DEFAULT_OUTPUT_PATH);
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as PluginManifest;
+  const output = generatePluginCommandTypes(manifest);
+
+  await mkdir(path.dirname(outputPath), { recursive: true });
+  await writeFile(outputPath, output, "utf8");
 }
 
 export async function runGenerateCommandTypesCli(
   args: string[],
   options: RunGenerateCommandTypesCliOptions = {},
 ): Promise<void> {
-  const [manifestArg, outputArg] = args;
+  const parsed = parseGenerateCommandTypesArgs(args, options);
 
-  if (!manifestArg || !outputArg) {
-    const commandName = options.commandName ?? "tooldeck-plugin generate types";
+  await generateCommandTypesFile(parsed);
+}
 
-    throw new Error(`Usage: ${commandName} <manifest.json> <output.ts>`);
+function parseGenerateCommandTypesArgs(
+  args: string[],
+  options: RunGenerateCommandTypesCliOptions,
+): GenerateCommandTypesOptions {
+  const commandName = options.commandName ?? "tooldeck-plugin generate types";
+  const parsed: GenerateCommandTypesOptions = {};
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+
+    if (arg === "--manifest" || arg === "--out") {
+      const value = args[index + 1];
+
+      if (!value || value.startsWith("-")) {
+        throw new Error(`Missing value for ${arg}\nUsage: ${usage(commandName)}`);
+      }
+
+      if (arg === "--manifest") {
+        parsed.manifestPath = value;
+      } else {
+        parsed.outputPath = value;
+      }
+
+      index += 1;
+      continue;
+    }
+
+    if (arg.startsWith("--manifest=")) {
+      parsed.manifestPath = parseEqualsValue(arg, "--manifest", commandName);
+      continue;
+    }
+
+    if (arg.startsWith("--out=")) {
+      parsed.outputPath = parseEqualsValue(arg, "--out", commandName);
+      continue;
+    }
+
+    throw new Error(`Unsupported argument: ${arg}\nUsage: ${usage(commandName)}`);
   }
 
-  const manifestPath = path.resolve(manifestArg);
-  const outputPath = path.resolve(outputArg);
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as PluginManifest;
-  const output = generatePluginCommandTypes(manifest);
+  return parsed;
+}
 
-  await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, output, "utf8");
+function parseEqualsValue(arg: string, name: "--manifest" | "--out", commandName: string): string {
+  const value = arg.slice(name.length + 1);
+
+  if (!value) {
+    throw new Error(`Missing value for ${name}\nUsage: ${usage(commandName)}`);
+  }
+
+  return value;
+}
+
+function usage(commandName: string): string {
+  return `${commandName} [--manifest manifest.json] [--out src/generated/commands.ts]`;
 }

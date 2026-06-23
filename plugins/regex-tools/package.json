@@ -8,7 +8,7 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "generate:types": "pnpm --dir ../.. --filter @tooldeck/plugin-tools build && node ../../packages/plugin-tools/dist/generate-command-types.js manifest.json src/generated/commands.ts",
+    "generate:types": "pnpm --dir ../.. --filter @tooldeck/plugin-tools build && node ../../packages/plugin-tools/dist/tooldeck-plugin.js generate",
     "build": "pnpm generate:types && vite build --configLoader runner",
     "typecheck": "pnpm generate:types && tsc --noEmit"
   },

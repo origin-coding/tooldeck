@@ -1,15 +1,28 @@
 import type { PluginManifest, TooldeckJsonSchema } from "@tooldeck/protocol";
+import { camelCase, pascalCase } from "scule";
 
 export function generatePluginCommandTypes(manifest: PluginManifest): string {
   const commands = manifest.contributes?.commands ?? [];
   const declarations: string[] = [];
   const mapEntries: string[] = [];
+  const commandIdEntries: string[] = [];
+  const commandIdKeys = new Map<string, string>();
 
   for (const command of commands) {
     const typeName = commandInputTypeName(command.id);
+    const commandIdKey = commandIdConstantKey(command.id);
+    const conflictingCommandId = commandIdKeys.get(commandIdKey);
 
+    if (conflictingCommandId) {
+      throw new Error(
+        `Generated commandIds key "${commandIdKey}" conflicts for command ids: ${conflictingCommandId}, ${command.id}`,
+      );
+    }
+
+    commandIdKeys.set(commandIdKey, command.id);
     declarations.push(`export interface ${typeName} ${schemaToType(command.inputSchema)}`);
     mapEntries.push(`  ${JSON.stringify(command.id)}: ${typeName};`);
+    commandIdEntries.push(`  ${quotePropertyName(commandIdKey)}: ${JSON.stringify(command.id)},`);
   }
 
   return [
@@ -20,16 +33,21 @@ export function generatePluginCommandTypes(manifest: PluginManifest): string {
     ...mapEntries,
     "}",
     "",
+    "export const commandIds = {",
+    ...commandIdEntries,
+    "} as const;",
+    "",
   ].join("\n");
 }
 
 function commandInputTypeName(commandId: string): string {
-  const words = commandId
-    .split(/[^a-zA-Z0-9]+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1));
+  const name = pascalCase(commandId);
 
-  return `${words.join("") || "Command"}Input`;
+  return `${name || "Command"}Input`;
+}
+
+function commandIdConstantKey(commandId: string): string {
+  return camelCase(commandId);
 }
 
 function schemaToType(schema: TooldeckJsonSchema | undefined): string {

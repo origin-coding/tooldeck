@@ -8,3 +8,7 @@ export interface JsonFormatInput {
 export interface PluginCommandInputs {
   "json.format": JsonFormatInput;
 }
+
+export const commandIds = {
+  jsonFormat: "json.format",
+} as const;

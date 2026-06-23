@@ -22,6 +22,8 @@ export function defineGenerateCommand() {
       name: "generate",
       description: "Generate plugin project files.",
     },
+    args: createGenerateTypesArgs(),
+    default: "types",
     subCommands: {
       types: defineGenerateTypesCommand(),
     },
@@ -34,26 +36,30 @@ export function defineGenerateTypesCommand() {
       name: "types",
       description: "Generate command input types from a plugin manifest.",
     },
-    args: {
-      manifest: {
-        type: "positional",
-        required: true,
-        description: "Plugin manifest path.",
-        valueHint: "manifest.json",
-      },
-      output: {
-        type: "positional",
-        required: true,
-        description: "Generated TypeScript output path.",
-        valueHint: "output.ts",
-      },
-    },
-    async run({ args }) {
-      await runGenerateCommandTypesCli([args.manifest, args.output], {
+    args: createGenerateTypesArgs(),
+    async run({ rawArgs }) {
+      await runGenerateCommandTypesCli(rawArgs, {
         commandName: "tooldeck-plugin generate types",
       });
     },
   });
+}
+
+function createGenerateTypesArgs() {
+  return {
+    manifest: {
+      type: "string",
+      required: false,
+      description: "Plugin manifest path.",
+      valueHint: "manifest.json",
+    },
+    out: {
+      type: "string",
+      required: false,
+      description: "Generated TypeScript output path.",
+      valueHint: "src/generated/commands.ts",
+    },
+  } as const;
 }
 
 export function defineCheckCommand() {
