@@ -124,6 +124,48 @@ describe("generate command type files", () => {
     );
   });
 
+  it("resolves schema refs relative to the manifest path", async () => {
+    const projectDir = createTempDir();
+    const manifestPath = path.join(projectDir, "manifest.json");
+    const outputPath = path.join(projectDir, "generated", "commands.ts");
+
+    await mkdir(path.join(projectDir, "schemas"), { recursive: true });
+    await writeFile(
+      path.join(projectDir, "schemas", "json-format-input.schema.json"),
+      JSON.stringify({
+        type: "object",
+        required: ["text"],
+        additionalProperties: false,
+        properties: {
+          text: {
+            type: "string",
+          },
+        },
+      }),
+      "utf8",
+    );
+    await mkdir(path.dirname(manifestPath), { recursive: true });
+    await writeFile(
+      manifestPath,
+      JSON.stringify(
+        createManifest([
+          {
+            id: "json.format",
+            title: "Format JSON",
+            inputSchema: {
+              $ref: "./schemas/json-format-input.schema.json",
+            },
+          },
+        ]),
+      ),
+      "utf8",
+    );
+
+    await runGenerateCommandTypesCli(["--manifest", manifestPath, "--out", outputPath]);
+
+    await expect(readFile(outputPath, "utf8")).resolves.toContain("text: string;");
+  });
+
   it("rejects positional arguments", async () => {
     await expect(
       runGenerateCommandTypesCli(["manifest.json", "src/generated/commands.ts"]),
