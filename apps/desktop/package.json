@@ -13,7 +13,6 @@
     "build": "node scripts/build.mjs",
     "dist": "pnpm --dir ../.. builtin-plugins:stage -- --out apps/desktop/.vite/builtin-plugins && pnpm build && electron-builder",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "pretest": "pnpm --dir ../.. builtin-plugins:build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

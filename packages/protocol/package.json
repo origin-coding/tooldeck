@@ -22,8 +22,10 @@
     "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "typecheck": "tsc --noEmit"
   },
+  "dependencies": {
+    "@tooldeck/shared": "workspace:*"
+  },
   "devDependencies": {
-    "@tooldeck/shared": "workspace:*",
     "@types/json-schema": "^7.0.15"
   }
 }

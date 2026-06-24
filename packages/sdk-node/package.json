@@ -22,9 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tooldeck/protocol": "workspace:*"
-  },
-  "devDependencies": {
+    "@tooldeck/protocol": "workspace:*",
     "@tooldeck/shared": "workspace:*"
   }
 }

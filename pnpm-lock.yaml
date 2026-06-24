@@ -265,10 +265,11 @@ importers:
         version: 25.9.1
 
   packages/protocol:
-    devDependencies:
+    dependencies:
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../shared
+    devDependencies:
       '@types/json-schema':
         specifier: ^7.0.15
         version: 7.0.15
@@ -278,7 +279,6 @@ importers:
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
-    devDependencies:
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../shared

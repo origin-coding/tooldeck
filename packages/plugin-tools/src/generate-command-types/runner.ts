@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { readPluginManifest } from "../plugin-manifest";
@@ -26,6 +26,10 @@ export async function generateCommandTypesFile(
   });
 
   await mkdir(path.dirname(outputPath), { recursive: true });
+  if ((await readFileIfExists(outputPath)) === output) {
+    return;
+  }
+
   await writeFile(outputPath, output, "utf8");
 }
 
@@ -95,4 +99,16 @@ function parseEqualsValue(arg: string, name: "--manifest" | "--out", commandName
 
 function usage(commandName: string): string {
   return `${commandName} [--manifest manifest.json] [--out src/generated/commands.ts]`;
+}
+
+async function readFileIfExists(filePath: string): Promise<string | undefined> {
+  try {
+    return await readFile(filePath, "utf8");
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return undefined;
+    }
+
+    throw error;
+  }
 }
