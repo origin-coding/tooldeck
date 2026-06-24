@@ -1,0 +1,9 @@
+{
+  "plugin.name": <%= JSON.stringify(it.pluginName) %>,
+  "plugin.description": <%= JSON.stringify(it.pluginDescription) %>,
+  "commands.echo.title": <%= JSON.stringify(it.commandTitle) %>,
+  "commands.echo.description": <%= JSON.stringify(it.commandDescription) %>,
+  "schema.echo.text.title": "Text",
+  "schema.echo.text.description": "Text to echo.",
+  "schema.echo.text.placeholder": "Enter text"
+}

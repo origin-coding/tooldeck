@@ -1,0 +1,18 @@
+// This file is generated from manifest.json. Do not edit it by hand.
+
+export interface <%= it.commandInputTypeName %> {
+  text: string;
+}
+
+export interface PluginCommandInputs {
+  <%= JSON.stringify(it.commandId) %>: <%= it.commandInputTypeName %>;
+}
+
+export type PluginCommandId = keyof PluginCommandInputs;
+
+export type PluginCommandInput<TCommandId extends PluginCommandId> =
+  PluginCommandInputs[TCommandId];
+
+export const commandIds = {
+  <%= it.commandIdKey %>: <%= JSON.stringify(it.commandId) %>,
+} as const;
