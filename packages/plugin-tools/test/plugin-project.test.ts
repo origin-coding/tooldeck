@@ -109,6 +109,107 @@ describe("checkPluginProject", () => {
       ),
     ).toBe(true);
   });
+
+  it("rejects command input schemas outside the supported subset", async () => {
+    const manifest = createManifest();
+    manifest.contributes!.commands![0]!.inputSchema = {
+      type: "object",
+      properties: {
+        text: {
+          type: "string",
+        },
+      },
+      oneOf: [
+        {
+          required: ["text"],
+        },
+      ],
+    } as never;
+    const projectDir = await createPluginProject({ manifest });
+
+    process.chdir(projectDir);
+
+    const result = await checkPluginProject();
+
+    expect(result.ok).toBe(false);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.code === "INPUT_SCHEMA_UNSUPPORTED_KEYWORD" &&
+          diagnostic.message.includes("oneOf"),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects unsupported field x-ui properties for the selected control", async () => {
+    const manifest = createManifest();
+    manifest.contributes!.commands![0]!.inputSchema = {
+      type: "object",
+      required: ["text"],
+      additionalProperties: false,
+      properties: {
+        text: {
+          type: "string",
+          "x-ui": {
+            control: "text",
+            rows: 10,
+          },
+        },
+      },
+    } as never;
+    const projectDir = await createPluginProject({ manifest });
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+
+    const result = await checkPluginProject();
+
+    expect(result.ok).toBe(false);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.code === "INPUT_FIELD_X_UI" &&
+          diagnostic.message.includes("rows") &&
+          diagnostic.message.includes("text control"),
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects malformed x-i18n enum labels", async () => {
+    const manifest = createManifest();
+    manifest.contributes!.commands![0]!.inputSchema = {
+      type: "object",
+      properties: {
+        mode: {
+          type: "string",
+          enum: ["compact", "pretty"],
+          "x-i18n": {
+            enumLabels: {
+              compact: "schema.mode.compact",
+              pretty: {
+                key: "schema.mode.pretty",
+                default: "Pretty",
+              },
+            },
+          },
+        },
+      },
+    } as never;
+    const projectDir = await createPluginProject({ manifest });
+
+    process.chdir(projectDir);
+
+    const result = await checkPluginProject();
+
+    expect(result.ok).toBe(false);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.code === "SCHEMA_X_I18N" &&
+          diagnostic.message.includes("enumLabels.pretty"),
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("inspectPluginProject", () => {
@@ -173,11 +274,12 @@ describe("buildPluginProject", () => {
 async function createPluginProject(
   options: {
     includeVitePlugin?: boolean;
+    manifest?: PluginManifest;
   } = {},
 ): Promise<string> {
   const projectDir = createTempDir();
 
-  await writeManifest(path.join(projectDir, "manifest.json"));
+  await writeManifest(path.join(projectDir, "manifest.json"), options.manifest);
   await writePackageJson(path.join(projectDir, "package.json"), {
     includeVitePlugin: options.includeVitePlugin ?? true,
   });
@@ -194,9 +296,12 @@ async function createPluginProject(
   return projectDir;
 }
 
-async function writeManifest(manifestPath: string): Promise<void> {
+async function writeManifest(
+  manifestPath: string,
+  manifest: PluginManifest = createManifest(),
+): Promise<void> {
   await mkdir(path.dirname(manifestPath), { recursive: true });
-  await writeFile(manifestPath, JSON.stringify(createManifest()), "utf8");
+  await writeFile(manifestPath, JSON.stringify(manifest), "utf8");
 }
 
 async function writePackageJson(
