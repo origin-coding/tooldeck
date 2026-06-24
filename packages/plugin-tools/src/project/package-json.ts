@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import type { PluginProjectDiagnostic, TooldeckPackageInspection } from "./types";
-import { type JsonRecord, isRecord, readJsonIfExists } from "./utils";
+import { type JsonRecord, isRecord, pathExists, readJsonIfExists } from "./utils";
 
 export async function checkPackageJson(
   manifestDir: string,
@@ -46,6 +46,15 @@ export async function checkPackageJson(
       });
     }
   }
+
+  if ((await isViteProject(manifestDir, scripts)) && !dependencies.has("@tooldeck/vite-plugin")) {
+    diagnostics.push({
+      severity: "error",
+      code: "PACKAGE_DEPENDENCY_MISSING",
+      message: "Vite plugin projects must depend on @tooldeck/vite-plugin.",
+      path: packageJsonPath,
+    });
+  }
 }
 
 export function collectTooldeckPackages(
@@ -88,4 +97,29 @@ function getPackageDependencyMap(packageJson: JsonRecord): Map<string, string> {
   }
 
   return dependencies;
+}
+
+async function isViteProject(manifestDir: string, scripts: JsonRecord): Promise<boolean> {
+  if (Object.values(scripts).some((script) => typeof script === "string" && usesVite(script))) {
+    return true;
+  }
+
+  for (const configFile of [
+    "vite.config.ts",
+    "vite.config.mts",
+    "vite.config.js",
+    "vite.config.mjs",
+    "vite.config.cts",
+    "vite.config.cjs",
+  ]) {
+    if (await pathExists(path.join(manifestDir, configFile))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function usesVite(script: string): boolean {
+  return /\bvite\s+build\b/.test(script) || /(^|\s)--bundler(?:=|\s+)vite(\s|$)/.test(script);
 }

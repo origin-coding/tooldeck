@@ -8,10 +8,12 @@ import { runCommand } from "citty";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  buildPluginProject,
   checkPluginProject,
   createPluginToolsCommand,
   generatePluginCommandTypesFile,
   inspectPluginProject,
+  PluginBuildError,
 } from "../src";
 
 const tempDirs: string[] = [];
@@ -89,6 +91,24 @@ describe("checkPluginProject", () => {
       result.diagnostics.some((diagnostic) => diagnostic.code === "BUILT_PLUGIN_DEFAULT_EXPORT"),
     ).toBe(true);
   });
+
+  it("requires @tooldeck/vite-plugin for Vite plugin projects", async () => {
+    const projectDir = await createPluginProject({ includeVitePlugin: false });
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+
+    const result = await checkPluginProject();
+
+    expect(result.ok).toBe(false);
+    expect(
+      result.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.code === "PACKAGE_DEPENDENCY_MISSING" &&
+          diagnostic.message.includes("@tooldeck/vite-plugin"),
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("inspectPluginProject", () => {
@@ -121,11 +141,46 @@ describe("inspectPluginProject", () => {
   });
 });
 
-async function createPluginProject(): Promise<string> {
+describe("buildPluginProject", () => {
+  it("runs generate, check, Vite build, and check --built", async () => {
+    const projectDir = await createPluginProject();
+
+    await writeFakeVite(projectDir);
+    process.chdir(projectDir);
+
+    const result = await buildPluginProject({ bundler: "vite" });
+
+    expect(result.stages).toEqual(["generate", "check", "vite build", "check --built"]);
+    expect(existsSync(path.join(projectDir, "src", "generated", "commands.ts"))).toBe(true);
+    expect(existsSync(path.join(projectDir, "dist", "index.js"))).toBe(true);
+
+    const checkResult = await checkPluginProject({ built: true });
+
+    expect(checkResult.ok).toBe(true);
+  });
+
+  it("rejects unsupported bundlers before running build stages", async () => {
+    const projectDir = await createPluginProject();
+
+    process.chdir(projectDir);
+
+    await expect(buildPluginProject({ bundler: "esbuild" })).rejects.toMatchObject({
+      stage: "setup",
+    } satisfies Partial<PluginBuildError>);
+  });
+});
+
+async function createPluginProject(
+  options: {
+    includeVitePlugin?: boolean;
+  } = {},
+): Promise<string> {
   const projectDir = createTempDir();
 
   await writeManifest(path.join(projectDir, "manifest.json"));
-  await writePackageJson(path.join(projectDir, "package.json"));
+  await writePackageJson(path.join(projectDir, "package.json"), {
+    includeVitePlugin: options.includeVitePlugin ?? true,
+  });
   await mkdir(path.join(projectDir, "locales"), { recursive: true });
   await writeFile(
     path.join(projectDir, "locales", "en.json"),
@@ -144,7 +199,21 @@ async function writeManifest(manifestPath: string): Promise<void> {
   await writeFile(manifestPath, JSON.stringify(createManifest()), "utf8");
 }
 
-async function writePackageJson(packageJsonPath: string): Promise<void> {
+async function writePackageJson(
+  packageJsonPath: string,
+  options: {
+    includeVitePlugin: boolean;
+  },
+): Promise<void> {
+  const dependencies: Record<string, string> = {
+    "@tooldeck/plugin-tools": "workspace:*",
+    "@tooldeck/sdk-node": "workspace:*",
+  };
+
+  if (options.includeVitePlugin) {
+    dependencies["@tooldeck/vite-plugin"] = "workspace:*";
+  }
+
   await writeFile(
     packageJsonPath,
     JSON.stringify({
@@ -156,11 +225,38 @@ async function writePackageJson(packageJsonPath: string): Promise<void> {
         check: "tooldeck-plugin check",
         build: "tooldeck-plugin build --bundler vite",
       },
-      dependencies: {
-        "@tooldeck/plugin-tools": "workspace:*",
-        "@tooldeck/sdk-node": "workspace:*",
-      },
+      dependencies,
     }),
+    "utf8",
+  );
+}
+
+async function writeFakeVite(projectDir: string): Promise<void> {
+  const viteDir = path.join(projectDir, "node_modules", "vite");
+
+  await mkdir(viteDir, { recursive: true });
+  await writeFile(
+    path.join(viteDir, "package.json"),
+    JSON.stringify({
+      name: "vite",
+      version: "0.0.0",
+      type: "module",
+      exports: "./index.js",
+    }),
+    "utf8",
+  );
+  await writeFile(
+    path.join(viteDir, "index.js"),
+    [
+      'import { mkdir, writeFile } from "node:fs/promises";',
+      'import path from "node:path";',
+      "export async function build(options = {}) {",
+      "  const root = options.root ?? process.cwd();",
+      '  await mkdir(path.join(root, "dist"), { recursive: true });',
+      '  await writeFile(path.join(root, "dist", "index.js"), "export default { activate() {} };\\n", "utf8");',
+      "}",
+      "",
+    ].join("\n"),
     "utf8",
   );
 }

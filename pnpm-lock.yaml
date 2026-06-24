@@ -281,9 +281,15 @@ importers:
 
   plugins/hello-world:
     dependencies:
+      '@tooldeck/plugin-tools':
+        specifier: workspace:*
+        version: link:../../packages/plugin-tools
       '@tooldeck/sdk-node':
         specifier: workspace:*
         version: link:../../packages/sdk-node
+      '@tooldeck/vite-plugin':
+        specifier: workspace:*
+        version: link:../../packages/vite-plugin
 
   plugins/json-tools:
     dependencies:
@@ -293,6 +299,9 @@ importers:
       '@tooldeck/sdk-node':
         specifier: workspace:*
         version: link:../../packages/sdk-node
+      '@tooldeck/vite-plugin':
+        specifier: workspace:*
+        version: link:../../packages/vite-plugin
 
   plugins/regex-tools:
     dependencies:
@@ -302,6 +311,9 @@ importers:
       '@tooldeck/sdk-node':
         specifier: workspace:*
         version: link:../../packages/sdk-node
+      '@tooldeck/vite-plugin':
+        specifier: workspace:*
+        version: link:../../packages/vite-plugin
 
   tests/integration:
     dependencies:

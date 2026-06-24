@@ -27,6 +27,21 @@ export interface CheckPluginProjectResult {
   diagnostics: PluginProjectDiagnostic[];
 }
 
+export type PluginBuildBundler = "vite";
+
+export type PluginBuildStage = "generate" | "check" | "vite build" | "check --built";
+
+export interface BuildPluginProjectOptions {
+  manifestPath?: string;
+  generatedPath?: string;
+  bundler?: string;
+}
+
+export interface BuildPluginProjectResult {
+  bundler: PluginBuildBundler;
+  stages: PluginBuildStage[];
+}
+
 export interface InspectPluginProjectOptions {
   manifestPath?: string;
   generatedPath?: string;
