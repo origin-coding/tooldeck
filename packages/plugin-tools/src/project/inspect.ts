@@ -28,6 +28,15 @@ export async function inspectPluginProject(
     : path.resolve(baseCheck.manifestDir, "dist", "index.js");
   const packageJson = await readJsonIfExists(path.join(baseCheck.manifestDir, "package.json"));
   const buildOutputExists = await pathExists(buildOutputPath);
+  const commandIds = (manifest?.contributes?.commands ?? [])
+    .map((command) => command.id)
+    .sort();
+  const locales = (await inspectLocales(manifest, baseCheck.manifestDir)).sort((a, b) =>
+    a.locale.localeCompare(b.locale),
+  );
+  const tooldeckPackages = collectTooldeckPackages(packageJson).sort((a, b) =>
+    a.name.localeCompare(b.name) || a.source.localeCompare(b.source),
+  );
 
   return {
     manifestPath: baseCheck.manifestPath,
@@ -40,10 +49,9 @@ export async function inspectPluginProject(
         }
       : undefined,
     runtimeEntry: manifest?.runtime.entry,
-    commands: manifest?.contributes?.commands?.map((command) => command.id) ?? [],
-    activationEvents:
-      manifest?.contributes?.commands?.map((command) => `onCommand:${command.id}`) ?? [],
-    locales: await inspectLocales(manifest, baseCheck.manifestDir),
+    commands: commandIds,
+    activationEvents: commandIds.map((commandId) => `onCommand:${commandId}`),
+    locales,
     generated: {
       path: generatedPath,
       exists: await pathExists(generatedPath),
@@ -57,7 +65,7 @@ export async function inspectPluginProject(
       status: buildOutputExists ? "present" : "missing",
     },
     packageManager: await detectPackageManager(baseCheck.manifestDir),
-    tooldeckPackages: collectTooldeckPackages(packageJson),
+    tooldeckPackages,
     diagnostics: baseCheck.diagnostics,
   };
 }

@@ -12,6 +12,7 @@ import {
   checkPluginProject,
   createPluginToolsCommand,
   formatPluginCheckResult,
+  formatPluginInspection,
   generatePluginCommandTypesFile,
   inspectPluginProject,
   PluginBuildError,
@@ -256,6 +257,27 @@ describe("inspectPluginProject", () => {
     expect(result.plugin?.id).toBe("dev.tooldeck.test-tools");
     expect(result.commands).toEqual(["json.format"]);
     expect(result.buildOutput.exists).toBe(true);
+  });
+
+  it("formats inspect output as a sectioned diagnostic report", async () => {
+    const projectDir = await createPluginProject();
+
+    process.chdir(projectDir);
+
+    const result = await inspectPluginProject();
+    const output = formatPluginInspection(result);
+
+    expect(output).toContain("Summary\n");
+    expect(output).toContain("Manifest\n");
+    expect(output).toContain("Commands\n");
+    expect(output).toContain("Locales\n");
+    expect(output).toContain("Packages\n");
+    expect(output).toContain("Diagnostics\n");
+    expect(output).toContain("Status: [error] Project has errors.");
+    expect(output).toContain("[ok] json.format");
+    expect(output).toContain("Activation: onCommand:json.format");
+    expect(output).toContain("[missing]");
+    expect(output).toContain("Fix: Run tooldeck-plugin generate");
   });
 
   it("wires the inspect subcommand", async () => {
