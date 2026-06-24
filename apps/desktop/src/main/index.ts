@@ -5,6 +5,7 @@ import { app, BrowserWindow } from "electron";
 
 import { checkForDesktopUpdates } from "./auto-updates";
 import { registerTooldeckIpc } from "./ipc";
+import { resolveDesktopPluginDirs } from "./plugin-dirs";
 import { TooldeckDesktopService } from "./tooldeck-service";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -44,18 +45,23 @@ async function createWindow(): Promise<void> {
 
 function createServiceOptions(): ConstructorParameters<typeof TooldeckDesktopService>[0] {
   const pluginsRoot = process.env.TOOLDECK_PLUGINS_ROOT;
+  const pluginDirs = resolveDesktopPluginDirs();
 
   if (pluginsRoot) {
     return {
+      pluginDirs,
       pluginsRoot,
     };
   }
 
   if (!app.isPackaged) {
-    return {};
+    return {
+      pluginDirs,
+    };
   }
 
   return {
+    pluginDirs,
     pluginsRoot: path.join(process.resourcesPath, "plugins"),
     storagePath: path.join(app.getPath("userData"), "tooldeck.sqlite"),
   };

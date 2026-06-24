@@ -1,4 +1,5 @@
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -230,6 +231,62 @@ describe("TooldeckDesktopService", () => {
     }
   });
 
+  it("lists and runs commands from external plugin dirs", async () => {
+    const externalRoot = path.join(createTempDir(), "external-echo");
+    const service = new TooldeckDesktopService({
+      pluginDirs: [externalRoot],
+      pluginsRoot: path.resolve("../..", "plugins"),
+      storagePath: createDatabasePath(),
+    });
+
+    await createEchoPlugin({
+      commandId: "external.echo",
+      pluginId: "dev.tooldeck.external-echo",
+      pluginRoot: externalRoot,
+      responseText: "external ok",
+    });
+    await service.start();
+
+    try {
+      expect(service.listCommands()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "json.format",
+            pluginId: "dev.tooldeck.json-tools",
+          }),
+          expect.objectContaining({
+            id: "external.echo",
+            pluginId: "dev.tooldeck.external-echo",
+          }),
+        ]),
+      );
+
+      await expect(
+        service.runCommand({
+          commandId: "external.echo",
+        }),
+      ).resolves.toEqual({
+        status: "success",
+        blocks: [
+          {
+            type: "text",
+            text: "external ok",
+          },
+        ],
+      });
+      expect(service.listCommandRuns()).toEqual([
+        expect.objectContaining({
+          commandId: "external.echo",
+          pluginId: "dev.tooldeck.external-echo",
+          source: "desktop",
+          status: "success",
+        }),
+      ]);
+    } finally {
+      await service.dispose();
+    }
+  });
+
   it("removes plugin registry rows missing from the scanned plugin directory", async () => {
     const storagePath = createDatabasePath();
     const pluginsRoot = path.join(createTempDir(), "plugins");
@@ -445,4 +502,51 @@ function createPluginManifest(id: string, name: string, version: string) {
       entry: "./dist/index.js",
     },
   };
+}
+
+async function createEchoPlugin(options: {
+  commandId: string;
+  pluginId: string;
+  pluginRoot: string;
+  responseText: string;
+}): Promise<void> {
+  mkdirSync(options.pluginRoot, { recursive: true });
+  await writeFile(
+    path.join(options.pluginRoot, "manifest.json"),
+    JSON.stringify({
+      schemaVersion: "1.0",
+      id: options.pluginId,
+      name: "External Echo",
+      version: "0.0.0",
+      runtime: {
+        kind: "node",
+        entry: "./index.mjs",
+      },
+      contributes: {
+        commands: [
+          {
+            id: options.commandId,
+            title: "External Echo",
+          },
+        ],
+      },
+    }),
+    "utf8",
+  );
+  await writeFile(
+    path.join(options.pluginRoot, "index.mjs"),
+    `
+      export default {
+        activate(ctx) {
+          ctx.subscriptions.push(
+            ctx.commands.register(${JSON.stringify(options.commandId)}, () => ({
+              status: "success",
+              blocks: [{ type: "text", text: ${JSON.stringify(options.responseText)} }],
+            })),
+          );
+        },
+      };
+    `,
+    "utf8",
+  );
 }

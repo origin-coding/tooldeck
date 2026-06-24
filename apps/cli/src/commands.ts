@@ -7,7 +7,8 @@ import {
   ManifestIndex,
   parseRawCommandInputFromCliArgs,
   PluginManager,
-  scanPluginDirectory,
+  scanPluginSources,
+  type PluginScanSource,
 } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type {
@@ -36,22 +37,26 @@ import {
   type CliOutputFormat,
 } from "./preferences";
 import {
+  createPluginDirCommandArg,
   createPluginsCommandArg,
   createStorageCommandArg,
+  resolveCliPluginDirOption,
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
 } from "./runtime";
 
 export interface RunCliCommandOptions {
   commandId: string;
-  pluginsRoot: string;
+  pluginsRoot?: string;
+  pluginSources?: PluginScanSource[];
   storagePath: string;
   input?: JsonObject;
   rawArgs?: string[];
 }
 
 export interface ListCliCommandsOptions {
-  pluginsRoot: string;
+  pluginsRoot?: string;
+  pluginSources?: PluginScanSource[];
 }
 
 export interface ListedCliCommand {
@@ -64,7 +69,8 @@ export interface ListedCliCommand {
 export type ListCliResource = "commands" | "plugins" | "preferences";
 
 export interface CreatePluginManagerOptions {
-  pluginsRoot: string;
+  pluginsRoot?: string;
+  pluginSources?: PluginScanSource[];
   createPluginStorage?: ConstructorParameters<typeof NodePluginHost>[0]["createPluginStorage"];
 }
 
@@ -86,9 +92,10 @@ export async function createPluginManager(
     createPluginStorage: options.createPluginStorage,
   });
   const manifestIndex = new ManifestIndex();
+  const pluginSources = resolvePluginSources(options);
 
-  const scanResult = await scanPluginDirectory({
-    pluginsRoot: options.pluginsRoot,
+  const scanResult = await scanPluginSources({
+    sources: pluginSources,
     manifestIndex,
   });
 
@@ -116,8 +123,8 @@ export async function listCliCommands(
 ): Promise<ListedCliCommand[]> {
   const manifestIndex = new ManifestIndex();
 
-  await scanPluginDirectory({
-    pluginsRoot: options.pluginsRoot,
+  await scanPluginSources({
+    sources: resolvePluginSources(options),
     manifestIndex,
   });
 
@@ -140,7 +147,7 @@ export async function runCliCommandWithStorage(
 
     try {
       const created = await createPluginManager({
-        pluginsRoot: options.pluginsRoot,
+        pluginSources: resolvePluginSources(options),
         createPluginStorage(pluginId) {
           return {
             async get(key) {
@@ -163,7 +170,7 @@ export async function runCliCommandWithStorage(
       pluginHost = created.pluginHost;
       pluginId = created.manifestIndex.getCommandOwner(options.commandId);
 
-      assertPluginsAvailable(created, options.pluginsRoot);
+      assertPluginsAvailable(created, resolvePluginSources(options));
       syncScannedPluginIndex({
         manifestIndex: created.manifestIndex,
         plugins,
@@ -177,7 +184,7 @@ export async function runCliCommandWithStorage(
       input ??= parseRawCommandInputFromCliArgs({
         rawArgs: options.rawArgs ?? [],
         commandId: options.commandId,
-        ignoredOptions: ["plugins", "storage"],
+        ignoredOptions: ["plugins", "plugin-dir", "pluginDir", "storage"],
       });
       const run = await created.commandService.runCommand({
         commandId: options.commandId,
@@ -232,18 +239,23 @@ export function defineListCommand(options: CreateCliCommandOptions) {
         valueHint: "commands|plugins|preferences",
       },
       plugins: createPluginsCommandArg(),
+      pluginDir: createPluginDirCommandArg(),
       storage: createStorageCommandArg("SQLite database path for plugin registry."),
     },
-    async run({ args }) {
+    async run({ args, rawArgs }) {
       const resource = normalizeListCliResource(args.resource);
-      const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+      const { pluginSources, storagePath } = resolveCliRuntimePaths({
         ...options,
+        pluginDir: resolveCliPluginDirOption({
+          rawArgs,
+          value: args.pluginDir,
+        }),
         plugins: args.plugins,
         storage: args.storage,
       });
 
       if (resource === "commands") {
-        const commands = await listCliCommands({ pluginsRoot });
+        const commands = await listCliCommands({ pluginSources });
         const outputFormat = await getCliOutputFormat({ storagePath });
 
         printCommandList(commands, outputFormat);
@@ -252,7 +264,7 @@ export function defineListCommand(options: CreateCliCommandOptions) {
 
       if (resource === "plugins") {
         const plugins = await listCliPlugins({
-          pluginsRoot,
+          pluginSources,
           storagePath,
         });
         const outputFormat = await getCliOutputFormat({ storagePath });
@@ -291,17 +303,22 @@ export function defineRunCommand(options: CreateCliCommandOptions) {
         valueHint: "command",
       },
       plugins: createPluginsCommandArg(),
+      pluginDir: createPluginDirCommandArg(),
       storage: createStorageCommandArg("SQLite database path for command history."),
     },
     async run({ args, rawArgs }) {
-      const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+      const { pluginSources, storagePath } = resolveCliRuntimePaths({
         ...options,
+        pluginDir: resolveCliPluginDirOption({
+          rawArgs,
+          value: args.pluginDir,
+        }),
         plugins: args.plugins,
         storage: args.storage,
       });
       const result = await runCliCommandWithStorage({
         commandId: args.commandId,
-        pluginsRoot,
+        pluginSources,
         storagePath,
         rawArgs,
       });
@@ -407,14 +424,45 @@ function assertCommandPluginEnabled(options: {
   }
 }
 
-function assertPluginsAvailable(created: CreatedPluginManager, pluginsRoot: string): void {
+function assertPluginsAvailable(
+  created: CreatedPluginManager,
+  pluginSources: PluginScanSource[],
+): void {
   if (created.pluginCount === 0) {
-    throw new Error(`No plugins found in directory: ${pluginsRoot}`);
+    throw new Error(
+      `No plugins found in plugin sources: ${formatPluginSourcePaths(pluginSources)}`,
+    );
   }
 
   if (created.commandCount === 0) {
-    throw new Error(`No commands found in plugin directory: ${pluginsRoot}`);
+    throw new Error(
+      `No commands found in plugin sources: ${formatPluginSourcePaths(pluginSources)}`,
+    );
   }
+}
+
+function resolvePluginSources(options: {
+  pluginsRoot?: string;
+  pluginSources?: PluginScanSource[];
+}): PluginScanSource[] {
+  if (options.pluginSources) {
+    return options.pluginSources;
+  }
+
+  if (!options.pluginsRoot) {
+    throw new Error("Missing plugin scan sources.");
+  }
+
+  return [
+    {
+      kind: "builtin",
+      path: options.pluginsRoot,
+    },
+  ];
+}
+
+function formatPluginSourcePaths(pluginSources: PluginScanSource[]): string {
+  return pluginSources.map((source) => source.path).join(", ");
 }
 
 function resolveLocalizedString(value: LocalizedString): string {

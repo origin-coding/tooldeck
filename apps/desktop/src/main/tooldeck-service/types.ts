@@ -1,3 +1,4 @@
+import type { PluginScanSource } from "@tooldeck/core";
 import type { CommandResult } from "@tooldeck/protocol";
 
 import type {
@@ -18,6 +19,8 @@ import type {
 export interface TooldeckDesktopServiceOptions {
   workspaceRoot?: string;
   pluginsRoot?: string;
+  pluginDirs?: string[];
+  pluginSources?: PluginScanSource[];
   storagePath?: string;
 }
 

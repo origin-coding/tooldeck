@@ -6,7 +6,7 @@ import {
   CommandService,
   ManifestIndex,
   PluginManager,
-  scanPluginDirectory,
+  scanPluginSources,
 } from "@tooldeck/core";
 import { NodePluginHost } from "@tooldeck/host-node";
 import {
@@ -71,8 +71,8 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
       },
     });
 
-    await scanPluginDirectory({
-      pluginsRoot: this.context.pluginsRoot,
+    await scanPluginSources({
+      sources: this.context.pluginSources,
       manifestIndex,
     });
     this.syncScannedPluginIndex(manifestIndex);
@@ -95,8 +95,8 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
   async syncScannedPlugins(): Promise<ManifestIndex> {
     const manifestIndex = new ManifestIndex();
 
-    await scanPluginDirectory({
-      pluginsRoot: this.context.pluginsRoot,
+    await scanPluginSources({
+      sources: this.context.pluginSources,
       manifestIndex,
     });
     this.syncScannedPluginIndex(manifestIndex);

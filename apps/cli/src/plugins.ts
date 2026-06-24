@@ -1,4 +1,4 @@
-import { ManifestIndex, scanPluginDirectory } from "@tooldeck/core";
+import { ManifestIndex, scanPluginSources, type PluginScanSource } from "@tooldeck/core";
 import type { LocalizedString } from "@tooldeck/protocol";
 import { PluginRepository, type PluginRow, withRepository } from "@tooldeck/storage";
 import { defineCommand } from "citty";
@@ -7,22 +7,26 @@ import { consola } from "consola";
 import { formatPluginList } from "./output";
 import { getCliOutputFormat, type CliOutputFormat } from "./preferences";
 import {
+  createPluginDirCommandArg,
   createPluginsCommandArg,
   createStorageCommandArg,
   requireCliArgument,
+  resolveCliPluginDirOption,
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
 } from "./runtime";
 
 export interface ListCliPluginsOptions {
-  pluginsRoot: string;
+  pluginsRoot?: string;
+  pluginSources?: PluginScanSource[];
   storagePath: string;
 }
 
 export interface SetCliPluginEnabledOptions {
   pluginId: string;
   enabled: boolean;
-  pluginsRoot: string;
+  pluginsRoot?: string;
+  pluginSources?: PluginScanSource[];
   storagePath: string;
 }
 
@@ -40,7 +44,7 @@ export async function listCliPlugins(options: ListCliPluginsOptions): Promise<Li
     (db) => new PluginRepository(db),
     async (plugins) => {
       await syncScannedPlugins({
-        pluginsRoot: options.pluginsRoot,
+        pluginSources: resolvePluginSources(options),
         plugins,
       });
 
@@ -57,7 +61,7 @@ export async function setCliPluginEnabled(
     (db) => new PluginRepository(db),
     async (plugins) => {
       await syncScannedPlugins({
-        pluginsRoot: options.pluginsRoot,
+        pluginSources: resolvePluginSources(options),
         plugins,
       });
 
@@ -85,14 +89,18 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
           description: "List registered plugins.",
         },
         args: createPluginRuntimeCommandArgs("SQLite database path for plugin registry."),
-        async run({ args }) {
-          const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+        async run({ args, rawArgs }) {
+          const { pluginSources, storagePath } = resolveCliRuntimePaths({
             ...options,
+            pluginDir: resolveCliPluginDirOption({
+              rawArgs,
+              value: args.pluginDir,
+            }),
             plugins: args.plugins,
             storage: args.storage,
           });
           const plugins = await listCliPlugins({
-            pluginsRoot,
+            pluginSources,
             storagePath,
           });
           const outputFormat = await getCliOutputFormat({ storagePath });
@@ -106,16 +114,20 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
           description: "Enable a Tooldeck plugin.",
         },
         args: createPluginEnabledCommandArgs(),
-        async run({ args }) {
-          const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+        async run({ args, rawArgs }) {
+          const { pluginSources, storagePath } = resolveCliRuntimePaths({
             ...options,
+            pluginDir: resolveCliPluginDirOption({
+              rawArgs,
+              value: args.pluginDir,
+            }),
             plugins: args.plugins,
             storage: args.storage,
           });
           const plugin = await setCliPluginEnabled({
             pluginId: requireCliArgument(args.pluginId, "pluginId"),
             enabled: true,
-            pluginsRoot,
+            pluginSources,
             storagePath,
           });
           const outputFormat = await getCliOutputFormat({ storagePath });
@@ -129,16 +141,20 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
           description: "Disable a Tooldeck plugin.",
         },
         args: createPluginEnabledCommandArgs(),
-        async run({ args }) {
-          const { pluginsRoot, storagePath } = resolveCliRuntimePaths({
+        async run({ args, rawArgs }) {
+          const { pluginSources, storagePath } = resolveCliRuntimePaths({
             ...options,
+            pluginDir: resolveCliPluginDirOption({
+              rawArgs,
+              value: args.pluginDir,
+            }),
             plugins: args.plugins,
             storage: args.storage,
           });
           const plugin = await setCliPluginEnabled({
             pluginId: requireCliArgument(args.pluginId, "pluginId"),
             enabled: false,
-            pluginsRoot,
+            pluginSources,
             storagePath,
           });
           const outputFormat = await getCliOutputFormat({ storagePath });
@@ -173,13 +189,13 @@ function formatListedPlugin(plugin: PluginRow): ListedCliPlugin {
 }
 
 async function syncScannedPlugins(options: {
-  pluginsRoot: string;
+  pluginSources: PluginScanSource[];
   plugins: PluginRepository;
 }): Promise<ManifestIndex> {
   const manifestIndex = new ManifestIndex();
 
-  await scanPluginDirectory({
-    pluginsRoot: options.pluginsRoot,
+  await scanPluginSources({
+    sources: options.pluginSources,
     manifestIndex,
   });
   options.plugins.syncScannedPlugins({
@@ -190,6 +206,26 @@ async function syncScannedPlugins(options: {
   });
 
   return manifestIndex;
+}
+
+function resolvePluginSources(options: {
+  pluginsRoot?: string;
+  pluginSources?: PluginScanSource[];
+}): PluginScanSource[] {
+  if (options.pluginSources) {
+    return options.pluginSources;
+  }
+
+  if (!options.pluginsRoot) {
+    throw new Error("Missing plugin scan sources.");
+  }
+
+  return [
+    {
+      kind: "builtin",
+      path: options.pluginsRoot,
+    },
+  ];
 }
 
 function resolveLocalizedString(value: LocalizedString): string {
@@ -211,6 +247,7 @@ function resolveStoredLocalizedString(value: string): string {
 function createPluginRuntimeCommandArgs(storageDescription: string) {
   return {
     plugins: createPluginsCommandArg(),
+    pluginDir: createPluginDirCommandArg(),
     storage: createStorageCommandArg(storageDescription),
   };
 }
