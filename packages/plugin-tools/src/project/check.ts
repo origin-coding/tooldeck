@@ -1,13 +1,12 @@
 import path from "node:path";
 
 import { DEFAULT_PLUGIN_MANIFEST_PATH } from "../plugin-manifest";
-import { checkBuiltOutput } from "./built-output-checks";
-import { hasErrorDiagnostics } from "./diagnostics";
-import { checkGeneratedCommands } from "./generated-checks";
-import { checkManifestSemantics } from "./manifest-checks";
-import { readAndValidateManifest } from "./manifest-schema";
-import { checkPackageJson } from "./package-json-checks";
+import { checkBuiltOutput } from "./built-output";
+import { checkGeneratedCommands } from "./generated";
+import { checkManifestSemantics, readAndValidateManifest } from "./manifest";
+import { checkPackageJson } from "./package-json";
 import type { CheckPluginProjectOptions, CheckPluginProjectResult } from "./types";
+import { hasErrorDiagnostics } from "./utils";
 
 export async function checkPluginProject(
   options: CheckPluginProjectOptions = {},

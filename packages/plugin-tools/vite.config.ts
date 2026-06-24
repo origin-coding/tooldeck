@@ -30,7 +30,7 @@ export default defineConfig({
       input: {
         index: "src/index.ts",
         "tooldeck-plugin": "src/tooldeck-plugin.ts",
-        "generate-command-types": "src/generate-command-types.ts",
+        "generate-command-types": "src/bin/generate-command-types.ts",
       },
       output: {
         entryFileNames: "[name].js",

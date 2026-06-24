@@ -3,10 +3,8 @@ import { pathToFileURL } from "node:url";
 
 import type { PluginManifest } from "@tooldeck/protocol";
 
-import { formatUnknownError } from "./diagnostics";
-import { pathExists } from "./fs";
-import { isRecord } from "./json";
 import type { PluginProjectDiagnostic } from "./types";
+import { formatUnknownError, isRecord, pathExists } from "./utils";
 
 export async function checkBuiltOutput(
   manifest: PluginManifest,

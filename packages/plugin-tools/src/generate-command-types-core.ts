@@ -1,1 +1,1 @@
-export * from "./generate-command-types/index";
+export * from "./generate-command-types";

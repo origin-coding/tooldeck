@@ -1,7 +1,7 @@
 import type { PluginManifest } from "@tooldeck/protocol";
 
-import { type JsonRecord, isRecord } from "./json";
 import type { PluginProjectDiagnostic } from "./types";
+import { type JsonRecord, isRecord } from "./utils";
 
 export function checkSupportedSchemaExtensions(
   manifest: PluginManifest,

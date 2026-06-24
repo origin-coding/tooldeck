@@ -3,9 +3,9 @@ import path from "node:path";
 
 import type { PluginManifest } from "@tooldeck/protocol";
 
-import { generatePluginCommandTypes } from "../generate-command-types/index";
-import { formatUnknownError } from "./diagnostics";
+import { generatePluginCommandTypes } from "../generate-command-types";
 import { DEFAULT_GENERATED_COMMANDS_PATH, type PluginProjectDiagnostic } from "./types";
+import { formatUnknownError } from "./utils";
 
 export async function checkGeneratedCommands(
   manifest: PluginManifest,

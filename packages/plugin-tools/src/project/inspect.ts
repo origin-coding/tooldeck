@@ -1,16 +1,14 @@
 import path from "node:path";
 
-import { readJsonIfExists } from "./json";
 import { checkPluginProject } from "./check";
-import { detectPackageManager, pathExists } from "./fs";
-import { inspectLocales } from "./locale-checks";
-import { renderLocalizedString } from "./localization";
-import { collectTooldeckPackages } from "./package-json-checks";
+import { inspectLocales, renderLocalizedString } from "./locale";
+import { collectTooldeckPackages } from "./package-json";
 import {
   DEFAULT_GENERATED_COMMANDS_PATH,
   type InspectPluginProjectOptions,
   type InspectPluginProjectResult,
 } from "./types";
+import { detectPackageManager, pathExists, readJsonIfExists } from "./utils";
 
 export async function inspectPluginProject(
   options: InspectPluginProjectOptions = {},

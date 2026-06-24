@@ -1,7 +1,7 @@
 import path from "node:path";
 
-import { type JsonRecord, isRecord, readJsonIfExists } from "./json";
 import type { PluginProjectDiagnostic, TooldeckPackageInspection } from "./types";
+import { type JsonRecord, isRecord, readJsonIfExists } from "./utils";
 
 export async function checkPackageJson(
   manifestDir: string,
