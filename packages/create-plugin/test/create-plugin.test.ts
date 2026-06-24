@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { checkPluginProject } from "@tooldeck/plugin-tools";
 import { runCommand } from "citty";
@@ -16,6 +17,12 @@ import {
 const tempDirs: string[] = [];
 const originalCwd = process.cwd();
 const originalExitCode = process.exitCode;
+const packageMetadata = JSON.parse(
+  readFileSync(
+    path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "package.json"),
+    "utf8",
+  ),
+) as { version: string };
 
 afterEach(() => {
   process.chdir(originalCwd);
@@ -113,9 +120,13 @@ describe("createPluginProject", () => {
         inspect: "tooldeck-plugin inspect",
       },
     });
-    expect(packageJson.dependencies["@tooldeck/sdk-node"]).toBe("^1.1.0");
-    expect(packageJson.devDependencies["@tooldeck/plugin-tools"]).toBe("^1.1.0");
-    expect(packageJson.devDependencies["@tooldeck/vite-plugin"]).toBe("^1.1.0");
+    expect(packageJson.dependencies["@tooldeck/sdk-node"]).toBe(`^${packageMetadata.version}`);
+    expect(packageJson.devDependencies["@tooldeck/plugin-tools"]).toBe(
+      `^${packageMetadata.version}`,
+    );
+    expect(packageJson.devDependencies["@tooldeck/vite-plugin"]).toBe(
+      `^${packageMetadata.version}`,
+    );
     expect(manifest.id).toBe("dev.tooldeck.my-plugin");
     expect(manifest.contributes.commands[0]?.id).toBe("my-plugin.echo");
     expect(source).toContain("plugin.command(commandIds.myPluginEcho");

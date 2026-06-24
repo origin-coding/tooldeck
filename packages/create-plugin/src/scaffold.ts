@@ -1,10 +1,9 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_TEMPLATE = "plugin-node-vite";
-const TOOLDECK_VERSION = "1.1.0";
 const TYPESCRIPT_VERSION = "^6.0.0";
 const VITE_VERSION = "^8.0.0";
 const VITEST_VERSION = "^4.0.0";
@@ -101,11 +100,38 @@ export function createTemplateData(
     commandInputTypeName: `${pascalCase(commandId)}Input`,
     commandTitle: "Echo Text",
     commandDescription: "Return the provided text.",
-    tooldeckVersion: `^${TOOLDECK_VERSION}`,
+    tooldeckVersion: `^${getCreatePluginPackageVersion()}`,
     typescriptVersion: TYPESCRIPT_VERSION,
     viteVersion: VITE_VERSION,
     vitestVersion: VITEST_VERSION,
   };
+}
+
+function getCreatePluginPackageVersion(): string {
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.resolve(currentDir, "..", "package.json"),
+    path.resolve(currentDir, "..", "..", "package.json"),
+  ];
+
+  for (const packageJsonPath of candidates) {
+    if (!existsSync(packageJsonPath)) {
+      continue;
+    }
+
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
+      name?: unknown;
+      version?: unknown;
+    };
+
+    if (packageJson.name === "@tooldeck/create-plugin" && typeof packageJson.version === "string") {
+      return packageJson.version;
+    }
+  }
+
+  throw new Error(
+    `Could not resolve @tooldeck/create-plugin package version. Checked: ${candidates.join(", ")}`,
+  );
 }
 
 function normalizePackageName(value: string): string {
