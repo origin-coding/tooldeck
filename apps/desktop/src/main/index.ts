@@ -6,6 +6,7 @@ import { app, BrowserWindow } from "electron";
 import { checkForDesktopUpdates } from "./auto-updates";
 import { registerTooldeckIpc } from "./ipc";
 import { resolveDesktopPluginDirs } from "./plugin-dirs";
+import { focusExistingWindow } from "./single-instance";
 import { TooldeckDesktopService } from "./tooldeck-service";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -67,24 +68,34 @@ function createServiceOptions(): ConstructorParameters<typeof TooldeckDesktopSer
   };
 }
 
-app.whenReady().then(() => {
-  void createWindow()
-    .then(() => {
-      checkForDesktopUpdates();
-    })
-    .catch((error) => {
-      console.error("Failed to start Tooldeck desktop.", error);
-      app.quit();
-    });
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      void createWindow().catch((error) => {
-        console.error("Failed to create Tooldeck window.", error);
-      });
-    }
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    focusExistingWindow(mainWindow);
   });
-});
+
+  app.whenReady().then(() => {
+    void createWindow()
+      .then(() => {
+        checkForDesktopUpdates();
+      })
+      .catch((error) => {
+        console.error("Failed to start Tooldeck desktop.", error);
+        app.quit();
+      });
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        void createWindow().catch((error) => {
+          console.error("Failed to create Tooldeck window.", error);
+        });
+      }
+    });
+  });
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
