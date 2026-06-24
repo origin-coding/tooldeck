@@ -29,6 +29,7 @@ export default defineConfig({
         nodeBuiltins.has(id) || id.startsWith("node:") || externalPackages.has(getPackageName(id)),
       input: {
         index: "src/index.ts",
+        testing: "src/testing.ts",
         "tooldeck-plugin": "src/tooldeck-plugin.ts",
         "generate-command-types": "src/bin/generate-command-types.ts",
       },
