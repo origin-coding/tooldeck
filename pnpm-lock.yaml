@@ -270,6 +270,15 @@ importers:
         specifier: ^25.9.1
         version: 25.9.1
 
+  packages/vite-plugin:
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+      vite:
+        specifier: ^8.0.16
+        version: 8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)
+
   plugins/hello-world:
     dependencies:
       '@tooldeck/sdk-node':
