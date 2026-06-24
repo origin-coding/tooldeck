@@ -28,6 +28,7 @@ export async function checkGeneratedCommands(
       code: "GENERATED_TYPES_FAILED",
       message: `Could not generate command types from manifest: ${formatUnknownError(error)}`,
       path: resolvedPath,
+      suggestion: "Fix the manifest command definitions, then run tooldeck-plugin generate again.",
     });
 
     return;
@@ -43,6 +44,7 @@ export async function checkGeneratedCommands(
       code: "GENERATED_MISSING",
       message: "Generated command types file is missing. Run tooldeck-plugin generate.",
       path: resolvedPath,
+      suggestion: "Run tooldeck-plugin generate to create src/generated/commands.ts.",
     });
 
     return;
@@ -54,6 +56,7 @@ export async function checkGeneratedCommands(
       code: "GENERATED_STALE",
       message: "Generated command types are out of sync. Run tooldeck-plugin generate.",
       path: resolvedPath,
+      suggestion: "Run tooldeck-plugin generate and commit the updated generated command types.",
     });
   }
 }

@@ -11,6 +11,7 @@ const externalPackages = new Set([
   "@tooldeck/protocol",
   "ajv",
   "citty",
+  "consola",
   "json-schema-to-typescript",
   "scule",
 ]);

@@ -19,6 +19,8 @@ export async function checkBuiltOutput(
       code: "BUILT_ENTRY_MISSING",
       message: "manifest.runtime.entry does not point to an existing built file.",
       path: entryPath,
+      fieldPath: "runtime.entry",
+      suggestion: "Run tooldeck-plugin build --bundler vite, or update manifest.runtime.entry to the built file path.",
     });
 
     return;
@@ -35,6 +37,8 @@ export async function checkBuiltOutput(
       code: "BUILT_ENTRY_IMPORT_FAILED",
       message: `Built runtime entry is not ESM-loadable: ${formatUnknownError(error)}`,
       path: entryPath,
+      fieldPath: "runtime.entry",
+      suggestion: "Ensure the built runtime entry is valid Node ESM and can be imported without activating commands.",
     });
 
     return;
@@ -46,6 +50,8 @@ export async function checkBuiltOutput(
       code: "BUILT_PLUGIN_DEFAULT_EXPORT",
       message: "Built runtime entry must default export a Tooldeck plugin object.",
       path: entryPath,
+      fieldPath: "default",
+      suggestion: "Export the plugin as the default export from the runtime entry.",
     });
 
     return;
@@ -57,6 +63,8 @@ export async function checkBuiltOutput(
       code: "BUILT_PLUGIN_DEFAULT_EXPORT",
       message: "Built default export must expose an activate(ctx) function.",
       path: entryPath,
+      fieldPath: "default.activate",
+      suggestion: "Export a Tooldeck plugin object with an activate(ctx) function.",
     });
   }
 }

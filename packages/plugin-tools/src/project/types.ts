@@ -11,6 +11,8 @@ export interface PluginProjectDiagnostic {
   code: string;
   message: string;
   path?: string;
+  fieldPath?: string;
+  suggestion?: string;
 }
 
 export interface CheckPluginProjectOptions {

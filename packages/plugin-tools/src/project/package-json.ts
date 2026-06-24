@@ -16,6 +16,7 @@ export async function checkPackageJson(
       code: "PACKAGE_JSON_MISSING",
       message: "Plugin project package.json is missing or invalid JSON.",
       path: packageJsonPath,
+      suggestion: "Create a valid package.json for the plugin project.",
     });
 
     return;
@@ -30,6 +31,8 @@ export async function checkPackageJson(
         code: "PACKAGE_SCRIPT_MISSING",
         message: `package.json scripts.${scriptName} is required.`,
         path: packageJsonPath,
+        fieldPath: `scripts.${scriptName}`,
+        suggestion: `Add a "${scriptName}" script to package.json.`,
       });
     }
   }
@@ -43,6 +46,8 @@ export async function checkPackageJson(
         code: "PACKAGE_DEPENDENCY_MISSING",
         message: `package.json must depend on ${packageName}.`,
         path: packageJsonPath,
+        fieldPath: "dependencies",
+        suggestion: `Add "${packageName}" to dependencies or devDependencies.`,
       });
     }
   }
@@ -53,6 +58,8 @@ export async function checkPackageJson(
       code: "PACKAGE_DEPENDENCY_MISSING",
       message: "Vite plugin projects must depend on @tooldeck/vite-plugin.",
       path: packageJsonPath,
+      fieldPath: "devDependencies.@tooldeck/vite-plugin",
+      suggestion: 'Add "@tooldeck/vite-plugin" to devDependencies.',
     });
   }
 }

@@ -11,6 +11,7 @@ import {
   buildPluginProject,
   checkPluginProject,
   createPluginToolsCommand,
+  formatPluginCheckResult,
   generatePluginCommandTypesFile,
   inspectPluginProject,
   PluginBuildError,
@@ -136,9 +137,38 @@ describe("checkPluginProject", () => {
       result.diagnostics.some(
         (diagnostic) =>
           diagnostic.code === "INPUT_SCHEMA_UNSUPPORTED_KEYWORD" &&
-          diagnostic.message.includes("oneOf"),
+          diagnostic.message.includes("oneOf") &&
+          diagnostic.fieldPath === "contributes.commands[0].inputSchema.oneOf" &&
+          diagnostic.suggestion?.includes("Remove oneOf"),
       ),
     ).toBe(true);
+  });
+
+  it("normalizes manifest schema errors into actionable diagnostics", async () => {
+    const projectDir = await createPluginProject({
+      manifest: {
+        ...createManifest(),
+        runtime: {
+          kind: "node",
+        },
+      } as never,
+    });
+
+    process.chdir(projectDir);
+
+    const result = await checkPluginProject();
+    const diagnostic = result.diagnostics.find(
+      (item) => item.code === "MANIFEST_SCHEMA" && item.fieldPath === "runtime.entry",
+    );
+
+    expect(diagnostic).toMatchObject({
+      severity: "error",
+      path: path.join(projectDir, "manifest.json"),
+      message: "runtime.entry is required.",
+      suggestion: 'Add "runtime.entry": "./dist/index.js".',
+    });
+    expect(formatPluginCheckResult(result)).toContain("Field: runtime.entry");
+    expect(formatPluginCheckResult(result)).toContain('Fix: Add "runtime.entry": "./dist/index.js".');
   });
 
   it("rejects unsupported field x-ui properties for the selected control", async () => {
@@ -239,6 +269,19 @@ describe("inspectPluginProject", () => {
         rawArgs: ["inspect"],
       }),
     ).resolves.toEqual({ result: undefined });
+  });
+
+  it("sets an exit code when inspect finds error diagnostics", async () => {
+    const projectDir = await createPluginProject();
+
+    process.chdir(projectDir);
+
+    await expect(
+      runCommand(createPluginToolsCommand(), {
+        rawArgs: ["inspect"],
+      }),
+    ).resolves.toEqual({ result: undefined });
+    expect(process.exitCode).toBe(1);
   });
 });
 

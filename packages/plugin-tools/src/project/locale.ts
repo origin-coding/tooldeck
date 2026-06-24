@@ -21,6 +21,8 @@ export async function checkLocales(
       severity: "error",
       code: "LOCALES_MISSING",
       message: "Manifest uses localization keys but does not declare locale files.",
+      fieldPath: "locales",
+      suggestion: 'Add a locales map to manifest.json, for example "locales": { "en": "./locales/en.json" }.',
     });
 
     return;
@@ -32,6 +34,8 @@ export async function checkLocales(
         severity: "error",
         code: "LOCALE_FILE_MISSING",
         message: `Locale ${locale} does not declare a locale file path.`,
+        fieldPath: `locales.${locale}`,
+        suggestion: `Set manifest.locales.${locale} to a relative locale JSON file path.`,
       });
       continue;
     }
@@ -45,6 +49,8 @@ export async function checkLocales(
         code: "LOCALE_FILE_MISSING",
         message: `Locale file for ${locale} is missing or invalid JSON.`,
         path: resolvedPath,
+        fieldPath: `locales.${locale}`,
+        suggestion: `Create ${localePath} with string values for the manifest localization keys.`,
       });
       continue;
     }
@@ -56,6 +62,8 @@ export async function checkLocales(
           code: "LOCALE_KEY_MISSING",
           message: `Locale ${locale} does not define key: ${key}`,
           path: resolvedPath,
+          fieldPath: key,
+          suggestion: `Add "${key}" to ${localePath} with a translated string value.`,
         });
       }
     }

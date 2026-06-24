@@ -38,6 +38,7 @@ export async function readAndValidateManifest(
       code: "MANIFEST_MISSING",
       message: `Manifest file does not exist or cannot be read: ${formatUnknownError(error)}`,
       path: manifestPath,
+      suggestion: "Create a manifest.json file or pass the correct path with --manifest.",
     });
 
     return undefined;
@@ -53,6 +54,7 @@ export async function readAndValidateManifest(
       code: "MANIFEST_INVALID_JSON",
       message: `Manifest is not valid JSON: ${formatUnknownError(error)}`,
       path: manifestPath,
+      suggestion: "Fix the JSON syntax in manifest.json and run tooldeck-plugin check again.",
     });
 
     return undefined;
@@ -63,8 +65,10 @@ export async function readAndValidateManifest(
       ...normalizeAjvErrors(validateManifestSchema.errors ?? []).map((error) => ({
         severity: "error" as const,
         code: "MANIFEST_SCHEMA",
-        message: `${error.path} ${error.message}`,
+        message: error.message,
         path: manifestPath,
+        fieldPath: error.fieldPath,
+        suggestion: error.suggestion,
       })),
     );
 
@@ -86,6 +90,8 @@ export async function checkManifestSemantics(
       code: "RUNTIME_UNSUPPORTED",
       message: `Unsupported runtime kind: ${manifest.runtime.kind}`,
       path: manifestPath,
+      fieldPath: "runtime.kind",
+      suggestion: 'Set manifest.runtime.kind to "node".',
     });
   }
 
@@ -95,6 +101,8 @@ export async function checkManifestSemantics(
       code: "RUNTIME_ENTRY_ABSOLUTE",
       message: "manifest.runtime.entry must be relative to the manifest file.",
       path: manifestPath,
+      fieldPath: "runtime.entry",
+      suggestion: 'Use a relative built entry such as "./dist/index.js".',
     });
   }
 
@@ -104,6 +112,8 @@ export async function checkManifestSemantics(
       code: "RUNTIME_ENTRY_RELATIVE_STYLE",
       message: "Prefer an explicit relative runtime entry such as ./dist/index.js.",
       path: manifestPath,
+      fieldPath: "runtime.entry",
+      suggestion: 'Prefix the runtime entry with "./", for example "./dist/index.js".',
     });
   }
 
@@ -113,6 +123,8 @@ export async function checkManifestSemantics(
       code: "RUNTIME_ENTRY_DIST",
       message: "The recommended runtime entry points to a built file under ./dist.",
       path: manifestPath,
+      fieldPath: "runtime.entry",
+      suggestion: 'Point manifest.runtime.entry at the built output, usually "./dist/index.js".',
     });
   }
 
@@ -135,6 +147,8 @@ function checkUniqueCommandIds(
         code: "COMMAND_ID_DUPLICATE",
         message: `Command id is duplicated in this manifest: ${command.id}`,
         path: manifestPath,
+        fieldPath: "contributes.commands",
+        suggestion: "Give each contributed command a unique id.",
       });
     }
 

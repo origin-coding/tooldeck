@@ -45,7 +45,7 @@ export function formatPluginInspection(result: InspectPluginProjectResult): stri
 
   if (result.diagnostics.length > 0) {
     lines.push("Diagnostics:");
-    lines.push(...result.diagnostics.map((diagnostic) => `  - ${formatDiagnostic(diagnostic)}`));
+    lines.push(...result.diagnostics.map(formatDiagnostic));
   }
 
   return lines.join("\n");
@@ -53,9 +53,23 @@ export function formatPluginInspection(result: InspectPluginProjectResult): stri
 
 function formatDiagnostic(diagnostic: PluginProjectDiagnostic): string {
   const prefix = diagnostic.severity === "error" ? "error" : "warning";
-  const location = diagnostic.path ? ` (${diagnostic.path})` : "";
+  const lines = [`[${prefix}] ${diagnostic.code}`];
 
-  return `[${prefix}] ${diagnostic.code}: ${diagnostic.message}${location}`;
+  if (diagnostic.path) {
+    lines.push(`  File: ${diagnostic.path}`);
+  }
+
+  if (diagnostic.fieldPath) {
+    lines.push(`  Field: ${diagnostic.fieldPath}`);
+  }
+
+  lines.push(`  Problem: ${diagnostic.message}`);
+
+  if (diagnostic.suggestion) {
+    lines.push(`  Fix: ${diagnostic.suggestion}`);
+  }
+
+  return lines.join("\n");
 }
 
 function formatTooldeckPackages(packages: TooldeckPackageInspection[]): string {

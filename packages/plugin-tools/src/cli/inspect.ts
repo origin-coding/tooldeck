@@ -1,4 +1,5 @@
 import { defineCommand } from "citty";
+import { consola } from "consola";
 
 import { formatPluginInspection, inspectPluginProject } from "../project";
 import { createProjectInspectArgs, parseProjectInspectArgs } from "./args";
@@ -14,7 +15,11 @@ export function defineInspectCommand() {
       const options = parseProjectInspectArgs(rawArgs, "tooldeck-plugin inspect");
       const result = await inspectPluginProject(options);
 
-      console.log(formatPluginInspection(result));
+      consola.log(formatPluginInspection(result));
+
+      if (result.diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+        process.exitCode = 1;
+      }
     },
   });
 }

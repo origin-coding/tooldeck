@@ -100,6 +100,8 @@ export function checkSupportedSchemaExtensions(
         code: "OUTPUT_SCHEMA_X_UI",
         message: `Command ${command.id} outputSchema must not use x-ui.`,
         path: manifestPath,
+        fieldPath: `contributes.commands[${commandIndex}].outputSchema.x-ui`,
+        suggestion: "Remove x-ui from outputSchema. UI hints are only supported on command input schemas.",
       });
     }
   });
@@ -119,6 +121,8 @@ function checkInputSchemaSubset(
         code: "INPUT_SCHEMA_UNSUPPORTED_KEYWORD",
         message: `Command at index ${commandIndex} ${schemaPath} uses unsupported inputSchema keyword: ${key}`,
         path: manifestPath,
+        fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, key),
+        suggestion: `Remove ${key} from the command inputSchema or replace it with a supported JSON Schema keyword.`,
       });
     }
   }
@@ -131,6 +135,8 @@ function checkInputSchemaSubset(
       code: "INPUT_SCHEMA_UNSUPPORTED_TYPE",
       message: `Command at index ${commandIndex} ${schemaPath}.type must be a single supported type.`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "type"),
+      suggestion: "Use a single supported JSON Schema type instead of a type array.",
     });
   } else if (type !== undefined && !supportedSchemaTypes.has(String(type))) {
     diagnostics.push({
@@ -138,6 +144,8 @@ function checkInputSchemaSubset(
       code: "INPUT_SCHEMA_UNSUPPORTED_TYPE",
       message: `Command at index ${commandIndex} ${schemaPath}.type is unsupported: ${String(type)}`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "type"),
+      suggestion: "Use one of: object, array, string, number, integer, boolean, null.",
     });
   }
 
@@ -147,6 +155,8 @@ function checkInputSchemaSubset(
       code: "INPUT_SCHEMA_PROPERTIES",
       message: `Command at index ${commandIndex} ${schemaPath}.properties must be an object.`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "properties"),
+      suggestion: "Change properties to an object whose values are schema objects.",
     });
   }
 
@@ -156,6 +166,8 @@ function checkInputSchemaSubset(
       code: "INPUT_SCHEMA_REQUIRED",
       message: `Command at index ${commandIndex} ${schemaPath}.required must be an array of field names.`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "required"),
+      suggestion: "Change required to an array of string field names.",
     });
   }
 
@@ -165,6 +177,8 @@ function checkInputSchemaSubset(
       code: "INPUT_SCHEMA_ITEMS",
       message: `Command at index ${commandIndex} ${schemaPath}.items must be a schema object.`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "items"),
+      suggestion: "Change items to a schema object.",
     });
   }
 
@@ -174,6 +188,8 @@ function checkInputSchemaSubset(
       code: "INPUT_SCHEMA_ALLOF",
       message: `Command at index ${commandIndex} ${schemaPath}.allOf must be an array of schema objects.`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "allOf"),
+      suggestion: "Change allOf to an array of schema objects, or remove it.",
     });
   }
 
@@ -188,6 +204,8 @@ function checkInputSchemaSubset(
       code: "INPUT_SCHEMA_ADDITIONAL_PROPERTIES",
       message: `Command at index ${commandIndex} ${schemaPath}.additionalProperties must be a boolean or schema object.`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "additionalProperties"),
+      suggestion: "Change additionalProperties to true, false, or a schema object.",
     });
   }
 }
@@ -210,6 +228,8 @@ function checkRootInputSchemaUi(
       code: "INPUT_SCHEMA_X_UI",
       message: `Command at index ${commandIndex} inputSchema.x-ui must be an object.`,
       path: manifestPath,
+      fieldPath: `contributes.commands[${commandIndex}].inputSchema.x-ui`,
+      suggestion: "Change inputSchema.x-ui to an object, or remove it.",
     });
 
     return;
@@ -222,6 +242,8 @@ function checkRootInputSchemaUi(
         code: "INPUT_SCHEMA_X_UI",
         message: `Unsupported inputSchema.x-ui property: ${key}`,
         path: manifestPath,
+        fieldPath: `contributes.commands[${commandIndex}].inputSchema.x-ui.${key}`,
+        suggestion: "Only inputSchema.x-ui.fieldOrder is supported at the input schema root.",
       });
     }
   }
@@ -238,6 +260,8 @@ function checkRootInputSchemaUi(
       code: "INPUT_SCHEMA_FIELD_ORDER",
       message: "inputSchema.x-ui.fieldOrder must be an array.",
       path: manifestPath,
+      fieldPath: `contributes.commands[${commandIndex}].inputSchema.x-ui.fieldOrder`,
+      suggestion: "Change fieldOrder to an array of field names from inputSchema.properties.",
     });
 
     return;
@@ -254,6 +278,8 @@ function checkRootInputSchemaUi(
         code: "INPUT_SCHEMA_FIELD_ORDER",
         message: "inputSchema.x-ui.fieldOrder must contain non-empty field names.",
         path: manifestPath,
+        fieldPath: `contributes.commands[${commandIndex}].inputSchema.x-ui.fieldOrder`,
+        suggestion: "Use only non-empty string field names in fieldOrder.",
       });
       continue;
     }
@@ -264,6 +290,8 @@ function checkRootInputSchemaUi(
         code: "INPUT_SCHEMA_FIELD_ORDER",
         message: `inputSchema.x-ui.fieldOrder duplicates field: ${fieldName}`,
         path: manifestPath,
+        fieldPath: `contributes.commands[${commandIndex}].inputSchema.x-ui.fieldOrder`,
+        suggestion: `Remove the duplicate "${fieldName}" entry from fieldOrder.`,
       });
       continue;
     }
@@ -276,6 +304,8 @@ function checkRootInputSchemaUi(
         code: "INPUT_SCHEMA_FIELD_ORDER",
         message: `inputSchema.x-ui.fieldOrder references unknown field: ${fieldName}`,
         path: manifestPath,
+        fieldPath: `contributes.commands[${commandIndex}].inputSchema.x-ui.fieldOrder`,
+        suggestion: `Add "${fieldName}" to inputSchema.properties or remove it from fieldOrder.`,
       });
     }
   }
@@ -300,6 +330,8 @@ function checkSchemaI18n(
       code: "SCHEMA_X_I18N",
       message: `Command at index ${commandIndex} ${schemaPath}.x-i18n must be an object.`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "x-i18n"),
+      suggestion: "Change x-i18n to an object containing locale key strings, or remove it.",
     });
 
     return;
@@ -312,6 +344,8 @@ function checkSchemaI18n(
         code: "SCHEMA_X_I18N",
         message: `Unsupported x-i18n property: ${key}`,
         path: manifestPath,
+        fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, `x-i18n.${key}`),
+        suggestion: "Only x-i18n.title, x-i18n.description, and x-i18n.enumLabels are supported.",
       });
     }
   }
@@ -322,6 +356,8 @@ function checkSchemaI18n(
       code: "SCHEMA_X_I18N",
       message: `Command at index ${commandIndex} ${schemaPath}.x-i18n.title must be a locale key string.`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "x-i18n.title"),
+      suggestion: "Change x-i18n.title to a locale key string.",
     });
   }
 
@@ -331,6 +367,8 @@ function checkSchemaI18n(
       code: "SCHEMA_X_I18N",
       message: `Command at index ${commandIndex} ${schemaPath}.x-i18n.description must be a locale key string.`,
       path: manifestPath,
+      fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "x-i18n.description"),
+      suggestion: "Change x-i18n.description to a locale key string.",
     });
   }
 
@@ -341,6 +379,8 @@ function checkSchemaI18n(
         code: "SCHEMA_X_I18N",
         message: `Command at index ${commandIndex} ${schemaPath}.x-i18n.enumLabels must be an object of locale key strings.`,
         path: manifestPath,
+        fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "x-i18n.enumLabels"),
+        suggestion: "Change x-i18n.enumLabels to an object mapping enum values to locale key strings.",
       });
       return;
     }
@@ -352,6 +392,12 @@ function checkSchemaI18n(
           code: "SCHEMA_X_I18N",
           message: `Command at index ${commandIndex} ${schemaPath}.x-i18n.enumLabels.${enumValue} must be a locale key string.`,
           path: manifestPath,
+          fieldPath: inputSchemaFieldPath(
+            commandIndex,
+            schemaPath,
+            `x-i18n.enumLabels.${enumValue}`,
+          ),
+          suggestion: `Change the enum label for "${enumValue}" to a locale key string.`,
         });
       }
     }
@@ -377,6 +423,8 @@ function checkInputFieldUi(
       code: "INPUT_FIELD_X_UI",
       message: `Command at index ${commandIndex} field ${propertyName} x-ui must be an object.`,
       path: manifestPath,
+      fieldPath: inputFieldUiPath(commandIndex, propertyName),
+      suggestion: "Change field x-ui to an object, or remove it.",
     });
 
     return;
@@ -391,6 +439,8 @@ function checkInputFieldUi(
       code: "INPUT_FIELD_X_UI",
       message: `Unsupported x-ui.control on ${propertyName}: ${String(control)}`,
       path: manifestPath,
+      fieldPath: inputFieldUiPath(commandIndex, propertyName, "control"),
+      suggestion: "Use a supported control: text, textarea, number, checkbox, radio, select, checkboxGroup, or multiSelect.",
     });
 
     return;
@@ -405,6 +455,8 @@ function checkInputFieldUi(
         code: "INPUT_FIELD_X_UI",
         message: `Unsupported x-ui property on ${propertyName} for ${supportedControl} control: ${key}`,
         path: manifestPath,
+        fieldPath: inputFieldUiPath(commandIndex, propertyName, key),
+        suggestion: `Remove ${key} or use an input control that supports it.`,
       });
     }
   }
@@ -415,6 +467,8 @@ function checkInputFieldUi(
       code: "INPUT_FIELD_X_UI",
       message: `x-ui.rows on ${propertyName} must be a number.`,
       path: manifestPath,
+      fieldPath: inputFieldUiPath(commandIndex, propertyName, "rows"),
+      suggestion: "Change x-ui.rows to a number.",
     });
   }
 
@@ -424,6 +478,8 @@ function checkInputFieldUi(
       code: "INPUT_FIELD_X_UI",
       message: `x-ui.placeholder on ${propertyName} must be a LocalizedString.`,
       path: manifestPath,
+      fieldPath: inputFieldUiPath(commandIndex, propertyName, "placeholder"),
+      suggestion: "Change x-ui.placeholder to a string or { key, default } LocalizedString.",
     });
   }
 }
@@ -493,4 +549,22 @@ function isLocalizedString(value: unknown): boolean {
     typeof value.key === "string" &&
     typeof value.default === "string"
   );
+}
+
+function inputSchemaFieldPath(
+  commandIndex: number,
+  schemaPath: string,
+  suffix?: string,
+): string {
+  const normalizedSchemaPath =
+    schemaPath === "$" ? "" : schemaPath.replace(/^\$\.?/, ".");
+  const basePath = `contributes.commands[${commandIndex}].inputSchema${normalizedSchemaPath}`;
+
+  return suffix ? `${basePath}.${suffix}` : basePath;
+}
+
+function inputFieldUiPath(commandIndex: number, propertyName: string, suffix?: string): string {
+  const basePath = `contributes.commands[${commandIndex}].inputSchema.properties.${propertyName}.x-ui`;
+
+  return suffix ? `${basePath}.${suffix}` : basePath;
 }

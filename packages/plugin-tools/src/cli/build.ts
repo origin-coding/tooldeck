@@ -1,4 +1,5 @@
 import { defineCommand } from "citty";
+import { consola } from "consola";
 
 import { buildPluginProject, formatPluginBuildError } from "../project";
 import { createProjectBuildArgs, parseProjectBuildArgs } from "./args";
@@ -15,9 +16,9 @@ export function defineBuildCommand() {
 
       try {
         await buildPluginProject(options);
-        console.log("Tooldeck plugin build passed.");
+        consola.success("Tooldeck plugin build passed.");
       } catch (error) {
-        console.error(formatPluginBuildError(error));
+        consola.error(formatPluginBuildError(error));
         process.exitCode = 1;
       }
     },
