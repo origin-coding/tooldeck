@@ -17,7 +17,8 @@ import type {
   PropertiesContentBlock,
   PropertyValue,
 } from "@tooldeck/protocol";
-import { validatePreferenceValue, type JsonObject } from "@tooldeck/shared";
+import { validatePreferenceValue } from "@tooldeck/preferences";
+import type { JsonObject } from "@tooldeck/shared";
 import {
   CommandRunRepository,
   PreferenceRepository,

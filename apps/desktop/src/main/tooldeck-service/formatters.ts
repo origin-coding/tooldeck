@@ -18,7 +18,7 @@ import type {
   PropertyItem,
   TooldeckJsonSchema,
 } from "@tooldeck/protocol";
-import { validatePreferenceValue, type PreferenceDefinition } from "@tooldeck/shared";
+import { validatePreferenceValue, type PreferenceDefinition } from "@tooldeck/preferences";
 import type { PluginRow, PreferenceRow } from "@tooldeck/storage";
 
 import type { DesktopCommand, DesktopPreference, DesktopPlugin } from "@/shared/desktop-api";

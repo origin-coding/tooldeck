@@ -34,6 +34,7 @@ apps/
 
 packages/
   protocol/       TPP types and JSON Schema.
+  preferences/    Private Tooldeck product preference definitions and validation.
   runtime-node/   Node runtime coordination, manifest scanning, command registry.
   sdk-node/       SDK for Node plugins.
   host-node/      Node plugin host.
@@ -131,6 +132,7 @@ architecture:
 Important V1 boundaries:
 
 - `packages/protocol` does not depend on Electron, React, SQLite, Node plugin runtime, or UI code.
+- `packages/preferences` is private Tooldeck product code; preferences are not part of TPP.
 - Renderer code does not access SQLite directly.
 - Renderer code does not import or execute plugin code directly.
 - Manifest scanning must not run plugin code.

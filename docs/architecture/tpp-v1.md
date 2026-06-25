@@ -67,6 +67,9 @@ TPP 本身是语言无关的协议层。它定义 Manifest、Contribution、Comm
 生命周期、权限声明和 JSON Schema 约束等数据契约与行为语义，不绑定 TypeScript、Node、
 Electron、React 或 SQLite。
 
+Tooldeck 产品偏好设置属于应用实现层，由 private `@tooldeck/preferences` 包维护；它们不属于
+TPP 协议，也不应放入 `@tooldeck/protocol`。
+
 当前仓库中的 `packages/runtime-node` 不是 TPP 协议本身，而是当前可信本地 Node 纵向切片的
 TypeScript runtime 实现。它负责 manifest indexing、command orchestration、lazy activation 协调、
 状态机、输入输出校验，以及 Node/TS 插件运行时契约类型。
@@ -160,6 +163,9 @@ tooldeck/
     protocol/
       # TPP 类型定义、Manifest JSON Schema、Contribution 类型
 
+    preferences/
+      # Tooldeck 产品偏好定义和校验，private 包，不属于 TPP 协议
+
     runtime-node/
       # 当前 Node runtime 的 TypeScript 实现，负责命令编排和插件契约
 
@@ -223,6 +229,7 @@ tooldeck/
 
   packages/
     protocol/
+    preferences/
     runtime-node/
     sdk/
     host-node/
@@ -1206,6 +1213,7 @@ npm scope：
 
 ```text
 @tooldeck/protocol
+@tooldeck/preferences
 @tooldeck/runtime-node
 @tooldeck/sdk-node
 @tooldeck/host-node

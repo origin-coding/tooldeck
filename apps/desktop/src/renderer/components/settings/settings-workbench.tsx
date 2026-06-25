@@ -1,4 +1,4 @@
-import type { PreferenceScope } from "@tooldeck/shared";
+import type { PreferenceScope } from "@tooldeck/preferences";
 import { Button, Card, Divider, Segmented, Select, Switch, Tooltip, Typography } from "antd";
 import { FolderSearch, History, Languages, PanelLeftClose, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";

@@ -4,7 +4,7 @@ import {
   validatePreferenceValue,
   type PreferenceDefinition,
   type PreferenceScope,
-} from "@tooldeck/shared";
+} from "@tooldeck/preferences";
 import {
   PreferenceRepository,
   type PreferenceRow,

@@ -1,4 +1,5 @@
-import type { JsonValue } from "./types";
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 export type PreferenceScope = "cli" | "desktop" | "shared";
 

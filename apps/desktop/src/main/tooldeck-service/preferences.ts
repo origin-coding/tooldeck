@@ -3,7 +3,7 @@ import {
   requirePreferenceDefinition,
   validatePreferenceValue,
   type PreferenceDefinition,
-} from "@tooldeck/shared";
+} from "@tooldeck/preferences";
 
 import type {
   DesktopPreference,

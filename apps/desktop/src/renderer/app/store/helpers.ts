@@ -1,4 +1,4 @@
-import type { PreferenceScope } from "@tooldeck/shared";
+import type { PreferenceScope } from "@tooldeck/preferences";
 
 import { createInputState } from "@/renderer/app/command-input";
 import { getNavigationMode } from "@/renderer/app/selectors";

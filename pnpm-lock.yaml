@@ -48,9 +48,6 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
     devDependencies:
-      '@tooldeck/runtime-node':
-        specifier: workspace:*
-        version: link:../../packages/runtime-node
       '@tooldeck/hello-world':
         specifier: workspace:*
         version: link:../../plugins/hello-world
@@ -60,12 +57,18 @@ importers:
       '@tooldeck/json-tools':
         specifier: workspace:*
         version: link:../../plugins/json-tools
+      '@tooldeck/preferences':
+        specifier: workspace:*
+        version: link:../../packages/preferences
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       '@tooldeck/regex-tools':
         specifier: workspace:*
         version: link:../../plugins/regex-tools
+      '@tooldeck/runtime-node':
+        specifier: workspace:*
+        version: link:../../packages/runtime-node
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -112,9 +115,6 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.0(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4))
-      '@tooldeck/runtime-node':
-        specifier: workspace:*
-        version: link:../../packages/runtime-node
       '@tooldeck/hello-world':
         specifier: workspace:*
         version: link:../../plugins/hello-world
@@ -124,12 +124,18 @@ importers:
       '@tooldeck/json-tools':
         specifier: workspace:*
         version: link:../../plugins/json-tools
+      '@tooldeck/preferences':
+        specifier: workspace:*
+        version: link:../../packages/preferences
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       '@tooldeck/regex-tools':
         specifier: workspace:*
         version: link:../../plugins/regex-tools
+      '@tooldeck/runtime-node':
+        specifier: workspace:*
+        version: link:../../packages/runtime-node
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -176,22 +182,6 @@ importers:
         specifier: ^9.0.10
         version: 9.0.10
 
-  packages/runtime-node:
-    dependencies:
-      '@tooldeck/protocol':
-        specifier: workspace:*
-        version: link:../protocol
-      '@tooldeck/shared':
-        specifier: workspace:*
-        version: link:../shared
-      ajv:
-        specifier: ^8.20.0
-        version: 8.20.0
-    devDependencies:
-      '@types/node':
-        specifier: ^25.9.1
-        version: 25.9.1
-
   packages/create-plugin:
     dependencies:
       '@clack/prompts':
@@ -219,12 +209,12 @@ importers:
 
   packages/host-node:
     dependencies:
-      '@tooldeck/runtime-node':
-        specifier: workspace:*
-        version: link:../runtime-node
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@tooldeck/runtime-node':
+        specifier: workspace:*
+        version: link:../runtime-node
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../shared
@@ -258,11 +248,29 @@ importers:
         specifier: ^25.9.1
         version: 25.9.1
 
+  packages/preferences: {}
+
   packages/protocol:
     dependencies:
       '@types/json-schema':
         specifier: ^7.0.15
         version: 7.0.15
+
+  packages/runtime-node:
+    dependencies:
+      '@tooldeck/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@tooldeck/shared':
+        specifier: workspace:*
+        version: link:../shared
+      ajv:
+        specifier: ^8.20.0
+        version: 8.20.0
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
 
   packages/sdk-node:
     dependencies:
@@ -281,6 +289,9 @@ importers:
 
   packages/storage:
     dependencies:
+      '@tooldeck/preferences':
+        specifier: workspace:*
+        version: link:../preferences
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -339,9 +350,6 @@ importers:
 
   tests/integration:
     dependencies:
-      '@tooldeck/runtime-node':
-        specifier: workspace:*
-        version: link:../../packages/runtime-node
       '@tooldeck/hello-world':
         specifier: workspace:*
         version: link:../../plugins/hello-world
@@ -351,6 +359,9 @@ importers:
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
+      '@tooldeck/runtime-node':
+        specifier: workspace:*
+        version: link:../../packages/runtime-node
     devDependencies:
       '@types/node':
         specifier: ^25.9.1

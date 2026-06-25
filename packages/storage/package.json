@@ -17,6 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@tooldeck/preferences": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
     "drizzle-orm": "1.0.0-rc.3"
   },

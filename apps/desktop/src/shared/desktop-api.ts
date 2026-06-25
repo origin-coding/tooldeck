@@ -1,5 +1,6 @@
 import type { CommandResult, CommandUi, TooldeckInputJsonSchema } from "@tooldeck/protocol";
-import type { JsonObject, PreferenceScope } from "@tooldeck/shared";
+import type { PreferenceScope } from "@tooldeck/preferences";
+import type { JsonObject } from "@tooldeck/shared";
 
 export type DesktopPluginRuntimeState =
   | "inactive"

@@ -30,6 +30,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
+    "@tooldeck/preferences": "workspace:*",
     "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/host-node": "workspace:*",

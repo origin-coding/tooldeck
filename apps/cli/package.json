@@ -30,6 +30,7 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
+    "@tooldeck/preferences": "workspace:*",
     "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/host-node": "workspace:*",
