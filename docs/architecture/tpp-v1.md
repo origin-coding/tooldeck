@@ -67,27 +67,27 @@ TPP 本身是语言无关的协议层。它定义 Manifest、Contribution、Comm
 生命周期、权限声明和 JSON Schema 约束等数据契约与行为语义，不绑定 TypeScript、Node、
 Electron、React 或 SQLite。
 
-当前仓库中的 `packages/core` 不是 TPP 协议本身，而是 TPP 宿主核心的 TypeScript
-实现。它负责 manifest indexing、command orchestration、lazy activation 协调、状态机和输入输出校验等
-宿主无关流程，并通过接口与具体 plugin runtime host 协作。
+当前仓库中的 `packages/runtime-node` 不是 TPP 协议本身，而是当前可信本地 Node 纵向切片的
+TypeScript runtime 实现。它负责 manifest indexing、command orchestration、lazy activation 协调、
+状态机、输入输出校验，以及 Node/TS 插件运行时契约类型。
 
-不同 runtime host 应实现 `core` 定义的端口，而不是让 `core` 依赖某个 runtime：
+V1 不新建宿主无关 `@tooldeck/runtime` 包。当前 runtime-node 与 Node 插件宿主协作：
 
 ```text
 TPP spec / schema
   ↓
 packages/protocol        # TPP 的 TypeScript 类型和 JSON Schema 表达
   ↓
-packages/core            # TPP core 的 TypeScript 实现
-  ↓ ports
-packages/host-node       # Node runtime adapter
+packages/runtime-node    # 当前 Node runtime 协调、命令编排和插件契约
+  ↓
+packages/host-node       # Node plugin loading adapter
 packages/host-wasm       # future WASM runtime adapter
 packages/host-process    # future multi-language process/RPC adapter
 packages/host-http       # future HTTP runtime adapter
 ```
 
-如果未来以 PySide、Rust 或其他技术栈实现宿主，可以实现另一套 `core`，或通过 RPC 调用当前
-TypeScript `core`。这些实现应遵守同一份 TPP 协议，但不要求共享同一种实现语言。
+如果未来以 PySide、Rust 或其他技术栈实现宿主，可以实现另一套 runtime，或通过 RPC 调用当前
+TypeScript runtime-node。这些实现应遵守同一份 TPP 协议，但不要求共享同一种实现语言。
 
 ---
 
@@ -160,8 +160,8 @@ tooldeck/
     protocol/
       # TPP 类型定义、Manifest JSON Schema、Contribution 类型
 
-    core/
-      # TPP core 的 TypeScript 实现，负责宿主无关协调
+    runtime-node/
+      # 当前 Node runtime 的 TypeScript 实现，负责命令编排和插件契约
 
     sdk/
       # 插件开发者使用的 definePlugin、PluginContext 类型
@@ -223,7 +223,7 @@ tooldeck/
 
   packages/
     protocol/
-    core/
+    runtime-node/
     sdk/
     host-node/
     storage/
@@ -1028,7 +1028,7 @@ Preload
 Main IPC Handler
   ↓ CommandService
 TPP Core
-  ↓ packages/core: TPP core 的 TypeScript 实现
+  ↓ packages/runtime-node: 当前 Node runtime 的 TypeScript 实现
   ↓ PluginManager / CommandRegistry
 Storage
   ↓ Drizzle / SQLite
@@ -1134,7 +1134,7 @@ tasks
 2. 创建 Electron desktop app
 3. 创建 CLI app
 4. 创建 packages/protocol
-5. 创建 packages/core
+5. 创建 packages/runtime-node
 6. 创建 packages/sdk-node
 7. 创建 packages/host-node
 8. 创建 packages/storage
@@ -1206,7 +1206,7 @@ npm scope：
 
 ```text
 @tooldeck/protocol
-@tooldeck/core
+@tooldeck/runtime-node
 @tooldeck/sdk-node
 @tooldeck/host-node
 @tooldeck/storage
@@ -1238,7 +1238,7 @@ tooldeck table http.status-codes --search 404
 ```text
 1. 优先实现小而清晰的核心，不要过度设计。
 2. packages/protocol 不允许依赖 Electron、React、SQLite。
-3. packages/core 不允许依赖 Electron UI。
+3. packages/runtime-node 不允许依赖 Electron UI 或 React。
 4. Renderer 不允许直接访问数据库。
 5. Renderer 不允许直接执行插件代码。
 6. 插件能力必须通过 PluginContext 暴露。
@@ -1271,10 +1271,10 @@ TPP 是一套面向工具箱应用的插件协议。
 通过 Content Blocks 解耦 UI 展示，
 通过 LocalizedString 支持 I18n，
 通过 Permission Model 控制插件能力，
-并允许 Desktop / CLI / API 共享同一套 TPP core 实现。
+并允许 Desktop / CLI / API 共享同一套 TPP runtime 实现。
 ```
 
-当前仓库里的 `packages/core` 是这套 core 的 TypeScript 实现，不等同于 TPP 协议本身。
+当前仓库里的 `packages/runtime-node` 是当前 Node runtime 的 TypeScript 实现，不等同于 TPP 协议本身。
 
 当前 1.0 目标：
 

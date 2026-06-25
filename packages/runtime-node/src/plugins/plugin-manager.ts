@@ -1,9 +1,9 @@
 import type { CommandResult } from "@tooldeck/protocol";
-import type { CommandInput } from "@tooldeck/sdk-node";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 import { normalizeCommandInput, type CommandInputCoercion } from "../commands/command-input";
-import type { CommandRegistry, CommandRunResult } from "../commands/command-registry";
+import type { CommandRunResult, RuntimeCommandRegistry } from "../commands/command-registry";
+import type { CommandInput } from "../commands/types";
 import { validateCommandOutputSchema } from "../commands/command-result-validation";
 import {
   initialPluginRuntimeState,
@@ -24,7 +24,7 @@ export interface PluginHost {
 
 export interface PluginManagerOptions {
   manifestIndex: ManifestIndex;
-  commandRegistry: CommandRegistry;
+  commandRegistry: RuntimeCommandRegistry;
   pluginHost: PluginHost;
 }
 
@@ -36,7 +36,7 @@ export interface RunPluginCommandOptions {
 
 export class PluginManager {
   private readonly manifestIndex: ManifestIndex;
-  private readonly commandRegistry: CommandRegistry;
+  private readonly commandRegistry: RuntimeCommandRegistry;
   private readonly pluginHost: PluginHost;
   private readonly pluginLifecycles = new Map<string, PluginRuntimeLifecycleMachine>();
 

@@ -34,7 +34,7 @@ apps/
 
 packages/
   protocol/       TPP types and JSON Schema.
-  core/           Manifest scanning, command registry, plugin coordination.
+  runtime-node/   Node runtime coordination, manifest scanning, command registry.
   sdk-node/       SDK for Node plugins.
   host-node/      Node plugin host.
   storage/        SQLite storage layer.

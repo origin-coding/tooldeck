@@ -17,9 +17,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tooldeck/core": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
-    "@tooldeck/sdk-node": "workspace:*",
+    "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/shared": "workspace:*"
   },
   "devDependencies": {

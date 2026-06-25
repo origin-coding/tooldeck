@@ -99,7 +99,7 @@ focusMainWindow()
 - `TooldeckDesktopService` 只在主实例中启动。
 - IPC 只在主实例中注册一次。
 - SQLite desktop storage 只由主实例打开。
-- 插件扫描和 lazy activation 仍通过现有 service/core/host-node 流程完成。
+- 插件扫描和 lazy activation 仍通过现有 service/runtime-node/host-node 流程完成。
 - 第二实例不能直接访问 storage、不能扫描插件、不能 import 插件 runtime entry。
 
 这保持了 TPP v1 的边界：

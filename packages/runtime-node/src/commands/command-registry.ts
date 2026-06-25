@@ -2,9 +2,9 @@ import type { CommandResult } from "@tooldeck/protocol";
 import type {
   CommandHandler,
   CommandInput,
-  CommandRegistry as SdkCommandRegistry,
-  Disposable,
-} from "@tooldeck/sdk-node";
+  CommandRegistry,
+} from "./types";
+import type { Disposable } from "../disposable";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 import { validateCommandResult } from "./command-result-validation";
@@ -30,7 +30,7 @@ export type CommandRunResult =
       result: CommandResult;
     };
 
-export class CommandRegistry implements SdkCommandRegistry<Record<string, CommandInput>> {
+export class RuntimeCommandRegistry implements CommandRegistry<Record<string, CommandInput>> {
   private readonly commands = new Map<string, RegisteredCommand>();
 
   register(commandId: string, handler: CommandHandler<CommandInput>): Disposable {

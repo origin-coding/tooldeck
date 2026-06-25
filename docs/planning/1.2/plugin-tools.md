@@ -321,7 +321,7 @@ CLI 应调用同一套内部 API，避免 CLI 逻辑和库逻辑分叉。
   scaffolds a project that consumes sdk-node, plugin-tools, and vite-plugin
 ```
 
-`@tooldeck/plugin-tools` 可以依赖 `@tooldeck/protocol` 来读取类型和 schema。它不应成为 `@tooldeck/protocol`、`@tooldeck/core`、`@tooldeck/host-node` 或 `@tooldeck/sdk-node` 的依赖。
+`@tooldeck/plugin-tools` 可以依赖 `@tooldeck/protocol` 来读取类型和 schema。它不应成为 `@tooldeck/protocol`、`@tooldeck/runtime-node`、`@tooldeck/host-node` 或 `@tooldeck/sdk-node` 的依赖。
 
 ## 非目标
 

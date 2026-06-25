@@ -7,7 +7,7 @@ import { ManifestIndex, scanPluginDirectory, scanPluginSources } from "../src";
 
 describe("scanPluginDirectory", () => {
   it("indexes plugin manifests from child directories", async ({ task }) => {
-    const pluginsRoot = path.join(".tmp", "core-tests", task.id, "plugins");
+    const pluginsRoot = path.join(".tmp", "runtime-node-tests", task.id, "plugins");
     const pluginRoot = path.join(pluginsRoot, "hello-world");
     const manifestPath = path.join(pluginRoot, "manifest.json");
     const manifestIndex = new ManifestIndex();
@@ -52,7 +52,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("indexes a plugin project root when it contains a manifest", async ({ task }) => {
-    const pluginRoot = path.join(".tmp", "core-tests", task.id, "project-plugin");
+    const pluginRoot = path.join(".tmp", "runtime-node-tests", task.id, "project-plugin");
     const manifestPath = path.join(pluginRoot, "manifest.json");
     const manifestIndex = new ManifestIndex();
 
@@ -78,8 +78,8 @@ describe("scanPluginDirectory", () => {
   });
 
   it("merges builtin and external plugin scan sources", async ({ task }) => {
-    const builtinRoot = path.join(".tmp", "core-tests", task.id, "builtin");
-    const externalRoot = path.join(".tmp", "core-tests", task.id, "external-plugin");
+    const builtinRoot = path.join(".tmp", "runtime-node-tests", task.id, "builtin");
+    const externalRoot = path.join(".tmp", "runtime-node-tests", task.id, "external-plugin");
     const manifestIndex = new ManifestIndex();
 
     await mkdir(path.join(builtinRoot, "builtin-plugin"), { recursive: true });
@@ -121,7 +121,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("throws a clear error when an external plugin directory does not exist", async () => {
-    const pluginDir = path.join(".tmp", "core-tests", "missing", "external");
+    const pluginDir = path.join(".tmp", "runtime-node-tests", "missing", "external");
 
     await expect(
       scanPluginSources({
@@ -137,7 +137,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("throws a clear error when the plugin directory does not exist", async () => {
-    const pluginsRoot = path.join(".tmp", "core-tests", "missing", "plugins");
+    const pluginsRoot = path.join(".tmp", "runtime-node-tests", "missing", "plugins");
 
     await expect(
       scanPluginDirectory({
@@ -148,7 +148,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("throws a clear error for malformed plugin manifests", async ({ task }) => {
-    const pluginsRoot = path.join(".tmp", "core-tests", task.id, "plugins");
+    const pluginsRoot = path.join(".tmp", "runtime-node-tests", task.id, "plugins");
     const pluginRoot = path.join(pluginsRoot, "bad-plugin");
     const manifestPath = path.join(pluginRoot, "manifest.json");
 
@@ -164,7 +164,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("throws a clear error for invalid plugin manifests", async ({ task }) => {
-    const pluginsRoot = path.join(".tmp", "core-tests", task.id, "plugins");
+    const pluginsRoot = path.join(".tmp", "runtime-node-tests", task.id, "plugins");
     const pluginRoot = path.join(pluginsRoot, "bad-plugin");
     const manifestPath = path.join(pluginRoot, "manifest.json");
 
@@ -193,7 +193,7 @@ describe("scanPluginDirectory", () => {
   });
 
   it("indexes valid manifests without checking that runtime entries exist", async ({ task }) => {
-    const pluginsRoot = path.join(".tmp", "core-tests", task.id, "plugins");
+    const pluginsRoot = path.join(".tmp", "runtime-node-tests", task.id, "plugins");
     const pluginRoot = path.join(pluginsRoot, "missing-entry");
     const manifestPath = path.join(pluginRoot, "manifest.json");
     const manifestIndex = new ManifestIndex();

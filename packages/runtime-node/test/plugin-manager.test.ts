@@ -1,7 +1,7 @@
 import type { PluginManifest } from "@tooldeck/protocol";
 import { describe, expect, it } from "vitest";
 
-import { CommandRegistry, ManifestIndex, PluginManager } from "../src";
+import { RuntimeCommandRegistry, ManifestIndex, PluginManager } from "../src";
 import type { PluginHost, PluginHostActivateOptions } from "../src";
 
 function createManifest(id: string, commandIds: string[] = []): PluginManifest {
@@ -61,7 +61,7 @@ class FailingPluginHost implements PluginHost {
 describe("PluginManager", () => {
   it("activates the owning plugin before running a contributed command", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     addManifest(manifestIndex, createManifest("dev.example.json-tools", ["json.format"]));
 
@@ -99,7 +99,7 @@ describe("PluginManager", () => {
 
   it("normalizes command input from the contributed command schema", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     manifestIndex.addPluginManifest({
       manifest: {
@@ -164,7 +164,7 @@ describe("PluginManager", () => {
 
   it("accepts a command result that matches the contributed output schema", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     manifestIndex.addPluginManifest({
       manifest: {
@@ -236,7 +236,7 @@ describe("PluginManager", () => {
 
   it("rejects a command result that does not match the contributed output schema", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     manifestIndex.addPluginManifest({
       manifest: {
@@ -301,7 +301,7 @@ describe("PluginManager", () => {
 
   it("rejects invalid input before activating the plugin", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     manifestIndex.addPluginManifest({
       manifest: {
@@ -357,7 +357,7 @@ describe("PluginManager", () => {
 
   it("does not coerce CLI-style string input by default", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     manifestIndex.addPluginManifest({
       manifest: {
@@ -408,7 +408,7 @@ describe("PluginManager", () => {
 
   it("does not activate a plugin when the command is already registered", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     addManifest(manifestIndex, createManifest("dev.example.json-tools", ["json.format"]));
 
@@ -438,7 +438,7 @@ describe("PluginManager", () => {
   it("throws when a command is not contributed by any plugin", async () => {
     const manager = new PluginManager({
       manifestIndex: new ManifestIndex(),
-      commandRegistry: new CommandRegistry(),
+      commandRegistry: new RuntimeCommandRegistry(),
       pluginHost: new TestPluginHost(() => {}),
     });
 
@@ -449,7 +449,7 @@ describe("PluginManager", () => {
 
   it("throws when the plugin does not register the command during activation", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     addManifest(manifestIndex, createManifest("dev.example.json-tools", ["json.format"]));
 
@@ -466,7 +466,7 @@ describe("PluginManager", () => {
 
   it("wraps lazy activation errors with tryRunCommand", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     addManifest(manifestIndex, createManifest("dev.example.json-tools", ["json.format"]));
 
@@ -495,7 +495,7 @@ describe("PluginManager", () => {
 
   it("tracks failed plugin runtime state when lazy activation throws", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
 
     addManifest(manifestIndex, createManifest("dev.example.json-tools", ["json.format"]));
 

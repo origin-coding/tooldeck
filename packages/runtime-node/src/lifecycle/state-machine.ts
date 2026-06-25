@@ -1,6 +1,6 @@
 import { TooldeckError } from "@tooldeck/shared";
 
-export type MaybePromise<T> = T | Promise<T>;
+import type { MaybePromise } from "../types";
 
 export interface StateMachineTransitionPayload<
   TState extends string,

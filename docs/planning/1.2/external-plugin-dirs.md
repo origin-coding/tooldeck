@@ -1,6 +1,6 @@
 # External Plugin Dirs
 
-本文定义 Tooldeck 1.2 中外部本地插件目录的扫描入口、职责边界和验收标准。该子任务把外部插件开发工作流中的 runtime 验证能力单独拆出，因为它同时影响 `packages/core`、`apps/cli`、`apps/desktop` 和文档。
+本文定义 Tooldeck 1.2 中外部本地插件目录的扫描入口、职责边界和验收标准。该子任务把外部插件开发工作流中的 runtime 验证能力单独拆出，因为它同时影响 `packages/runtime-node`、`apps/cli`、`apps/desktop` 和文档。
 
 ## 背景
 
@@ -72,7 +72,7 @@ plugin collection root
 
 ## Core 影响
 
-`packages/core` 应提供可以复用的扫描能力，而不是让 CLI 和 Desktop 各自实现目录规则。
+`packages/runtime-node` 应提供可以复用的扫描能力，而不是让 CLI 和 Desktop 各自实现目录规则。
 
 建议方向：
 

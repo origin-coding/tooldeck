@@ -6,7 +6,7 @@ import {
   ManifestIndex,
   PluginManager,
   type PluginScanSource,
-} from "@tooldeck/core";
+} from "@tooldeck/runtime-node";
 import { NodePluginHost } from "@tooldeck/host-node";
 import {
   CommandRunRepository,

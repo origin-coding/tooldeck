@@ -5,7 +5,7 @@ import {
   type PluginScanSource,
   type TooldeckPaths,
   type TooldeckRuntimeMode,
-} from "@tooldeck/core";
+} from "@tooldeck/runtime-node";
 
 export interface CreateCliCommandOptions {
   appInstallDir?: string;

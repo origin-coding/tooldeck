@@ -2,12 +2,12 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import {
-  CommandRegistry,
+  RuntimeCommandRegistry,
   CommandService,
   ManifestIndex,
   PluginManager,
   scanPluginSources,
-} from "@tooldeck/core";
+} from "@tooldeck/runtime-node";
 import { NodePluginHost } from "@tooldeck/host-node";
 import {
   CommandRunRepository,
@@ -46,7 +46,7 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
   async scanAndCreateRuntime(): Promise<void> {
     await this.context.pluginHost?.disposeAll();
 
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
     const manifestIndex = new ManifestIndex();
     const pluginKv = this.context.requirePluginKv();
 

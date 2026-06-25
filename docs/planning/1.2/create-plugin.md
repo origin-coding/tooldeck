@@ -201,7 +201,7 @@ generated plugin project
   uses @tooldeck/vite-plugin from vite.config.ts
 ```
 
-`@tooldeck/create-plugin` 不应成为 `@tooldeck/sdk-node` 的依赖，也不应被 `@tooldeck/protocol`、`@tooldeck/core` 或 `@tooldeck/host-node` 依赖。
+`@tooldeck/create-plugin` 不应成为 `@tooldeck/sdk-node` 的依赖，也不应被 `@tooldeck/protocol`、`@tooldeck/runtime-node` 或 `@tooldeck/host-node` 依赖。
 
 ## 非目标
 

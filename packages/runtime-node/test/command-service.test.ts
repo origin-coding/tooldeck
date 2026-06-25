@@ -1,7 +1,7 @@
 import type { PluginManifest } from "@tooldeck/protocol";
 import { describe, expect, it } from "vitest";
 
-import { CommandRegistry, CommandService, ManifestIndex, PluginManager } from "../src";
+import { RuntimeCommandRegistry, CommandService, ManifestIndex, PluginManager } from "../src";
 import type { PluginHost, PluginHostActivateOptions } from "../src";
 
 class TestPluginHost implements PluginHost {
@@ -24,7 +24,7 @@ class TestPluginHost implements PluginHost {
 describe("CommandService", () => {
   it("returns normalized command input with the command result", async () => {
     const manifestIndex = new ManifestIndex();
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
     const manifest: PluginManifest = {
       schemaVersion: "1.0",
       id: "dev.example.json-tools",

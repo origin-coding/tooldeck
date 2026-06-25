@@ -1,7 +1,7 @@
 import { performance } from "node:perf_hooks";
 
 import {
-  CommandRegistry,
+  RuntimeCommandRegistry,
   CommandService,
   type IndexedCommand,
   ManifestIndex,
@@ -9,7 +9,7 @@ import {
   PluginManager,
   scanPluginSources,
   type PluginScanSource,
-} from "@tooldeck/core";
+} from "@tooldeck/runtime-node";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type {
   CommandResult,
@@ -86,7 +86,7 @@ export interface CreatedPluginManager {
 export async function createPluginManager(
   options: CreatePluginManagerOptions,
 ): Promise<CreatedPluginManager> {
-  const commandRegistry = new CommandRegistry();
+  const commandRegistry = new RuntimeCommandRegistry();
   const pluginHost = new NodePluginHost({
     commandRegistry,
     createPluginStorage: options.createPluginStorage,

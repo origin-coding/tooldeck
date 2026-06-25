@@ -1,4 +1,4 @@
-import { ManifestIndex, scanPluginSources, type PluginScanSource } from "@tooldeck/core";
+import { ManifestIndex, scanPluginSources, type PluginScanSource } from "@tooldeck/runtime-node";
 import type { LocalizedString } from "@tooldeck/protocol";
 import { PluginRepository, type PluginRow, withRepository } from "@tooldeck/storage";
 import { defineCommand } from "citty";

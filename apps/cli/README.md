@@ -3,7 +3,7 @@
 Command-line interface for Tooldeck.
 
 The CLI scans trusted local plugin manifests, lists available commands, runs commands
-through the shared core/runtime path, and records command run history in SQLite.
+through the shared runtime-node path, and records command run history in SQLite.
 
 ## Development
 

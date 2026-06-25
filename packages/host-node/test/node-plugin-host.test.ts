@@ -1,13 +1,13 @@
 import { fileURLToPath } from "node:url";
 
-import { CommandRegistry } from "@tooldeck/core";
+import { RuntimeCommandRegistry } from "@tooldeck/runtime-node";
 import { describe, expect, it } from "vitest";
 
 import { NodePluginHost } from "../src";
 
 function createHost(): NodePluginHost {
   return new NodePluginHost({
-    commandRegistry: new CommandRegistry(),
+    commandRegistry: new RuntimeCommandRegistry(),
   });
 }
 
@@ -40,7 +40,7 @@ describe("NodePluginHost", () => {
   it("injects plugin-scoped storage during activation", async () => {
     const values = new Map<string, unknown>();
     const host = new NodePluginHost({
-      commandRegistry: new CommandRegistry(),
+      commandRegistry: new RuntimeCommandRegistry(),
       createPluginStorage(pluginId) {
         return {
           async get(key) {

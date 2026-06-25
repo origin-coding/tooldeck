@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CommandRegistry, ManifestIndex, PluginManager } from "@tooldeck/core";
+import { RuntimeCommandRegistry, ManifestIndex, PluginManager } from "@tooldeck/runtime-node";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { PluginManifest } from "@tooldeck/protocol";
 import { describe, expect, it } from "vitest";
@@ -21,7 +21,7 @@ describe("hello-world plugin integration", () => {
     const manifest = await readManifest(manifestPath);
     const entryPath = path.resolve(path.dirname(manifestPath), manifest.runtime.entry);
 
-    const commandRegistry = new CommandRegistry();
+    const commandRegistry = new RuntimeCommandRegistry();
     const manifestIndex = new ManifestIndex();
     const pluginHost = new NodePluginHost({ commandRegistry });
 

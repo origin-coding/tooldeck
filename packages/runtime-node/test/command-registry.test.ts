@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { CommandRegistry } from "../src";
+import { RuntimeCommandRegistry } from "../src";
 
-describe("CommandRegistry", () => {
+describe("RuntimeCommandRegistry", () => {
   it("registers and lists commands", () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register("json.format", () => ({
       status: "success",
@@ -17,7 +17,7 @@ describe("CommandRegistry", () => {
   });
 
   it("runs a registered command", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register("json.echo", (input) => ({
       status: "success",
@@ -36,7 +36,7 @@ describe("CommandRegistry", () => {
   });
 
   it("runs commands that return code, json, and properties content blocks", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register("json.inspect", () => ({
       status: "success",
@@ -108,7 +108,7 @@ describe("CommandRegistry", () => {
   });
 
   it("throws when a handler returns an invalid command result", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register(
       "json.bad-result",
@@ -125,7 +125,7 @@ describe("CommandRegistry", () => {
   });
 
   it("throws when a json content block value is not JSON-compatible", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register(
       "json.bad-value",
@@ -142,7 +142,7 @@ describe("CommandRegistry", () => {
   });
 
   it("throws when a properties content block item has an unsupported value", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register(
       "json.bad-properties",
@@ -171,7 +171,7 @@ describe("CommandRegistry", () => {
   });
 
   it("throws when registering a duplicate command", () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register("json.format", () => ({
       status: "success",
@@ -187,7 +187,7 @@ describe("CommandRegistry", () => {
   });
 
   it("throws when running an unknown command", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     await expect(registry.run({ commandId: "json.missing" })).rejects.toThrow(
       "Command is not registered: json.missing",
@@ -195,7 +195,7 @@ describe("CommandRegistry", () => {
   });
 
   it("unregisters a command when its disposable is disposed", () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     const disposable = registry.register("json.format", () => ({
       status: "success",
@@ -209,7 +209,7 @@ describe("CommandRegistry", () => {
   });
 
   it("does not remove a later registration when disposing a stale disposable", () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     const staleDisposable = registry.register("json.format", () => ({
       status: "success",
@@ -230,7 +230,7 @@ describe("CommandRegistry", () => {
   });
 
   it("wraps successful command execution with tryRun", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register("json.format", () => ({
       status: "success",
@@ -247,7 +247,7 @@ describe("CommandRegistry", () => {
   });
 
   it("wraps unknown command errors with tryRun", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     await expect(registry.tryRun({ commandId: "json.missing" })).resolves.toMatchObject({
       ok: false,
@@ -267,7 +267,7 @@ describe("CommandRegistry", () => {
   });
 
   it("wraps thrown handler errors with tryRun", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register("json.fail", () => {
       throw new Error("Invalid JSON");
@@ -291,7 +291,7 @@ describe("CommandRegistry", () => {
   });
 
   it("wraps invalid command results with tryRun", async () => {
-    const registry = new CommandRegistry();
+    const registry = new RuntimeCommandRegistry();
 
     registry.register(
       "json.bad-result",

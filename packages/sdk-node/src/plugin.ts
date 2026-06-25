@@ -1,17 +1,14 @@
-import type { CommandHandler, CommandInput, CommandInputMap } from "./commands";
-import type { PluginContextV1 } from "./context";
-import type { Disposable } from "./disposable";
-import type { MaybePromise } from "./types";
+import type {
+  CommandHandler,
+  CommandInput,
+  CommandInputMap,
+  Disposable,
+  MaybePromise,
+  PluginContextV1,
+  ToolboxPluginV1,
+} from "@tooldeck/runtime-node";
 
-export interface ToolboxPluginV1<
-  TCommandInputs extends CommandInputMap = Record<string, CommandInput>,
-> {
-  activate(ctx: PluginContextV1<TCommandInputs>): MaybePromise<void>;
-  deactivate?(ctx: PluginContextV1<TCommandInputs>): MaybePromise<void>;
-}
-
-export type ToolboxPlugin<TCommandInputs extends CommandInputMap = Record<string, CommandInput>> =
-  ToolboxPluginV1<TCommandInputs>;
+export type { ToolboxPlugin, ToolboxPluginV1 } from "@tooldeck/runtime-node";
 
 export type PluginLifecycleHandler<
   TCommandInputs extends CommandInputMap = Record<string, CommandInput>,

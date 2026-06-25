@@ -48,9 +48,9 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
     devDependencies:
-      '@tooldeck/core':
+      '@tooldeck/runtime-node':
         specifier: workspace:*
-        version: link:../../packages/core
+        version: link:../../packages/runtime-node
       '@tooldeck/hello-world':
         specifier: workspace:*
         version: link:../../plugins/hello-world
@@ -112,9 +112,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.3.0
         version: 4.3.0(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4))
-      '@tooldeck/core':
+      '@tooldeck/runtime-node':
         specifier: workspace:*
-        version: link:../../packages/core
+        version: link:../../packages/runtime-node
       '@tooldeck/hello-world':
         specifier: workspace:*
         version: link:../../plugins/hello-world
@@ -176,14 +176,11 @@ importers:
         specifier: ^9.0.10
         version: 9.0.10
 
-  packages/core:
+  packages/runtime-node:
     dependencies:
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@tooldeck/sdk-node':
-        specifier: workspace:*
-        version: link:../sdk-node
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../shared
@@ -222,15 +219,12 @@ importers:
 
   packages/host-node:
     dependencies:
-      '@tooldeck/core':
+      '@tooldeck/runtime-node':
         specifier: workspace:*
-        version: link:../core
+        version: link:../runtime-node
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@tooldeck/sdk-node':
-        specifier: workspace:*
-        version: link:../sdk-node
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../shared
@@ -275,6 +269,9 @@ importers:
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@tooldeck/runtime-node':
+        specifier: workspace:*
+        version: link:../runtime-node
 
   packages/shared:
     dependencies:
@@ -342,9 +339,9 @@ importers:
 
   tests/integration:
     dependencies:
-      '@tooldeck/core':
+      '@tooldeck/runtime-node':
         specifier: workspace:*
-        version: link:../../packages/core
+        version: link:../../packages/runtime-node
       '@tooldeck/hello-world':
         specifier: workspace:*
         version: link:../../plugins/hello-world

@@ -1,4 +1,4 @@
-import type { TooldeckPaths } from "@tooldeck/core";
+import type { TooldeckPaths } from "@tooldeck/runtime-node";
 import { defineCommand } from "citty";
 import { consola } from "consola";
 

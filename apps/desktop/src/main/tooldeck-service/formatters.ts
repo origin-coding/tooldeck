@@ -9,7 +9,7 @@ import {
   PluginManager,
   resolveJsonSchemaI18n,
   resolveLocalizedString,
-} from "@tooldeck/core";
+} from "@tooldeck/runtime-node";
 import type {
   CommandResult,
   ContentBlock,

@@ -1,4 +1,4 @@
-import type { PluginScanSource } from "@tooldeck/core";
+import type { PluginScanSource } from "@tooldeck/runtime-node";
 import type { CommandResult } from "@tooldeck/protocol";
 
 import type {
