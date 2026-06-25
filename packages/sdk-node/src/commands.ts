@@ -1,7 +1,7 @@
-import type { CommandResult } from "@tooldeck/protocol";
-import type { JsonObject, MaybePromise } from "@tooldeck/shared";
+import type { CommandResult, JsonObject } from "@tooldeck/protocol";
 
 import type { Disposable } from "./disposable";
+import type { MaybePromise } from "./types";
 
 export type CommandInput = JsonObject;
 export type CommandInputMap = object;

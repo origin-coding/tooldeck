@@ -1,6 +1,5 @@
-import type { JsonObject, JsonValue } from "@tooldeck/shared";
-
 import type { LocalizedString } from "./i18n";
+import type { JsonObject, JsonValue } from "./json";
 import type { TooldeckInputJsonSchema, TooldeckJsonSchema } from "./schema";
 
 export type CommandUiLayoutV1 = "stacked" | "split";

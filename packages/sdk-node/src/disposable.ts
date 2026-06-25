@@ -1,4 +1,4 @@
-import type { MaybePromise } from "@tooldeck/shared";
+import type { MaybePromise } from "./types";
 
 export interface Disposable {
   dispose(): MaybePromise<void>;

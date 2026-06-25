@@ -13,5 +13,8 @@
   "scripts": {
     "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tooldeck/protocol": "workspace:*"
   }
 }

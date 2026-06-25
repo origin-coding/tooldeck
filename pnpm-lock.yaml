@@ -266,10 +266,6 @@ importers:
 
   packages/protocol:
     dependencies:
-      '@tooldeck/shared':
-        specifier: workspace:*
-        version: link:../shared
-    devDependencies:
       '@types/json-schema':
         specifier: ^7.0.15
         version: 7.0.15
@@ -279,11 +275,12 @@ importers:
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@tooldeck/shared':
-        specifier: workspace:*
-        version: link:../shared
 
-  packages/shared: {}
+  packages/shared:
+    dependencies:
+      '@tooldeck/protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
   packages/storage:
     dependencies:

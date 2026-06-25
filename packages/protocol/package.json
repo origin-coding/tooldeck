@@ -23,9 +23,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tooldeck/shared": "workspace:*"
-  },
-  "devDependencies": {
     "@types/json-schema": "^7.0.15"
   }
 }
