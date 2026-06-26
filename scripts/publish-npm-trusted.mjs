@@ -10,7 +10,9 @@ const dryRun = process.argv.includes("--dry-run");
 const publishPackages = [
   "packages/protocol",
   "packages/sdk-node",
+  "packages/vite-plugin",
   "packages/plugin-tools",
+  "packages/create-plugin",
   "apps/cli",
 ];
 
