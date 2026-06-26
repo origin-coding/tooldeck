@@ -8,12 +8,16 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "generate:types": "pnpm --dir ../.. --filter @tooldeck/plugin-tools build && node ../../packages/plugin-tools/dist/generate-command-types.js manifest.json src/generated/commands.ts",
-    "build": "pnpm generate:types && vite build --configLoader runner",
-    "typecheck": "pnpm generate:types && tsc --noEmit"
+    "generate": "tooldeck-plugin generate",
+    "generate:types": "pnpm generate",
+    "check": "tooldeck-plugin check",
+    "build": "tooldeck-plugin build --bundler vite",
+    "typecheck": "tsc --noEmit",
+    "inspect": "tooldeck-plugin inspect"
   },
   "dependencies": {
     "@tooldeck/plugin-tools": "workspace:*",
-    "@tooldeck/sdk-node": "workspace:*"
+    "@tooldeck/sdk-node": "workspace:*",
+    "@tooldeck/vite-plugin": "workspace:*"
   }
 }

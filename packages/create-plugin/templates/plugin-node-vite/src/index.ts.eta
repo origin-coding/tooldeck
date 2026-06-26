@@ -1,0 +1,9 @@
+import { definePlugin, okText } from "@tooldeck/sdk-node";
+
+import { commandIds, type PluginCommandInputs } from "./generated/commands";
+
+export default definePlugin<PluginCommandInputs>((plugin) => {
+  plugin.command(commandIds.<%= it.commandIdKey %>, async (input) => {
+    return okText(input.text);
+  });
+});

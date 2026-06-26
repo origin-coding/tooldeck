@@ -1,0 +1,68 @@
+{
+  "$schema": "./node_modules/@tooldeck/protocol/schema/manifest-v1.schema.json",
+  "schemaVersion": "1.0",
+  "id": <%= JSON.stringify(it.pluginId) %>,
+  "name": {
+    "key": "plugin.name",
+    "default": <%= JSON.stringify(it.pluginName) %>
+  },
+  "description": {
+    "key": "plugin.description",
+    "default": <%= JSON.stringify(it.pluginDescription) %>
+  },
+  "version": "0.0.0",
+  "runtime": {
+    "kind": "node",
+    "entry": "./dist/index.js"
+  },
+  "defaultLocale": "en",
+  "locales": {
+    "en": "./locales/en.json"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": <%= JSON.stringify(it.commandId) %>,
+        "title": {
+          "key": "commands.echo.title",
+          "default": <%= JSON.stringify(it.commandTitle) %>
+        },
+        "description": {
+          "key": "commands.echo.description",
+          "default": <%= JSON.stringify(it.commandDescription) %>
+        },
+        "x-ui": {
+          "layout": "split"
+        },
+        "inputSchema": {
+          "type": "object",
+          "required": ["text"],
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string",
+              "title": "Text",
+              "description": "Text to echo.",
+              "minLength": 1,
+              "x-i18n": {
+                "title": "schema.echo.text.title",
+                "description": "schema.echo.text.description"
+              },
+              "x-ui": {
+                "control": "textarea",
+                "rows": 8,
+                "placeholder": {
+                  "key": "schema.echo.text.placeholder",
+                  "default": "Enter text"
+                }
+              }
+            }
+          },
+          "x-ui": {
+            "fieldOrder": ["text"]
+          }
+        }
+      }
+    ]
+  }
+}

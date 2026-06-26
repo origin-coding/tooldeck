@@ -70,9 +70,10 @@ apps/
 
 packages/
   protocol/
-  core/
-  sdk/
+  runtime-node/
+  sdk-node/
   host-node/
+  preferences/
   storage/
   shared/
 
@@ -83,12 +84,51 @@ docs/
   architecture/
 ```
 
+## Package Dependency Guide
+
+Keep package dependencies layered by public contract and private implementation:
+
+```text
+@tooldeck/protocol
+  TPP data contracts: manifest, command definitions, JSON Schema types,
+  ContentBlock, CommandResult, LocalizedString, and JSON value types.
+
+@tooldeck/sdk-node
+  Public Node plugin authoring contract: definePlugin, PluginContext,
+  CommandHandler, CommandRegistry, Disposable, PluginStorage, and ToolboxPlugin.
+
+@tooldeck/runtime-node
+  Private Node runtime implementation: manifest indexing, command orchestration,
+  lazy activation coordination, lifecycle state machines, input normalization,
+  result validation, and plugin manager services.
+
+@tooldeck/host-node
+  Node plugin loading adapter and runtime assembly helpers.
+```
+
+Dependency direction should stay one-way:
+
+```text
+protocol <- sdk-node <- runtime-node <- host-node <- CLI/Desktop
+protocol <- preferences/storage/shared <- CLI/Desktop
+```
+
+Rules for dependency changes:
+
+1. Public plugin author types belong in `@tooldeck/sdk-node`, not in private runtime packages.
+2. `@tooldeck/sdk-node` must not depend on `@tooldeck/runtime-node`, `@tooldeck/host-node`, Electron, React, SQLite, or storage.
+3. `@tooldeck/runtime-node` may depend on `@tooldeck/sdk-node` for the shared Node plugin contract, but it must not depend on Electron UI or React.
+4. `@tooldeck/protocol` must remain data-only and standards-facing. Do not add function-based Node SDK APIs such as `CommandHandler`, `PluginContext`, or `Disposable` there.
+5. `@tooldeck/storage` and `@tooldeck/preferences` are product implementation packages, not TPP protocol packages.
+6. Published public packages must not leak private package dependencies through `dependencies` or generated `.d.ts` files.
+7. Before publishing SDK or authoring packages, inspect packed tarballs if dependency boundaries changed.
+
 ## Architecture Rules
 
 Follow these constraints:
 
 1. `packages/protocol` must not depend on Electron, React, SQLite, Node plugin runtime, or UI code.
-2. `packages/core` must not depend on Electron UI or React.
+2. `packages/runtime-node` must not depend on Electron UI or React.
 3. Renderer code must not access SQLite directly.
 4. Renderer code must not import or execute plugin code directly.
 5. Plugin capabilities must be exposed through `PluginContext`.

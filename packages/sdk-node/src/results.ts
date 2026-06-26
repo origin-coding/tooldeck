@@ -3,11 +3,11 @@ import type {
   CommandResult,
   ContentBlock,
   JsonContentBlock,
+  JsonValue,
   PropertiesContentBlock,
   PropertyItem,
   TextContentBlock,
 } from "@tooldeck/protocol";
-import type { JsonValue } from "@tooldeck/shared";
 
 export function textBlock(text: string): TextContentBlock {
   return {

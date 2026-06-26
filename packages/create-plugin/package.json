@@ -1,0 +1,45 @@
+{
+  "name": "@tooldeck/create-plugin",
+  "version": "1.2.0",
+  "description": "Create Tooldeck plugin projects from local templates.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/origin-coding/tooldeck.git",
+    "directory": "packages/create-plugin"
+  },
+  "bin": {
+    "create-plugin": "dist/create-tooldeck-plugin.js",
+    "create-tooldeck-plugin": "dist/create-tooldeck-plugin.js"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.11.0",
+    "citty": "^0.2.2",
+    "consola": "^3.4.2",
+    "eta": "^3.5.0",
+    "nypm": "^0.6.2"
+  },
+  "devDependencies": {
+    "@tooldeck/plugin-tools": "workspace:*",
+    "@types/node": "^25.9.1"
+  }
+}

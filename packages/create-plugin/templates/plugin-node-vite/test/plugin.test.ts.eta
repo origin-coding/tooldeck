@@ -1,0 +1,20 @@
+import plugin from "../src";
+import { commandIds } from "../src/generated/commands";
+
+import { createPluginTestHost } from "@tooldeck/plugin-tools/testing";
+import { describe, expect, it } from "vitest";
+
+describe("<%= it.commandId %>", () => {
+  it("echoes text input", async () => {
+    const host = await createPluginTestHost(plugin, {
+      pluginId: <%= JSON.stringify(it.pluginId) %>,
+    });
+
+    await expect(host.runCommand(commandIds.<%= it.commandIdKey %>, { text: "hello" })).resolves.toEqual({
+      status: "success",
+      blocks: [{ type: "text", text: "hello" }],
+    });
+
+    await host.dispose();
+  });
+});

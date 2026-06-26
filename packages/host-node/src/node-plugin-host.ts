@@ -1,8 +1,12 @@
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { CommandRegistry } from "@tooldeck/core";
-import type { PluginContextV1, PluginStorage, ToolboxPluginV1 } from "@tooldeck/sdk-node";
+import type {
+  CommandRegistry,
+  PluginContextV1,
+  PluginStorage,
+  ToolboxPluginV1,
+} from "@tooldeck/runtime-node";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 export interface NodePluginHostOptions {

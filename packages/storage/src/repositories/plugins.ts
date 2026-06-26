@@ -1,8 +1,9 @@
 import type { PluginManifest } from "@tooldeck/protocol";
 import { asc, eq, notInArray } from "drizzle-orm";
 
-import type { TooldeckDrizzleDatabase } from "../database";
-import { plugins, type PluginRow } from "../schema";
+import type { TooldeckDatabase } from "../database";
+import { plugins } from "../schema";
+import type { PluginRow } from "./types";
 
 export interface UpsertPluginInput {
   manifest: PluginManifest;
@@ -17,7 +18,7 @@ export interface SyncScannedPluginsInput {
 }
 
 export class PluginRepository {
-  constructor(private readonly db: TooldeckDrizzleDatabase) {}
+  constructor(private readonly db: TooldeckDatabase["db"]) {}
 
   syncScannedPlugins(input: SyncScannedPluginsInput): PluginRow[] {
     const pluginIds = input.plugins.map((plugin) => plugin.manifest.id);

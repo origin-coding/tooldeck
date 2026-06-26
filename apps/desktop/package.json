@@ -1,6 +1,6 @@
 {
   "name": "@tooldeck/desktop",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "Electron desktop app for Tooldeck.",
   "author": {
@@ -13,7 +13,6 @@
     "build": "node scripts/build.mjs",
     "dist": "pnpm --dir ../.. builtin-plugins:stage -- --out apps/desktop/.vite/builtin-plugins && pnpm build && electron-builder",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "pretest": "pnpm --dir ../.. builtin-plugins:build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -31,7 +30,8 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
-    "@tooldeck/core": "workspace:*",
+    "@tooldeck/preferences": "workspace:*",
+    "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/host-node": "workspace:*",
     "@tooldeck/json-tools": "workspace:*",

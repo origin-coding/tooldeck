@@ -1,6 +1,6 @@
 {
   "name": "@tooldeck/host-node",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Node.js plugin host for loading and running Tooldeck plugins.",
   "type": "module",
@@ -17,9 +17,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tooldeck/core": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
-    "@tooldeck/sdk-node": "workspace:*",
+    "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/shared": "workspace:*"
   },
   "devDependencies": {

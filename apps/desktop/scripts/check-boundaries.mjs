@@ -33,8 +33,8 @@ const checks = [
     expect: "no-match",
   },
   {
-    name: "main service composes core, host-node, and storage",
-    pattern: String.raw`@tooldeck/(core|host-node|storage)`,
+    name: "main service composes runtime-node, host-node, and storage",
+    pattern: String.raw`@tooldeck/(runtime-node|host-node|storage)`,
     paths: ["src/main"],
     expect: "match",
   },

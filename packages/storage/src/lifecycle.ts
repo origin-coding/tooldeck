@@ -4,11 +4,8 @@ import path from "node:path";
 import {
   openTooldeckDatabase,
   type TooldeckDatabase,
-  type TooldeckDrizzleDatabase,
   type TooldeckDatabaseOptions,
 } from "./database";
-
-export type RepositoryFactory<TRepository> = (db: TooldeckDrizzleDatabase) => TRepository;
 
 export async function withTooldeckDatabase<TResult>(
   options: TooldeckDatabaseOptions,
@@ -27,7 +24,7 @@ export async function withTooldeckDatabase<TResult>(
 
 export async function withRepository<TRepository, TResult>(
   storagePath: string,
-  createRepository: RepositoryFactory<TRepository>,
+  createRepository: (db: TooldeckDatabase["db"]) => TRepository,
   callback: (repository: TRepository) => TResult | Promise<TResult>,
 ): Promise<TResult> {
   return withTooldeckDatabase({ path: storagePath }, (database) =>

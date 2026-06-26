@@ -20,8 +20,10 @@ import {
   listCliCommands,
   listCliPlugins,
   normalizeListCliResource,
+  parseCliPluginDirArgs,
   parsePreferenceJson,
   resolveCliRuntimePaths,
+  resolveCliPluginDirOption,
   runCliCommandWithStorage,
   setCliPreference,
   setCliPluginEnabled,
@@ -85,6 +87,48 @@ describe("CLI command support", () => {
 
     expect(paths.pluginsRoot).toBe(pluginsRoot);
     expect(paths.storagePath).toBe(storagePath);
+  });
+
+  it("resolves additional plugin dirs as external scan sources", () => {
+    const workspaceRoot = path.resolve("workspace");
+    const paths = resolveCliRuntimePaths({
+      workspaceRoot,
+      pluginDir: ["../external-a", "../external-b"],
+    });
+
+    expect(paths.pluginsRoot).toBe(path.join(workspaceRoot, "plugins"));
+    expect(paths.pluginSources).toEqual([
+      {
+        kind: "builtin",
+        path: path.join(workspaceRoot, "plugins"),
+      },
+      {
+        kind: "external",
+        path: path.resolve(workspaceRoot, "../external-a"),
+      },
+      {
+        kind: "external",
+        path: path.resolve(workspaceRoot, "../external-b"),
+      },
+    ]);
+  });
+
+  it("parses repeated --plugin-dir arguments from raw CLI args", () => {
+    const rawArgs = [
+      "run",
+      "hello.world",
+      "--plugin-dir",
+      "../external-a",
+      "--plugin-dir=../external-b",
+    ];
+
+    expect(parseCliPluginDirArgs(rawArgs)).toEqual(["../external-a", "../external-b"]);
+    expect(
+      resolveCliPluginDirOption({
+        rawArgs,
+        value: "../last-only",
+      }),
+    ).toEqual(["../external-a", "../external-b"]);
   });
 
   it("runs hello.world from the default plugin directory shape", async () => {
@@ -209,6 +253,67 @@ describe("CLI command support", () => {
       },
     ]);
     expect(existsSync(activationMarkerPath)).toBe(false);
+  });
+
+  it("lists and runs commands from additional plugin sources", async () => {
+    const builtinRoot = path.resolve("../..", "plugins");
+    const externalRoot = path.join(createTempDir(), "external-echo");
+    const storagePath = createDatabasePath();
+    const pluginSources = [
+      {
+        kind: "builtin" as const,
+        path: builtinRoot,
+      },
+      {
+        kind: "external" as const,
+        path: externalRoot,
+      },
+    ];
+
+    await createEchoPlugin({
+      commandId: "external.echo",
+      pluginId: "dev.tooldeck.external-echo",
+      pluginRoot: externalRoot,
+      responseText: "external ok",
+    });
+
+    await expect(listCliCommands({ pluginSources })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "hello.world",
+          pluginId: "dev.tooldeck.hello-world",
+        }),
+        expect.objectContaining({
+          id: "external.echo",
+          pluginId: "dev.tooldeck.external-echo",
+        }),
+      ]),
+    );
+
+    await expect(
+      runCliCommandWithStorage({
+        commandId: "external.echo",
+        pluginSources,
+        storagePath,
+      }),
+    ).resolves.toEqual({
+      status: "success",
+      blocks: [
+        {
+          type: "text",
+          text: "external ok",
+        },
+      ],
+    });
+
+    expect(readCommandRuns(storagePath)).toEqual([
+      expect.objectContaining({
+        commandId: "external.echo",
+        pluginId: "dev.tooldeck.external-echo",
+        source: "cli",
+        status: "success",
+      }),
+    ]);
   });
 
   it("lists scanned plugins through the SQLite plugin registry", async () => {
@@ -889,4 +994,51 @@ function readPluginKvValue(storagePath: string, pluginId: string, key: string) {
   } finally {
     database.close();
   }
+}
+
+async function createEchoPlugin(options: {
+  commandId: string;
+  pluginId: string;
+  pluginRoot: string;
+  responseText: string;
+}): Promise<void> {
+  await mkdir(options.pluginRoot, { recursive: true });
+  await writeFile(
+    path.join(options.pluginRoot, "manifest.json"),
+    JSON.stringify({
+      schemaVersion: "1.0",
+      id: options.pluginId,
+      name: "External Echo",
+      version: "0.0.0",
+      runtime: {
+        kind: "node",
+        entry: "./index.mjs",
+      },
+      contributes: {
+        commands: [
+          {
+            id: options.commandId,
+            title: "External Echo",
+          },
+        ],
+      },
+    }),
+    "utf8",
+  );
+  await writeFile(
+    path.join(options.pluginRoot, "index.mjs"),
+    `
+      export default {
+        activate(ctx) {
+          ctx.subscriptions.push(
+            ctx.commands.register(${JSON.stringify(options.commandId)}, () => ({
+              status: "success",
+              blocks: [{ type: "text", text: ${JSON.stringify(options.responseText)} }],
+            })),
+          );
+        },
+      };
+    `,
+    "utf8",
+  );
 }

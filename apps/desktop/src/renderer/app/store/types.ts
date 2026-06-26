@@ -1,4 +1,4 @@
-import type { PreferenceScope } from "@tooldeck/shared";
+import type { PreferenceScope } from "@tooldeck/preferences";
 import type { StateCreator } from "zustand";
 
 import type { CommandInputValue } from "@/renderer/app/command-input";

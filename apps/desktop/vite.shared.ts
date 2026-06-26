@@ -7,7 +7,7 @@ export const mainProcessExternal = [
   "electron-updater",
   ...builtinModules,
   /^node:/,
-  // "@tooldeck/core",
+  // "@tooldeck/runtime-node",
   // "@tooldeck/host-node",
   // "@tooldeck/protocol",
   // "@tooldeck/shared",

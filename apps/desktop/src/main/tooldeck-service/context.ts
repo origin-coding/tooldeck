@@ -1,7 +1,12 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import { CommandService, ManifestIndex, PluginManager } from "@tooldeck/core";
+import {
+  CommandService,
+  ManifestIndex,
+  PluginManager,
+  type PluginScanSource,
+} from "@tooldeck/runtime-node";
 import { NodePluginHost } from "@tooldeck/host-node";
 import {
   CommandRunRepository,
@@ -16,6 +21,7 @@ import type { TooldeckDesktopServiceOptions } from "./types";
 export class TooldeckDesktopServiceContext {
   readonly workspaceRoot: string;
   readonly pluginsRoot: string;
+  readonly pluginSources: PluginScanSource[];
   readonly storagePath: string;
   database?: TooldeckDatabase;
   commandRuns?: CommandRunRepository;
@@ -30,6 +36,18 @@ export class TooldeckDesktopServiceContext {
   constructor(options: TooldeckDesktopServiceOptions = {}) {
     this.workspaceRoot = options.workspaceRoot ?? findWorkspaceRoot();
     this.pluginsRoot = options.pluginsRoot ?? path.join(this.workspaceRoot, "plugins");
+    this.pluginSources =
+      options.pluginSources ??
+      [
+        {
+          kind: "builtin" as const,
+          path: this.pluginsRoot,
+        },
+        ...(options.pluginDirs ?? []).map((pluginDir) => ({
+          kind: "external" as const,
+          path: pluginDir,
+        })),
+      ];
     this.storagePath =
       options.storagePath ?? path.join(this.workspaceRoot, ".data", "tooldeck.sqlite");
   }

@@ -1,0 +1,23 @@
+# <%= it.pluginName %>
+
+Tooldeck commands-only Node plugin generated from the local `plugin-node-vite` template.
+
+## Commands
+
+- `<%= it.commandId %>` echoes the provided `text` input.
+
+## Development
+
+```bash
+pnpm install
+pnpm check
+pnpm build
+pnpm test
+```
+
+After building, scan this plugin from a Tooldeck workspace:
+
+```bash
+pnpm --filter @tooldeck/cli dev -- list commands --plugin-dir .
+pnpm --filter @tooldeck/cli dev -- run <%= it.commandId %> --plugin-dir . --text "hello"
+```

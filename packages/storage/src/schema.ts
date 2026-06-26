@@ -45,12 +45,3 @@ export const preferences = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.scope, table.key] })],
 );
-
-export type CommandRunRow = typeof commandRuns.$inferSelect;
-export type InsertCommandRunRow = typeof commandRuns.$inferInsert;
-export type PluginRow = typeof plugins.$inferSelect;
-export type InsertPluginRow = typeof plugins.$inferInsert;
-export type PluginKvRow = typeof pluginKv.$inferSelect;
-export type InsertPluginKvRow = typeof pluginKv.$inferInsert;
-export type PreferenceRow = typeof preferences.$inferSelect;
-export type InsertPreferenceRow = typeof preferences.$inferInsert;

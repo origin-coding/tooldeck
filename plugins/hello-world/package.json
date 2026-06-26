@@ -8,11 +8,16 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "build": "vite build --configLoader runner",
-    "typecheck": "tsc --noEmit"
+    "generate": "tooldeck-plugin generate",
+    "check": "tooldeck-plugin check",
+    "build": "tooldeck-plugin build --bundler vite",
+    "typecheck": "tsc --noEmit",
+    "inspect": "tooldeck-plugin inspect"
   },
   "dependencies": {
-    "@tooldeck/sdk-node": "workspace:*"
+    "@tooldeck/plugin-tools": "workspace:*",
+    "@tooldeck/sdk-node": "workspace:*",
+    "@tooldeck/vite-plugin": "workspace:*"
   },
   "tooldeck": {
     "builtinPlugin": {

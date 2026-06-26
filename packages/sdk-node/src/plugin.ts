@@ -1,8 +1,11 @@
-import type { MaybePromise } from "@tooldeck/shared";
-
-import type { CommandHandler, CommandInput, CommandInputMap } from "./commands";
+import type {
+  CommandHandler,
+  CommandInput,
+  CommandInputMap,
+} from "./commands";
 import type { PluginContextV1 } from "./context";
 import type { Disposable } from "./disposable";
+import type { MaybePromise } from "./types";
 
 export interface ToolboxPluginV1<
   TCommandInputs extends CommandInputMap = Record<string, CommandInput>,

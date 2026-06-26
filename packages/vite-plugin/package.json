@@ -1,0 +1,36 @@
+{
+  "name": "@tooldeck/vite-plugin",
+  "version": "1.2.0",
+  "description": "Vite integration for Tooldeck Node plugins.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/origin-coding/tooldeck.git",
+    "directory": "packages/vite-plugin"
+  },
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "vite": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "vite": "^8.0.16"
+  }
+}

@@ -36,3 +36,15 @@ export interface PluginCommandInputs {
   "regex.replace": RegexReplaceInput;
   "regex.escape": RegexEscapeInput;
 }
+
+export type PluginCommandId = keyof PluginCommandInputs;
+
+export type PluginCommandInput<TCommandId extends PluginCommandId> =
+  PluginCommandInputs[TCommandId];
+
+export const commandIds = {
+  regexTest: "regex.test",
+  regexExtract: "regex.extract",
+  regexReplace: "regex.replace",
+  regexEscape: "regex.escape",
+} as const;

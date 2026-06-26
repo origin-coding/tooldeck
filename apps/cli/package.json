@@ -1,7 +1,12 @@
 {
   "name": "@tooldeck/cli",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Command-line interface for Tooldeck.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/origin-coding/tooldeck.git",
+    "directory": "apps/cli"
+  },
   "bin": {
     "tooldeck": "dist/index.js"
   },
@@ -17,13 +22,10 @@
   },
   "scripts": {
     "dev": "tsx src/index.ts",
-    "prebuild": "pnpm --filter @tooldeck/shared --filter @tooldeck/storage build && pnpm --dir ../.. builtin-plugins:build -- --mode production",
     "build": "vite build",
     "postbuild": "pnpm --dir ../.. builtin-plugins:stage -- --out apps/cli/dist/plugins --skip-build",
     "smoke:built": "node scripts/smoke-built.mjs",
-    "pretypecheck": "pnpm --filter @tooldeck/shared --filter @tooldeck/storage build",
     "typecheck": "tsc --noEmit",
-    "pretest": "pnpm --filter @tooldeck/shared --filter @tooldeck/storage build && pnpm --dir ../.. builtin-plugins:build",
     "test": "vitest run test"
   },
   "dependencies": {
@@ -33,7 +35,8 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@tooldeck/core": "workspace:*",
+    "@tooldeck/preferences": "workspace:*",
+    "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/host-node": "workspace:*",
     "@tooldeck/json-tools": "workspace:*",

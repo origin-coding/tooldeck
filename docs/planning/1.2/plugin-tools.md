@@ -255,7 +255,24 @@ tooldeck-plugin inspect
 - 检测到的 package manager。
 - 已安装 Tooldeck 包版本。
 
+输出体验应面向插件作者排障，而不是直接打印内部数据结构：
+
+- 默认输出使用分区结构，例如 summary、manifest、commands、locales、generated files、build output、packages、diagnostics。
+- 每个检查项应有清晰状态，例如 `ok`、`warning`、`error`、`missing`、`stale`。
+- Diagnostics 应包含文件路径、字段路径和建议修复方式，和 `check` 的可行动错误信息保持一致。
+- 多 command、多 locale、多 Tooldeck 包版本时应保持稳定排序，方便复制到 issue 或比较输出差异。
+- 人类可读输出是默认路径；如果后续需要机器消费，可以单独增加 `--json`，不牺牲默认可读性。
+
 `inspect` 应只读取项目文件，不执行插件 runtime code。
+
+### CLI Diagnostics
+
+`check`、`build`、`inspect` 的 CLI 输出应把底层 schema 或项目校验错误转成可行动提示，而不是只暴露 Ajv 或 Node loader 的原始错误：
+
+- 错误中包含文件路径。
+- 能定位到 manifest 字段时包含字段路径，例如 `contributes.commands[0].inputSchema.properties.text`。
+- 尽量给出建议修复方式，例如“把 runtime.entry 改为相对路径 `./dist/index.js`”或“运行 `tooldeck-plugin generate` 更新生成文件”。
+- CLI exit code 明确：无 error diagnostics 时为 `0`，存在 error diagnostics 时为非 `0`；warning 不应单独导致失败，除非命令本身定义了 stricter 模式。
 
 ### Programmatic API
 
@@ -304,7 +321,7 @@ CLI 应调用同一套内部 API，避免 CLI 逻辑和库逻辑分叉。
   scaffolds a project that consumes sdk-node, plugin-tools, and vite-plugin
 ```
 
-`@tooldeck/plugin-tools` 可以依赖 `@tooldeck/protocol` 来读取类型和 schema。它不应成为 `@tooldeck/protocol`、`@tooldeck/core`、`@tooldeck/host-node` 或 `@tooldeck/sdk-node` 的依赖。
+`@tooldeck/plugin-tools` 可以依赖 `@tooldeck/protocol` 来读取类型和 schema。它不应成为 `@tooldeck/protocol`、`@tooldeck/runtime-node`、`@tooldeck/host-node` 或 `@tooldeck/sdk-node` 的依赖。
 
 ## 非目标
 

@@ -1,6 +1,6 @@
 {
   "name": "@tooldeck/integration-tests",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tooldeck/core": "workspace:*",
+    "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/host-node": "workspace:*",
     "@tooldeck/protocol": "workspace:*"

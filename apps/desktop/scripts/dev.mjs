@@ -14,6 +14,7 @@ const builtinPluginsScript = path.join(workspaceRoot, "scripts", "builtin-plugin
 const vitePackageRoot = path.resolve(path.dirname(require.resolve("vite")), "../..");
 const viteCliPath = path.join(vitePackageRoot, "bin", "vite.js");
 const electronPath = require("electron");
+const electronArgs = process.argv.slice(2);
 
 const children = new Map();
 let shuttingDown = false;
@@ -64,7 +65,7 @@ try {
 
   log("dev", "Starting Electron...");
 
-  const electron = spawnProcess("electron", electronPath, ["."], {
+  const electron = spawnProcess("electron", electronPath, [".", ...electronArgs], {
     env: {
       ...process.env,
       TOOLDECK_PLUGINS_ROOT: builtinPluginsRoot,

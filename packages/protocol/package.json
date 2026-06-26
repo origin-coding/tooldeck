@@ -1,7 +1,12 @@
 {
   "name": "@tooldeck/protocol",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Toolbox Plugin Protocol types for Tooldeck.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/origin-coding/tooldeck.git",
+    "directory": "packages/protocol"
+  },
   "type": "module",
   "types": "./dist/index.d.ts",
   "files": [
@@ -22,8 +27,7 @@
     "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "typecheck": "tsc --noEmit"
   },
-  "devDependencies": {
-    "@tooldeck/shared": "workspace:*",
+  "dependencies": {
     "@types/json-schema": "^7.0.15"
   }
 }

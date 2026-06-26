@@ -1,6 +1,6 @@
 {
   "name": "@tooldeck/shared",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "type": "module",
   "types": "./dist/index.d.ts",
@@ -13,5 +13,8 @@
   "scripts": {
     "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tooldeck/protocol": "workspace:*"
   }
 }
