@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "id": "dev.example.runtime",
+  "name": "Runtime Fixture",
+  "version": "0.0.0",
+  "runtime": {
+    "kind": "node",
+    "entry": "./index.mjs"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "id": "factory.echo",
+        "title": "Echo",
+        "inputSchema": {
+          "type": "object",
+          "required": ["text"],
+          "additionalProperties": false,
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    ]
+  }
+}

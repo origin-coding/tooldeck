@@ -1,14 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-import {
-  RuntimeCommandRegistry,
-  CommandService,
-  ManifestIndex,
-  PluginManager,
-  scanPluginSources,
-} from "@tooldeck/runtime-node";
-import { NodePluginHost } from "@tooldeck/host-node";
+import { ManifestIndex, scanPluginSources } from "@tooldeck/runtime-node";
+import { createNodeRuntime } from "@tooldeck/host-node";
 import {
   CommandRunRepository,
   openTooldeckDatabase,
@@ -46,12 +40,9 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
   async scanAndCreateRuntime(): Promise<void> {
     await this.context.pluginHost?.disposeAll();
 
-    const commandRegistry = new RuntimeCommandRegistry();
-    const manifestIndex = new ManifestIndex();
     const pluginKv = this.context.requirePluginKv();
-
-    const pluginHost = new NodePluginHost({
-      commandRegistry,
+    const runtime = await createNodeRuntime({
+      pluginSources: this.context.pluginSources,
       createPluginStorage(pluginId) {
         return {
           async get(key) {
@@ -69,27 +60,15 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
           },
         };
       },
+      afterScan: ({ manifestIndex }) => {
+        this.syncScannedPluginIndex(manifestIndex);
+      },
     });
 
-    await scanPluginSources({
-      sources: this.context.pluginSources,
-      manifestIndex,
-    });
-    this.syncScannedPluginIndex(manifestIndex);
-
-    const pluginManager = new PluginManager({
-      manifestIndex,
-      commandRegistry,
-      pluginHost,
-    });
-
-    this.context.pluginHost = pluginHost;
-    this.context.pluginManager = pluginManager;
-    this.context.manifestIndex = manifestIndex;
-    this.context.commandService = new CommandService({
-      pluginManager,
-      coercion: "none",
-    });
+    this.context.pluginHost = runtime.pluginHost;
+    this.context.pluginManager = runtime.pluginManager;
+    this.context.manifestIndex = runtime.manifestIndex;
+    this.context.commandService = runtime.commandService;
   }
 
   async syncScannedPlugins(): Promise<ManifestIndex> {

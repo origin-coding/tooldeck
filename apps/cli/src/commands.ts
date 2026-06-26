@@ -1,16 +1,19 @@
 import { performance } from "node:perf_hooks";
 
 import {
-  RuntimeCommandRegistry,
-  CommandService,
   type IndexedCommand,
   ManifestIndex,
   parseRawCommandInputFromCliArgs,
-  PluginManager,
   scanPluginSources,
+  type CommandService,
+  type PluginManager,
   type PluginScanSource,
 } from "@tooldeck/runtime-node";
-import { NodePluginHost } from "@tooldeck/host-node";
+import {
+  createNodeRuntime,
+  type CreateNodeRuntimeOptions,
+  type NodePluginHost,
+} from "@tooldeck/host-node";
 import type {
   CommandResult,
   LocalizedString,
@@ -72,7 +75,7 @@ export type ListCliResource = "commands" | "plugins" | "preferences";
 export interface CreatePluginManagerOptions {
   pluginsRoot?: string;
   pluginSources?: PluginScanSource[];
-  createPluginStorage?: ConstructorParameters<typeof NodePluginHost>[0]["createPluginStorage"];
+  createPluginStorage?: CreateNodeRuntimeOptions["createPluginStorage"];
 }
 
 export interface CreatedPluginManager {
@@ -87,35 +90,20 @@ export interface CreatedPluginManager {
 export async function createPluginManager(
   options: CreatePluginManagerOptions,
 ): Promise<CreatedPluginManager> {
-  const commandRegistry = new RuntimeCommandRegistry();
-  const pluginHost = new NodePluginHost({
-    commandRegistry,
-    createPluginStorage: options.createPluginStorage,
-  });
-  const manifestIndex = new ManifestIndex();
   const pluginSources = resolvePluginSources(options);
-
-  const scanResult = await scanPluginSources({
-    sources: pluginSources,
-    manifestIndex,
-  });
-
-  const pluginManager = new PluginManager({
-    manifestIndex,
-    commandRegistry,
-    pluginHost,
+  const runtime = await createNodeRuntime({
+    pluginSources,
+    coercion: "cli",
+    createPluginStorage: options.createPluginStorage,
   });
 
   return {
-    pluginHost,
-    manifestIndex,
-    pluginCount: scanResult.pluginCount,
-    commandCount: scanResult.commandCount,
-    pluginManager,
-    commandService: new CommandService({
-      pluginManager,
-      coercion: "cli",
-    }),
+    pluginHost: runtime.pluginHost,
+    manifestIndex: runtime.manifestIndex,
+    pluginCount: runtime.pluginCount,
+    commandCount: runtime.commandCount,
+    pluginManager: runtime.pluginManager,
+    commandService: runtime.commandService,
   };
 }
 
