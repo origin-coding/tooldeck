@@ -1,6 +1,6 @@
 {
   "name": "@tooldeck/vite-plugin",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Vite integration for Tooldeck Node plugins.",
   "repository": {
     "type": "git",
