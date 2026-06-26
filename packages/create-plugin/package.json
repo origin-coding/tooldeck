@@ -2,6 +2,11 @@
   "name": "@tooldeck/create-plugin",
   "version": "1.1.0",
   "description": "Create Tooldeck plugin projects from local templates.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/origin-coding/tooldeck.git",
+    "directory": "packages/create-plugin"
+  },
   "bin": {
     "create-plugin": "dist/create-tooldeck-plugin.js",
     "create-tooldeck-plugin": "dist/create-tooldeck-plugin.js"
