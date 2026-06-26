@@ -1,8 +1,9 @@
 import type { CommandResult } from "@tooldeck/protocol";
 import { desc, eq } from "drizzle-orm";
 
-import type { TooldeckDrizzleDatabase } from "../database";
-import { commandRuns, type CommandRunRow } from "../schema";
+import type { TooldeckDatabase } from "../database";
+import { commandRuns } from "../schema";
+import type { CommandRunRow } from "./types";
 
 export interface CreateCommandRunInput {
   id?: string;
@@ -23,7 +24,7 @@ export interface ListCommandRunsOptions {
 }
 
 export class CommandRunRepository {
-  constructor(private readonly db: TooldeckDrizzleDatabase) {}
+  constructor(private readonly db: TooldeckDatabase["db"]) {}
 
   create(input: CreateCommandRunInput): CommandRunRow {
     const row = {

@@ -1,7 +1,8 @@
 import { and, eq } from "drizzle-orm";
 
-import type { TooldeckDrizzleDatabase } from "../database";
-import { pluginKv, type PluginKvRow } from "../schema";
+import type { TooldeckDatabase } from "../database";
+import { pluginKv } from "../schema";
+import type { PluginKvRow } from "./types";
 
 export interface SetPluginKvInput {
   pluginId: string;
@@ -11,7 +12,7 @@ export interface SetPluginKvInput {
 }
 
 export class PluginKvRepository {
-  constructor(private readonly db: TooldeckDrizzleDatabase) {}
+  constructor(private readonly db: TooldeckDatabase["db"]) {}
 
   get(pluginId: string, key: string): unknown | undefined {
     const row = this.getRow(pluginId, key);

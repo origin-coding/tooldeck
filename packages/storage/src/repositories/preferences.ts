@@ -1,8 +1,9 @@
 import type { PreferenceScope } from "@tooldeck/preferences";
 import { and, asc, eq } from "drizzle-orm";
 
-import type { TooldeckDrizzleDatabase } from "../database";
-import { preferences, type PreferenceRow } from "../schema";
+import type { TooldeckDatabase } from "../database";
+import { preferences } from "../schema";
+import type { PreferenceRow } from "./types";
 
 export type { PreferenceScope };
 
@@ -14,7 +15,7 @@ export interface SetPreferenceInput {
 }
 
 export class PreferenceRepository {
-  constructor(private readonly db: TooldeckDrizzleDatabase) {}
+  constructor(private readonly db: TooldeckDatabase["db"]) {}
 
   get(scope: PreferenceScope, key: string): unknown {
     const row = this.getRow(scope, key);

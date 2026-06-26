@@ -10,7 +10,7 @@ export interface TooldeckDatabaseOptions {
   migrate?: boolean;
 }
 
-export type TooldeckDrizzleDatabase = ReturnType<typeof drizzle<typeof schema>>;
+type TooldeckDrizzleDatabase = ReturnType<typeof drizzle<typeof schema>>;
 
 export interface TooldeckDatabase {
   sqlite: DatabaseSync;

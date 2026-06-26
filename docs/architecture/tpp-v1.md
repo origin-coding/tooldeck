@@ -182,7 +182,7 @@ tooldeck/
       # LocalizedString、locale resolver
 
     storage/
-      # SQLite schema、migration、repository
+      # SQLite storage repositories and internal schema/migrations
 
     ui-schema/
       # JSON Schema → UI hint → 表单描述
@@ -967,6 +967,10 @@ SQLite 存：
 索引
 Plugin scoped KV
 ```
+
+`@tooldeck/storage` 的根入口只暴露稳定的 database lifecycle helper、repository class、repository input/options
+类型和 repository DTO。Drizzle table、SQLite schema、migration 列表以及 `Insert*Row` 等实现细节不属于根入口
+公共 API；storage 包内部通过相对路径使用这些实现，上层 Desktop / CLI 不应依赖 schema/table/migration internals。
 
 JSON / Store 存：
 
