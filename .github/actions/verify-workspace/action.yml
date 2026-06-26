@@ -14,7 +14,7 @@ runs:
 
     - name: Typecheck
       shell: bash
-      run: pnpm exec turbo run typecheck --concurrency=1
+      run: pnpm exec turbo run typecheck
 
     - name: Test
       shell: bash
