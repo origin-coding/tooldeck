@@ -8,12 +8,13 @@
     "directory": "packages/plugin-tools"
   },
   "bin": {
-    "tooldeck-plugin": "dist/tooldeck-plugin.js",
-    "tooldeck-plugin-types": "dist/generate-command-types.js"
+    "tooldeck-plugin": "bin/tooldeck-plugin.js",
+    "tooldeck-plugin-types": "bin/tooldeck-plugin-types.js"
   },
   "type": "module",
   "types": "./dist/index.d.ts",
   "files": [
+    "bin",
     "dist"
   ],
   "exports": {
