@@ -22,7 +22,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@tooldeck/protocol": "workspace:*",
-    "@tooldeck/runtime-node": "workspace:*"
+    "@tooldeck/protocol": "workspace:*"
   }
 }

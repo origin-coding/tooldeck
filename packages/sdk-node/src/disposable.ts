@@ -1,2 +1,9 @@
-export type { Disposable } from "@tooldeck/runtime-node";
-export { toDisposable } from "@tooldeck/runtime-node";
+import type { MaybePromise } from "./types";
+
+export interface Disposable {
+  dispose(): MaybePromise<void>;
+}
+
+export function toDisposable(dispose: () => MaybePromise<void>): Disposable {
+  return { dispose };
+}

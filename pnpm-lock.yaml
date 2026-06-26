@@ -261,6 +261,9 @@ importers:
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@tooldeck/sdk-node':
+        specifier: workspace:*
+        version: link:../sdk-node
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../shared
@@ -277,9 +280,6 @@ importers:
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@tooldeck/runtime-node':
-        specifier: workspace:*
-        version: link:../runtime-node
 
   packages/shared:
     dependencies:

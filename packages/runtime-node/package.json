@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@tooldeck/protocol": "workspace:*",
+    "@tooldeck/sdk-node": "workspace:*",
     "@tooldeck/shared": "workspace:*",
     "ajv": "^8.20.0"
   },

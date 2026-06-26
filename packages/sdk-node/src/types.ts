@@ -1,1 +1,1 @@
-export type { MaybePromise } from "@tooldeck/runtime-node";
+export type MaybePromise<T> = T | Promise<T>;

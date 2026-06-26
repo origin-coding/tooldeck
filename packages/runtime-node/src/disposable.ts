@@ -1,9 +1,2 @@
-import type { MaybePromise } from "./types";
-
-export interface Disposable {
-  dispose(): MaybePromise<void>;
-}
-
-export function toDisposable(dispose: () => MaybePromise<void>): Disposable {
-  return { dispose };
-}
+export type { Disposable } from "@tooldeck/sdk-node";
+export { toDisposable } from "@tooldeck/sdk-node";
