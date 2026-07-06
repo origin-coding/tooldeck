@@ -21,6 +21,7 @@ export interface TooldeckDesktopServiceOptions {
   pluginsRoot?: string;
   pluginDirs?: string[];
   pluginSources?: PluginScanSource[];
+  installedPluginsDir?: string;
   storagePath?: string;
 }
 

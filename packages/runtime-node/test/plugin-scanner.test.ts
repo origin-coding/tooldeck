@@ -48,6 +48,10 @@ describe("scanPluginDirectory", () => {
     expect(manifestIndex.getCommand("hello.world")).toMatchObject({
       manifestPath,
       entryPath: path.resolve(pluginRoot, "dist/index.js"),
+      source: {
+        kind: "builtin",
+        path: pluginsRoot,
+      },
     });
   });
 
@@ -77,8 +81,9 @@ describe("scanPluginDirectory", () => {
     });
   });
 
-  it("merges builtin and external plugin scan sources", async ({ task }) => {
+  it("merges builtin, installed, and external plugin scan sources", async ({ task }) => {
     const builtinRoot = path.join(".tmp", "runtime-node-tests", task.id, "builtin");
+    const installedRoot = path.join(".tmp", "runtime-node-tests", task.id, "installed");
     const externalRoot = path.join(".tmp", "runtime-node-tests", task.id, "external-plugin");
     const manifestIndex = new ManifestIndex();
 
@@ -88,6 +93,13 @@ describe("scanPluginDirectory", () => {
       name: "Builtin Plugin",
       commandId: "builtin.run",
       commandTitle: "Run Builtin",
+    });
+    await mkdir(path.join(installedRoot, "installed-plugin"), { recursive: true });
+    await writePluginManifest(path.join(installedRoot, "installed-plugin", "manifest.json"), {
+      id: "dev.tooldeck.installed-plugin",
+      name: "Installed Plugin",
+      commandId: "installed.run",
+      commandTitle: "Run Installed",
     });
     await mkdir(externalRoot, { recursive: true });
     await writePluginManifest(path.join(externalRoot, "manifest.json"), {
@@ -105,6 +117,10 @@ describe("scanPluginDirectory", () => {
             path: builtinRoot,
           },
           {
+            kind: "installed",
+            path: installedRoot,
+          },
+          {
             kind: "external",
             path: externalRoot,
           },
@@ -112,12 +128,40 @@ describe("scanPluginDirectory", () => {
         manifestIndex,
       }),
     ).resolves.toEqual({
-      pluginCount: 2,
-      commandCount: 2,
+      pluginCount: 3,
+      commandCount: 3,
     });
 
     expect(manifestIndex.getCommandOwner("builtin.run")).toBe("dev.tooldeck.builtin-plugin");
+    expect(manifestIndex.getCommandOwner("installed.run")).toBe(
+      "dev.tooldeck.installed-plugin",
+    );
     expect(manifestIndex.getCommandOwner("external.run")).toBe("dev.tooldeck.external-plugin");
+    expect(manifestIndex.getCommand("installed.run")).toMatchObject({
+      source: {
+        kind: "installed",
+        path: installedRoot,
+      },
+    });
+  });
+
+  it("treats a missing installed plugin directory as empty", async () => {
+    const pluginDir = path.join(".tmp", "runtime-node-tests", "missing", "installed");
+
+    await expect(
+      scanPluginSources({
+        sources: [
+          {
+            kind: "installed",
+            path: pluginDir,
+          },
+        ],
+        manifestIndex: new ManifestIndex(),
+      }),
+    ).resolves.toEqual({
+      pluginCount: 0,
+      commandCount: 0,
+    });
   });
 
   it("throws a clear error when an external plugin directory does not exist", async () => {

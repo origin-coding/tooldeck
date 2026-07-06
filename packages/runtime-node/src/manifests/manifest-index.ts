@@ -1,11 +1,14 @@
 import type { CommandDefinition, PluginManifest } from "@tooldeck/protocol";
 import { TooldeckError } from "@tooldeck/shared";
 
+import type { PluginScanSource } from "../plugins/plugin-scanner";
+
 export interface IndexedPlugin {
   id: string;
   manifest: PluginManifest;
   manifestPath: string;
   entryPath: string;
+  source: PluginScanSource;
 }
 
 export interface IndexedCommand {
@@ -14,12 +17,14 @@ export interface IndexedCommand {
   definition: CommandDefinition;
   manifestPath: string;
   entryPath: string;
+  source: PluginScanSource;
 }
 
 export interface AddPluginManifestOptions {
   manifest: PluginManifest;
   manifestPath: string;
   entryPath: string;
+  source?: PluginScanSource;
 }
 
 export class ManifestIndex {
@@ -28,11 +33,28 @@ export class ManifestIndex {
 
   addPluginManifest(options: AddPluginManifestOptions): void {
     const { manifest, manifestPath, entryPath } = options;
+    const source = options.source ?? { kind: "builtin" as const, path: "" };
 
-    if (this.plugins.has(manifest.id)) {
+    const existingPlugin = this.plugins.get(manifest.id);
+
+    if (existingPlugin) {
       throw new TooldeckError({
         code: "ERR_ALREADY_EXISTS",
-        message: `Plugin manifest is already indexed: ${manifest.id}`,
+        message: [
+          `Plugin manifest is already indexed: ${manifest.id}`,
+          `Existing source: ${existingPlugin.source.kind}`,
+          `Incoming source: ${source.kind}`,
+        ].join("\n"),
+        details: {
+          duplicateKind: "plugin",
+          pluginId: manifest.id,
+          existingPluginId: existingPlugin.id,
+          incomingPluginId: manifest.id,
+          existingSourceKind: existingPlugin.source.kind,
+          incomingSourceKind: source.kind,
+          existingManifestPath: existingPlugin.manifestPath,
+          incomingManifestPath: manifestPath,
+        },
       });
     }
 
@@ -44,11 +66,22 @@ export class ManifestIndex {
       if (existing) {
         throw new TooldeckError({
           code: "ERR_ALREADY_EXISTS",
-          message: `Command id conflict: ${command.id}`,
+          message: [
+            `Command id conflict: ${command.id}`,
+            `Existing source: ${existing.source.kind}`,
+            `Existing plugin: ${existing.pluginId}`,
+            `Incoming source: ${source.kind}`,
+            `Incoming plugin: ${manifest.id}`,
+          ].join("\n"),
           details: {
+            duplicateKind: "command",
             commandId: command.id,
             existingPluginId: existing.pluginId,
             incomingPluginId: manifest.id,
+            existingSourceKind: existing.source.kind,
+            incomingSourceKind: source.kind,
+            existingManifestPath: existing.manifestPath,
+            incomingManifestPath: manifestPath,
           },
         });
       }
@@ -59,6 +92,7 @@ export class ManifestIndex {
       manifest,
       manifestPath,
       entryPath,
+      source,
     });
 
     for (const command of commands) {
@@ -68,6 +102,7 @@ export class ManifestIndex {
         definition: command,
         manifestPath,
         entryPath,
+        source,
       });
     }
   }

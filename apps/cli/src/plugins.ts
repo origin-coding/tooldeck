@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { ManifestIndex, scanPluginSources, type PluginScanSource } from "@tooldeck/runtime-node";
 import type { LocalizedString } from "@tooldeck/protocol";
 import { PluginRepository, type PluginRow, withRepository } from "@tooldeck/storage";
@@ -202,6 +204,8 @@ async function syncScannedPlugins(options: {
     plugins: manifestIndex.listPlugins().map((plugin) => ({
       manifest: plugin.manifest,
       manifestPath: plugin.manifestPath,
+      sourceKind: plugin.source.kind,
+      installDir: plugin.source.kind === "installed" ? path.dirname(plugin.manifestPath) : null,
     })),
   });
 

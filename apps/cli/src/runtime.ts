@@ -49,10 +49,14 @@ export function resolveCliRuntimePaths(options: ResolveCliRuntimePathsOptions): 
   return {
     tooldeckPaths,
     pluginsRoot,
-    pluginSources: [
+  pluginSources: [
       {
         kind: "builtin",
         path: pluginsRoot,
+      },
+      {
+        kind: "installed",
+        path: tooldeckPaths.installedPluginsDir,
       },
       ...pluginDirs.map((pluginDir) => ({
         kind: "external" as const,

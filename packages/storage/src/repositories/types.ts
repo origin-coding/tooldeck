@@ -16,8 +16,29 @@ export interface PluginRow {
   nameJson: string;
   version: string;
   manifestPath: string;
+  sourceKind: string;
+  installDir: string | null;
   enabled: boolean;
   installedAt: number;
+  updatedAt: number;
+}
+
+export interface PluginInstallRow {
+  pluginId: string;
+  version: string;
+  installDir: string;
+  manifestPath: string;
+  packageName: string;
+  packageDigest: string;
+  packageSizeBytes: number;
+  installedAt: number;
+  updatedAt: number;
+}
+
+export interface PluginStateRow {
+  pluginId: string;
+  enabled: boolean;
+  createdAt: number;
   updatedAt: number;
 }
 

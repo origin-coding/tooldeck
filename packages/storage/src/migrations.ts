@@ -83,6 +83,48 @@ export const migrations: Migration[] = [
         on preferences(scope);
     `,
   },
+  {
+    id: "0005_plugin_install_state",
+    sql: `
+      alter table plugins
+        add column source_kind text not null default 'builtin';
+
+      alter table plugins
+        add column install_dir text;
+
+      create table if not exists plugin_installs (
+        plugin_id text primary key,
+        version text not null,
+        install_dir text not null,
+        manifest_path text not null,
+        package_name text not null,
+        package_digest text not null,
+        package_size_bytes integer not null,
+        installed_at integer not null,
+        updated_at integer not null
+      );
+
+      create table if not exists plugin_states (
+        plugin_id text primary key,
+        enabled integer not null default 1,
+        created_at integer not null,
+        updated_at integer not null
+      );
+
+      insert or ignore into plugin_states (plugin_id, enabled, created_at, updated_at)
+      select id, enabled, installed_at, updated_at
+      from plugins;
+
+      create index if not exists plugins_source_kind_idx
+        on plugins(source_kind);
+
+      create index if not exists plugin_installs_install_dir_idx
+        on plugin_installs(install_dir);
+
+      create index if not exists plugin_states_enabled_idx
+        on plugin_states(enabled);
+    `,
+  },
 ];
 
 export function runMigrations(sqlite: DatabaseSync, migrationList = migrations): void {

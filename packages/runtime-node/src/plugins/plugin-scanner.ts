@@ -6,7 +6,7 @@ import type { PluginManifest } from "@tooldeck/protocol";
 import type { ManifestIndex } from "../manifests/manifest-index";
 import { parsePluginManifestText } from "../manifests/manifest-validation";
 
-export type PluginScanSourceKind = "builtin" | "external";
+export type PluginScanSourceKind = "builtin" | "installed" | "external";
 
 export interface PluginScanSource {
   kind: PluginScanSourceKind;
@@ -75,6 +75,7 @@ async function scanPluginSource(options: {
       manifest: rootManifest,
       manifestIndex: options.manifestIndex,
       manifestPath: rootManifestPath,
+      source: options.source,
     });
   }
 
@@ -84,6 +85,13 @@ async function scanPluginSource(options: {
     entries = await readdir(options.source.path, { withFileTypes: true });
   } catch (error) {
     if (isNodeError(error) && error.code === "ENOENT") {
+      if (options.source.kind === "installed") {
+        return {
+          pluginCount: 0,
+          commandCount: 0,
+        };
+      }
+
       throw new Error(createMissingPluginDirectoryMessage(options.source));
     }
 
@@ -109,6 +117,7 @@ async function scanPluginSource(options: {
       manifest,
       manifestIndex: options.manifestIndex,
       manifestPath,
+      source: options.source,
     });
 
     pluginCount += result.pluginCount;
@@ -125,6 +134,7 @@ function indexPluginManifest(options: {
   manifest: PluginManifest;
   manifestIndex: ManifestIndex;
   manifestPath: string;
+  source: PluginScanSource;
 }): ScanPluginDirectoryResult {
   const commands = options.manifest.contributes?.commands ?? [];
 
@@ -132,6 +142,7 @@ function indexPluginManifest(options: {
     manifest: options.manifest,
     manifestPath: options.manifestPath,
     entryPath: path.resolve(path.dirname(options.manifestPath), options.manifest.runtime.entry),
+    source: options.source,
   });
 
   return {

@@ -1,15 +1,19 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 import { afterEach, describe, expect, it } from "vitest";
 
 import { openTooldeckDatabase, type PreferenceRow } from "../src";
 import { CommandRunRepository } from "../src";
+import { PluginInstallRepository } from "../src";
 import { PluginKvRepository } from "../src";
 import { PluginRepository } from "../src";
+import { PluginStateRepository } from "../src";
 import { PreferenceRepository } from "../src";
 import { withRepository, withTooldeckDatabase } from "../src";
+import { migrations, runMigrations } from "../src/migrations";
 
 const tempDirs: string[] = [];
 
@@ -36,6 +40,12 @@ describe("storage", () => {
       const preferencesTable = database.sqlite
         .prepare("select name from sqlite_master where type = 'table' and name = ?")
         .get("preferences");
+      const pluginInstallsTable = database.sqlite
+        .prepare("select name from sqlite_master where type = 'table' and name = ?")
+        .get("plugin_installs");
+      const pluginStatesTable = database.sqlite
+        .prepare("select name from sqlite_master where type = 'table' and name = ?")
+        .get("plugin_states");
       const migration = database.sqlite
         .prepare("select id from schema_migrations where id = ?")
         .get("0001_initial");
@@ -48,15 +58,75 @@ describe("storage", () => {
       const preferencesMigration = database.sqlite
         .prepare("select id from schema_migrations where id = ?")
         .get("0004_preferences");
+      const pluginInstallStateMigration = database.sqlite
+        .prepare("select id from schema_migrations where id = ?")
+        .get("0005_plugin_install_state");
 
       expect(commandRunsTable).toMatchObject({ name: "command_runs" });
       expect(pluginsTable).toMatchObject({ name: "plugins" });
       expect(pluginKvTable).toMatchObject({ name: "plugin_kv" });
       expect(preferencesTable).toMatchObject({ name: "preferences" });
+      expect(pluginInstallsTable).toMatchObject({ name: "plugin_installs" });
+      expect(pluginStatesTable).toMatchObject({ name: "plugin_states" });
       expect(migration).toMatchObject({ id: "0001_initial" });
       expect(pluginRegistryMigration).toMatchObject({ id: "0002_plugin_registry" });
       expect(pluginKvMigration).toMatchObject({ id: "0003_plugin_kv" });
       expect(preferencesMigration).toMatchObject({ id: "0004_preferences" });
+      expect(pluginInstallStateMigration).toMatchObject({ id: "0005_plugin_install_state" });
+    } finally {
+      database.close();
+    }
+  });
+
+  it("migrates legacy plugin enabled values into plugin states", () => {
+    const databasePath = createDatabasePath();
+    const sqlite = new DatabaseSync(databasePath);
+
+    try {
+      runMigrations(sqlite, migrations.slice(0, 4));
+      sqlite
+        .prepare(
+          `
+          insert into plugins (
+            id,
+            name_json,
+            version,
+            manifest_path,
+            enabled,
+            installed_at,
+            updated_at
+          ) values (?, ?, ?, ?, ?, ?, ?)
+        `,
+        )
+        .run(
+          "dev.tooldeck.disabled",
+          JSON.stringify("Disabled"),
+          "0.0.1",
+          "plugins/disabled/manifest.json",
+          0,
+          1000,
+          2000,
+        );
+    } finally {
+      sqlite.close();
+    }
+
+    const database = openTooldeckDatabase({ path: databasePath });
+
+    try {
+      const plugins = new PluginRepository(database.db);
+      const states = new PluginStateRepository(database.db);
+
+      expect(states.getById("dev.tooldeck.disabled")).toMatchObject({
+        pluginId: "dev.tooldeck.disabled",
+        enabled: false,
+        createdAt: 1000,
+        updatedAt: 2000,
+      });
+      expect(plugins.getById("dev.tooldeck.disabled")).toMatchObject({
+        id: "dev.tooldeck.disabled",
+        enabled: false,
+      });
     } finally {
       database.close();
     }
@@ -237,12 +307,39 @@ describe("storage", () => {
         }),
         version: "0.0.2",
         manifestPath: "plugins/json-tools/manifest.json",
+        sourceKind: "builtin",
+        installDir: null,
         enabled: false,
         installedAt: 1000,
         updatedAt: 2000,
       });
       expect(repository.listEnabled()).toHaveLength(0);
       expect(repository.list()).toHaveLength(1);
+    } finally {
+      database.close();
+    }
+  });
+
+  it("stores scanned plugin source metadata", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PluginRepository(database.db);
+
+      const plugin = repository.upsertScannedPlugin({
+        manifest: createPluginManifest("dev.example.installed", "Installed", "0.1.0"),
+        manifestPath: "installed-plugins/dev.example.installed/manifest.json",
+        sourceKind: "installed",
+        installDir: "installed-plugins/dev.example.installed",
+        now: 1000,
+      });
+
+      expect(plugin).toMatchObject({
+        id: "dev.example.installed",
+        sourceKind: "installed",
+        installDir: "installed-plugins/dev.example.installed",
+        enabled: true,
+      });
     } finally {
       database.close();
     }
@@ -327,6 +424,66 @@ describe("storage", () => {
         updatedAt: 2000,
       });
       expect(repository.setEnabled("dev.tooldeck.missing", true, 3000)).toBeUndefined();
+    } finally {
+      database.close();
+    }
+  });
+
+  it("stores plugin enabled state outside the scanned plugin catalog", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const plugins = new PluginRepository(database.db);
+      const states = new PluginStateRepository(database.db);
+
+      plugins.upsertScannedPlugin({
+        manifest: createPluginManifest("dev.tooldeck.json-tools", "JSON Tools", "0.0.1"),
+        manifestPath: "plugins/json-tools/manifest.json",
+        now: 1000,
+      });
+
+      expect(states.setEnabled("dev.tooldeck.json-tools", false, 2000)).toMatchObject({
+        pluginId: "dev.tooldeck.json-tools",
+        enabled: false,
+      });
+      expect(plugins.getById("dev.tooldeck.json-tools")).toMatchObject({
+        enabled: false,
+      });
+      expect(states.delete("dev.tooldeck.json-tools")).toMatchObject({
+        pluginId: "dev.tooldeck.json-tools",
+      });
+    } finally {
+      database.close();
+    }
+  });
+
+  it("creates, lists, gets, and deletes plugin install records", () => {
+    const database = openTooldeckDatabase({ path: createDatabasePath() });
+
+    try {
+      const repository = new PluginInstallRepository(database.db);
+
+      const created = repository.create({
+        pluginId: "dev.example.installed",
+        version: "0.1.0",
+        installDir: "installed-plugins/dev.example.installed",
+        manifestPath: "installed-plugins/dev.example.installed/manifest.json",
+        packageName: "dev.example.installed-0.1.0.tdplugin",
+        packageDigest: "sha256:abc",
+        packageSizeBytes: 1234,
+        installedAt: 1000,
+        updatedAt: 1000,
+      });
+
+      expect(created).toMatchObject({
+        pluginId: "dev.example.installed",
+        version: "0.1.0",
+        packageDigest: "sha256:abc",
+      });
+      expect(repository.getById("dev.example.installed")).toMatchObject(created);
+      expect(repository.list()).toEqual([created]);
+      expect(repository.delete("dev.example.installed")).toMatchObject(created);
+      expect(repository.getById("dev.example.installed")).toBeUndefined();
     } finally {
       database.close();
     }

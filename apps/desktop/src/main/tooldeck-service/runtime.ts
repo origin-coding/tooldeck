@@ -88,6 +88,8 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
       plugins: manifestIndex.listPlugins().map((plugin) => ({
         manifest: plugin.manifest,
         manifestPath: plugin.manifestPath,
+        sourceKind: plugin.source.kind,
+        installDir: plugin.source.kind === "installed" ? path.dirname(plugin.manifestPath) : null,
       })),
     });
   }

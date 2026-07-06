@@ -9,6 +9,7 @@ export interface TooldeckPathOverrides {
   userConfigDir?: string;
   userDataDir?: string;
   databasePath?: string;
+  installedPluginsDir?: string;
   userPluginsDir?: string;
   pluginDataDir?: string;
   cacheDir?: string;
@@ -34,6 +35,7 @@ export interface TooldeckPaths {
   userConfigDir: string;
   userDataDir: string;
   databasePath: string;
+  installedPluginsDir: string;
   userPluginsDir: string;
   pluginDataDir: string;
   cacheDir: string;
@@ -74,6 +76,7 @@ export function resolveTooldeckPaths(options: ResolveTooldeckPathsOptions = {}):
     userConfigDir,
     userDataDir,
     databasePath: pathModule.join(userDataDir, "tooldeck.sqlite"),
+    installedPluginsDir: pathModule.join(userDataDir, "installed-plugins"),
     userPluginsDir: pathModule.join(userDataDir, "plugins"),
     pluginDataDir: pathModule.join(userDataDir, "plugin-data"),
     cacheDir,
