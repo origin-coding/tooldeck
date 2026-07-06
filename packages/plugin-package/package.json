@@ -1,30 +1,22 @@
 {
-  "name": "@tooldeck/plugin-tools",
-  "version": "1.2.0",
-  "description": "Development tools for Tooldeck plugins.",
+  "name": "@tooldeck/plugin-package",
+  "version": "0.1.0",
+  "description": "Tooldeck .tdplugin package format utilities.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/origin-coding/tooldeck.git",
-    "directory": "packages/plugin-tools"
+    "directory": "packages/plugin-package"
   },
-  "bin": {
-    "tooldeck-plugin": "bin/tooldeck-plugin.js",
-    "tooldeck-plugin-types": "bin/tooldeck-plugin-types.js"
-  },
-  "type": "module",
-  "types": "./dist/index.d.ts",
   "files": [
-    "bin",
     "dist"
   ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./testing": {
-      "types": "./dist/testing.d.ts",
-      "import": "./dist/testing.js"
     }
   },
   "publishConfig": {
@@ -36,13 +28,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tooldeck/plugin-package": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
     "ajv": "^8.20.0",
-    "citty": "^0.2.2",
-    "consola": "^3.4.2",
-    "json-schema-to-typescript": "^15.0.4",
-    "scule": "^1.3.0"
+    "fflate": "^0.8.3"
   },
   "devDependencies": {
     "@types/node": "^25.9.1"

@@ -4,6 +4,7 @@ import { defineBuildCommand } from "./build";
 import { defineCheckCommand } from "./check";
 import { defineGenerateCommand, defineGenerateTypesCommand } from "./generate";
 import { defineInspectCommand } from "./inspect";
+import { defineDistCommand, definePackCommand } from "./pack";
 
 export function createPluginToolsCommand() {
   return defineCommand({
@@ -15,6 +16,8 @@ export function createPluginToolsCommand() {
       generate: defineGenerateCommand(),
       check: defineCheckCommand(),
       build: defineBuildCommand(),
+      pack: definePackCommand(),
+      dist: defineDistCommand(),
       inspect: defineInspectCommand(),
     },
   });
@@ -23,7 +26,9 @@ export function createPluginToolsCommand() {
 export {
   defineBuildCommand,
   defineCheckCommand,
+  defineDistCommand,
   defineGenerateCommand,
   defineGenerateTypesCommand,
   defineInspectCommand,
+  definePackCommand,
 };

@@ -46,6 +46,18 @@ package digest 是生成后的 `.tdplugin` 文件字节 digest。同一个文件
 
 `@tooldeck/plugin-packages` 在 1.3 P0 中保持为 workspace-internal implementation package。在 package format、API shape、error model 和 compatibility expectations 稳定之前，不应作为 public npm package 对待。
 
+### 后续决策：公开包命名
+
+在 1.3 初始规划之后，我们重新审视了 package 边界。该包现在命名为 `@tooldeck/plugin-package`，而不是 `@tooldeck/plugin-packages`。
+
+原因是：
+
+- 该包是一个 Tooldeck plugin package format 的共享实现，不是一组私有 package record 的集合。
+- `@tooldeck/plugin-tools` 需要在公开插件作者工具链中依赖它，因此继续保持私有会形成错误的依赖边界。
+- 单数命名更符合产品语义：一个 `.tdplugin` 是一个 plugin package container。
+
+1.3 planning 文档保留早期 plural/private 表述，作为历史规划上下文，不应为了这次命名变化回写修改。当前实现和未来引用应使用 `@tooldeck/plugin-package`。
+
 ## Consequences
 
 使用 `fflate` 可以让实现保持 pure JavaScript/TypeScript，并避免 Electron native dependency rebuild 问题。

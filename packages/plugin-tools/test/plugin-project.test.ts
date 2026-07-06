@@ -1,5 +1,5 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -15,6 +15,8 @@ import {
   formatPluginInspection,
   generatePluginCommandTypesFile,
   inspectPluginProject,
+  distPluginProject,
+  packPluginProject,
   PluginBuildError,
 } from "../src";
 
@@ -333,6 +335,100 @@ describe("buildPluginProject", () => {
     await expect(buildPluginProject({ bundler: "esbuild" })).rejects.toMatchObject({
       stage: "setup",
     } satisfies Partial<PluginBuildError>);
+  });
+});
+
+describe("packPluginProject", () => {
+  it("creates a .tdplugin package from built output", async () => {
+    const projectDir = await createPluginProject();
+    const outputPath = path.join(projectDir, "release.tdplugin");
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+    await mkdir(path.join(projectDir, "dist"), { recursive: true });
+    await writeFile(
+      path.join(projectDir, "dist", "index.js"),
+      "export default { activate() {} };\n",
+      "utf8",
+    );
+
+    const result = await packPluginProject({ outputPath });
+
+    expect(result.packagePath).toBe(outputPath);
+    expect(result.pluginId).toBe("dev.tooldeck.test-tools");
+    expect(result.files).toContain("manifest.json");
+    expect(result.files).toContain("tooldeck-package.json");
+    expect(existsSync(outputPath)).toBe(true);
+  });
+
+  it("overwrites an existing output package path", async () => {
+    const projectDir = await createPluginProject();
+    const outputPath = path.join(projectDir, "release.tdplugin");
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+    await mkdir(path.join(projectDir, "dist"), { recursive: true });
+    await writeFile(
+      path.join(projectDir, "dist", "index.js"),
+      "export default { activate() {} };\n",
+      "utf8",
+    );
+    await writeFile(outputPath, "old package", "utf8");
+
+    const result = await packPluginProject({ outputPath });
+
+    expect(result.packagePath).toBe(outputPath);
+    await expect(readFile(outputPath, "utf8")).resolves.not.toBe("old package");
+  });
+
+  it("wires the pack subcommand", async () => {
+    const projectDir = await createPluginProject();
+    const outputPath = path.join(projectDir, "release.tdplugin");
+
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+    await mkdir(path.join(projectDir, "dist"), { recursive: true });
+    await writeFile(
+      path.join(projectDir, "dist", "index.js"),
+      "export default { activate() {} };\n",
+      "utf8",
+    );
+
+    await expect(
+      runCommand(createPluginToolsCommand(), {
+        rawArgs: ["pack", "--output", outputPath],
+      }),
+    ).resolves.toEqual({ result: undefined });
+    expect(existsSync(outputPath)).toBe(true);
+  });
+
+  it("builds and packages with dist", async () => {
+    const projectDir = await createPluginProject();
+    const outputPath = path.join(projectDir, "release.tdplugin");
+
+    await writeFakeVite(projectDir);
+    process.chdir(projectDir);
+
+    const result = await distPluginProject({ outputPath });
+
+    expect(result.packagePath).toBe(outputPath);
+    expect(result.stages).toEqual(["generate", "check", "vite build", "check --built"]);
+    expect(existsSync(outputPath)).toBe(true);
+  });
+
+  it("wires the dist subcommand", async () => {
+    const projectDir = await createPluginProject();
+    const outputPath = path.join(projectDir, "release.tdplugin");
+
+    await writeFakeVite(projectDir);
+    process.chdir(projectDir);
+
+    await expect(
+      runCommand(createPluginToolsCommand(), {
+        rawArgs: ["dist", "--output", outputPath],
+      }),
+    ).resolves.toEqual({ result: undefined });
+    expect(existsSync(outputPath)).toBe(true);
   });
 });
 

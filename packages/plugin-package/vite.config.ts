@@ -7,15 +7,7 @@ const nodeBuiltins = new Set([
   ...builtinModules.map((moduleName) => `node:${moduleName}`),
 ]);
 
-const externalPackages = new Set([
-  "@tooldeck/plugin-package",
-  "@tooldeck/protocol",
-  "ajv",
-  "citty",
-  "consola",
-  "json-schema-to-typescript",
-  "scule",
-]);
+const externalPackages = new Set(["@tooldeck/protocol", "ajv", "fflate"]);
 
 export default defineConfig({
   cacheDir: ".vite/cache",
@@ -24,19 +16,14 @@ export default defineConfig({
     minify: false,
     outDir: "dist",
     sourcemap: true,
-    ssr: true,
+    ssr: "src/index.ts",
     target: "node22",
     rollupOptions: {
       external: (id) =>
         nodeBuiltins.has(id) || id.startsWith("node:") || externalPackages.has(getPackageName(id)),
-      input: {
-        index: "src/index.ts",
-        testing: "src/testing.ts",
-        "tooldeck-plugin": "src/tooldeck-plugin.ts",
-        "generate-command-types": "src/bin/generate-command-types.ts",
-      },
       output: {
-        entryFileNames: "[name].js",
+        codeSplitting: false,
+        entryFileNames: "index.js",
         format: "es",
       },
     },

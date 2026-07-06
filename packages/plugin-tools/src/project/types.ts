@@ -44,6 +44,29 @@ export interface BuildPluginProjectResult {
   stages: PluginBuildStage[];
 }
 
+export interface PackPluginProjectOptions {
+  manifestPath?: string;
+  generatedPath?: string;
+  outputPath?: string;
+}
+
+export interface PackPluginProjectResult {
+  packagePath: string;
+  pluginId: string;
+  version: string;
+  files: string[];
+  packageDigest: string;
+  packageSizeBytes: number;
+}
+
+export interface DistPluginProjectOptions extends PackPluginProjectOptions {
+  bundler?: string;
+}
+
+export interface DistPluginProjectResult extends PackPluginProjectResult {
+  stages: PluginBuildStage[];
+}
+
 export interface InspectPluginProjectOptions {
   manifestPath?: string;
   generatedPath?: string;
