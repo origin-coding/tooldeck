@@ -103,6 +103,10 @@ describe("CLI command support", () => {
         path: path.join(workspaceRoot, "plugins"),
       },
       {
+        kind: "installed",
+        path: paths.tooldeckPaths.installedPluginsDir,
+      },
+      {
         kind: "external",
         path: path.resolve(workspaceRoot, "../external-a"),
       },

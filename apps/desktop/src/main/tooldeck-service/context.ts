@@ -21,6 +21,7 @@ import type { TooldeckDesktopServiceOptions } from "./types";
 export class TooldeckDesktopServiceContext {
   readonly workspaceRoot: string;
   readonly pluginsRoot: string;
+  readonly installedPluginsDir: string;
   readonly pluginSources: PluginScanSource[];
   readonly storagePath: string;
   database?: TooldeckDatabase;
@@ -36,6 +37,10 @@ export class TooldeckDesktopServiceContext {
   constructor(options: TooldeckDesktopServiceOptions = {}) {
     this.workspaceRoot = options.workspaceRoot ?? findWorkspaceRoot();
     this.pluginsRoot = options.pluginsRoot ?? path.join(this.workspaceRoot, "plugins");
+    this.storagePath =
+      options.storagePath ?? path.join(this.workspaceRoot, ".data", "tooldeck.sqlite");
+    this.installedPluginsDir =
+      options.installedPluginsDir ?? path.join(path.dirname(this.storagePath), "installed-plugins");
     this.pluginSources =
       options.pluginSources ??
       [
@@ -43,13 +48,15 @@ export class TooldeckDesktopServiceContext {
           kind: "builtin" as const,
           path: this.pluginsRoot,
         },
+        {
+          kind: "installed" as const,
+          path: this.installedPluginsDir,
+        },
         ...(options.pluginDirs ?? []).map((pluginDir) => ({
           kind: "external" as const,
           path: pluginDir,
         })),
       ];
-    this.storagePath =
-      options.storagePath ?? path.join(this.workspaceRoot, ".data", "tooldeck.sqlite");
   }
 
   requireCommandService(): CommandService {

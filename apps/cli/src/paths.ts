@@ -45,6 +45,7 @@ export function printTooldeckPaths(paths: TooldeckPaths): void {
     ["userConfigDir", paths.userConfigDir],
     ["userDataDir", paths.userDataDir],
     ["databasePath", paths.databasePath],
+    ["installedPluginsDir", paths.installedPluginsDir],
     ["userPluginsDir", paths.userPluginsDir],
     ["pluginDataDir", paths.pluginDataDir],
     ["cacheDir", paths.cacheDir],

@@ -1,4 +1,5 @@
 import { performance } from "node:perf_hooks";
+import path from "node:path";
 
 import {
   type IndexedCommand,
@@ -393,6 +394,8 @@ function syncScannedPluginIndex(options: {
     plugins: options.manifestIndex.listPlugins().map((plugin) => ({
       manifest: plugin.manifest,
       manifestPath: plugin.manifestPath,
+      sourceKind: plugin.source.kind,
+      installDir: plugin.source.kind === "installed" ? path.dirname(plugin.manifestPath) : null,
     })),
   });
 }
