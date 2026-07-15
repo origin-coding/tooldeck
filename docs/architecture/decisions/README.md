@@ -18,7 +18,7 @@ NNNN-short-kebab-case-title.md
 
 ```text
 0001-tdplugin-zip-container.md
-0002-installed-plugin-source-model.md
+0002-node-plugin-management-service.md
 ```
 
 规则：

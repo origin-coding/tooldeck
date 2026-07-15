@@ -1,8 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-import { ManifestIndex, scanPluginSources } from "@tooldeck/runtime-node";
 import { createNodeRuntime } from "@tooldeck/host-node";
+import { PluginManagementService } from "@tooldeck/plugin-management-node";
 import {
   CommandRunRepository,
   openTooldeckDatabase,
@@ -25,6 +25,11 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
     this.context.preferences = new PreferenceRepository(this.context.database.db);
     this.context.plugins = new PluginRepository(this.context.database.db);
     this.context.pluginKv = new PluginKvRepository(this.context.database.db);
+    this.context.pluginManagement = new PluginManagementService({
+      database: this.context.database,
+      installedPluginsDir: this.context.installedPluginsDir,
+      pluginSources: this.context.pluginSources,
+    });
 
     await this.scanAndCreateRuntime();
   }
@@ -61,7 +66,7 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
         };
       },
       afterScan: ({ manifestIndex }) => {
-        this.syncScannedPluginIndex(manifestIndex);
+        this.context.requirePluginManagement().syncCatalog(manifestIndex);
       },
     });
 
@@ -69,28 +74,5 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
     this.context.pluginManager = runtime.pluginManager;
     this.context.manifestIndex = runtime.manifestIndex;
     this.context.commandService = runtime.commandService;
-  }
-
-  async syncScannedPlugins(): Promise<ManifestIndex> {
-    const manifestIndex = new ManifestIndex();
-
-    await scanPluginSources({
-      sources: this.context.pluginSources,
-      manifestIndex,
-    });
-    this.syncScannedPluginIndex(manifestIndex);
-
-    return manifestIndex;
-  }
-
-  private syncScannedPluginIndex(manifestIndex: ManifestIndex): void {
-    this.context.requirePlugins().syncScannedPlugins({
-      plugins: manifestIndex.listPlugins().map((plugin) => ({
-        manifest: plugin.manifest,
-        manifestPath: plugin.manifestPath,
-        sourceKind: plugin.source.kind,
-        installDir: plugin.source.kind === "installed" ? path.dirname(plugin.manifestPath) : null,
-      })),
-    });
   }
 }

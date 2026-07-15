@@ -1,0 +1,28 @@
+{
+  "name": "@tooldeck/plugin-management-node",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared Node.js plugin installation and state management services for Tooldeck.",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tooldeck/plugin-package": "workspace:*",
+    "@tooldeck/runtime-node": "workspace:*",
+    "@tooldeck/shared": "workspace:*",
+    "@tooldeck/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1"
+  }
+}
