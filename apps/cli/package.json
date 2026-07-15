@@ -10,10 +10,10 @@
   "bin": {
     "tooldeck": "dist/index.js"
   },
-  "type": "module",
   "files": [
     "dist"
   ],
+  "type": "module",
   "exports": {
     ".": "./dist/index.js"
   },
@@ -35,13 +35,14 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
-    "@tooldeck/preferences": "workspace:*",
-    "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/host-node": "workspace:*",
     "@tooldeck/json-tools": "workspace:*",
+    "@tooldeck/plugin-management-node": "workspace:*",
+    "@tooldeck/preferences": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/regex-tools": "workspace:*",
+    "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/shared": "workspace:*",
     "@tooldeck/storage": "workspace:*",
     "@types/node": "^25.9.1"

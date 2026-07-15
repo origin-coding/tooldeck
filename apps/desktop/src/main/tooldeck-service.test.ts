@@ -287,6 +287,39 @@ describe("TooldeckDesktopService", () => {
     }
   });
 
+  it("adds the managed installed source to custom desktop plugin sources", async () => {
+    const rootDir = createTempDir();
+    const externalRoot = path.join(rootDir, "external-plugins");
+    const installedPluginsDir = path.join(rootDir, "managed-plugins");
+    const storagePath = path.join(rootDir, "tooldeck.sqlite");
+    const pluginsRoot = path.resolve("../..", "plugins");
+
+    mkdirSync(externalRoot, { recursive: true });
+
+    const service = new TooldeckDesktopService({
+      installedPluginsDir,
+      pluginSources: [
+        { kind: "builtin", path: pluginsRoot },
+        { kind: "external", path: externalRoot },
+      ],
+      storagePath,
+    });
+
+    await service.start();
+
+    try {
+      expect(service.listPlugins()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: "dev.tooldeck.json-tools",
+          }),
+        ]),
+      );
+    } finally {
+      await service.dispose();
+    }
+  });
+
   it("removes plugin registry rows missing from the scanned plugin directory", async () => {
     const storagePath = createDatabasePath();
     const pluginsRoot = path.join(createTempDir(), "plugins");

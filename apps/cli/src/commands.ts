@@ -1,6 +1,19 @@
-import { performance } from "node:perf_hooks";
 import path from "node:path";
+import { performance } from "node:perf_hooks";
 
+import {
+  createNodeRuntime,
+  type CreateNodeRuntimeOptions,
+  type NodePluginHost,
+} from "@tooldeck/host-node";
+import { PluginManagementService } from "@tooldeck/plugin-management-node";
+import { validatePreferenceValue } from "@tooldeck/preferences";
+import type {
+  CommandResult,
+  LocalizedString,
+  PropertiesContentBlock,
+  PropertyValue,
+} from "@tooldeck/protocol";
 import {
   type IndexedCommand,
   ManifestIndex,
@@ -10,18 +23,6 @@ import {
   type PluginManager,
   type PluginScanSource,
 } from "@tooldeck/runtime-node";
-import {
-  createNodeRuntime,
-  type CreateNodeRuntimeOptions,
-  type NodePluginHost,
-} from "@tooldeck/host-node";
-import type {
-  CommandResult,
-  LocalizedString,
-  PropertiesContentBlock,
-  PropertyValue,
-} from "@tooldeck/protocol";
-import { validatePreferenceValue } from "@tooldeck/preferences";
 import type { JsonObject } from "@tooldeck/shared";
 import {
   CommandRunRepository,
@@ -45,6 +46,8 @@ import {
   createPluginDirCommandArg,
   createPluginsCommandArg,
   createStorageCommandArg,
+  ensureCliInstalledPluginSource,
+  resolveCliInstalledPluginsDir,
   resolveCliPluginDirOption,
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
@@ -129,6 +132,15 @@ export async function runCliCommandWithStorage(
     const preferences = new PreferenceRepository(database.db);
     const plugins = new PluginRepository(database.db);
     const pluginKv = new PluginKvRepository(database.db);
+    const pluginSources = ensureCliInstalledPluginSource(
+      resolvePluginSources(options),
+      options.storagePath,
+    );
+    const management = new PluginManagementService({
+      database,
+      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
+      pluginSources,
+    });
     const recordCommandHistory = getCommandHistoryEnabled(preferences);
     const startedAt = performance.now();
     let pluginHost: NodePluginHost | undefined;
@@ -137,7 +149,7 @@ export async function runCliCommandWithStorage(
 
     try {
       const created = await createPluginManager({
-        pluginSources: resolvePluginSources(options),
+        pluginSources,
         createPluginStorage(pluginId) {
           return {
             async get(key) {
@@ -160,11 +172,8 @@ export async function runCliCommandWithStorage(
       pluginHost = created.pluginHost;
       pluginId = created.manifestIndex.getCommandOwner(options.commandId);
 
-      assertPluginsAvailable(created, resolvePluginSources(options));
-      syncScannedPluginIndex({
-        manifestIndex: created.manifestIndex,
-        plugins,
-      });
+      assertPluginsAvailable(created, pluginSources);
+      management.syncCatalog(created.manifestIndex);
       assertCommandPluginEnabled({
         commandId: options.commandId,
         pluginId,
@@ -386,20 +395,6 @@ function formatListedCommand(command: IndexedCommand): ListedCliCommand {
   };
 }
 
-function syncScannedPluginIndex(options: {
-  manifestIndex: ManifestIndex;
-  plugins: PluginRepository;
-}): void {
-  options.plugins.syncScannedPlugins({
-    plugins: options.manifestIndex.listPlugins().map((plugin) => ({
-      manifest: plugin.manifest,
-      manifestPath: plugin.manifestPath,
-      sourceKind: plugin.source.kind,
-      installDir: plugin.source.kind === "installed" ? path.dirname(plugin.manifestPath) : null,
-    })),
-  });
-}
-
 function assertCommandPluginEnabled(options: {
   commandId: string;
   pluginId?: string;
@@ -436,6 +431,7 @@ function assertPluginsAvailable(
 function resolvePluginSources(options: {
   pluginsRoot?: string;
   pluginSources?: PluginScanSource[];
+  storagePath?: string;
 }): PluginScanSource[] {
   if (options.pluginSources) {
     return options.pluginSources;
@@ -445,12 +441,21 @@ function resolvePluginSources(options: {
     throw new Error("Missing plugin scan sources.");
   }
 
-  return [
+  const sources: PluginScanSource[] = [
     {
       kind: "builtin",
       path: options.pluginsRoot,
     },
   ];
+
+  if (options.storagePath) {
+    sources.push({
+      kind: "installed",
+      path: path.join(path.dirname(options.storagePath), "installed-plugins"),
+    });
+  }
+
+  return sources;
 }
 
 function formatPluginSourcePaths(pluginSources: PluginScanSource[]): string {

@@ -68,13 +68,7 @@ export class TooldeckDesktopCatalogService implements DesktopCatalogService {
   }
 
   async setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin> {
-    await this.runtime.syncScannedPlugins();
-
-    const plugin = this.context.requirePlugins().setEnabled(request.pluginId, request.enabled);
-
-    if (!plugin) {
-      throw new Error(`Plugin is not registered: ${request.pluginId}`);
-    }
+    await this.context.requirePluginManagement().setEnabled(request.pluginId, request.enabled);
 
     await this.runtime.scanAndCreateRuntime();
 

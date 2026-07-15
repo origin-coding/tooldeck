@@ -1,13 +1,14 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
+import { NodePluginHost } from "@tooldeck/host-node";
+import { PluginManagementService } from "@tooldeck/plugin-management-node";
 import {
   CommandService,
   ManifestIndex,
   PluginManager,
   type PluginScanSource,
 } from "@tooldeck/runtime-node";
-import { NodePluginHost } from "@tooldeck/host-node";
 import {
   CommandRunRepository,
   PluginKvRepository,
@@ -29,6 +30,7 @@ export class TooldeckDesktopServiceContext {
   preferences?: PreferenceRepository;
   plugins?: PluginRepository;
   pluginKv?: PluginKvRepository;
+  pluginManagement?: PluginManagementService;
   pluginHost?: NodePluginHost;
   pluginManager?: PluginManager;
   commandService?: CommandService;
@@ -39,24 +41,29 @@ export class TooldeckDesktopServiceContext {
     this.pluginsRoot = options.pluginsRoot ?? path.join(this.workspaceRoot, "plugins");
     this.storagePath =
       options.storagePath ?? path.join(this.workspaceRoot, ".data", "tooldeck.sqlite");
+    const requestedPluginSources = options.pluginSources ?? [
+      {
+        kind: "builtin" as const,
+        path: this.pluginsRoot,
+      },
+      ...(options.pluginDirs ?? []).map((pluginDir) => ({
+        kind: "external" as const,
+        path: pluginDir,
+      })),
+    ];
+    const configuredInstalledSources = requestedPluginSources.filter(
+      (source) => source.kind === "installed",
+    );
+
     this.installedPluginsDir =
-      options.installedPluginsDir ?? path.join(path.dirname(this.storagePath), "installed-plugins");
-    this.pluginSources =
-      options.pluginSources ??
-      [
-        {
-          kind: "builtin" as const,
-          path: this.pluginsRoot,
-        },
-        {
-          kind: "installed" as const,
-          path: this.installedPluginsDir,
-        },
-        ...(options.pluginDirs ?? []).map((pluginDir) => ({
-          kind: "external" as const,
-          path: pluginDir,
-        })),
-      ];
+      options.installedPluginsDir ??
+      (configuredInstalledSources.length === 1
+        ? configuredInstalledSources[0]!.path
+        : path.join(path.dirname(this.storagePath), "installed-plugins"));
+    this.pluginSources = normalizeDesktopPluginSources(
+      requestedPluginSources,
+      this.installedPluginsDir,
+    );
   }
 
   requireCommandService(): CommandService {
@@ -114,6 +121,40 @@ export class TooldeckDesktopServiceContext {
 
     return this.pluginKv;
   }
+
+  requirePluginManagement(): PluginManagementService {
+    if (!this.pluginManagement) {
+      throw new Error("Tooldeck desktop service has not started.");
+    }
+
+    return this.pluginManagement;
+  }
+}
+
+function normalizeDesktopPluginSources(
+  pluginSources: PluginScanSource[],
+  installedPluginsDir: string,
+): PluginScanSource[] {
+  const installedSources = pluginSources.filter((source) => source.kind === "installed");
+
+  if (installedSources.length > 1) {
+    throw new Error("Desktop plugin sources must contain at most one installed source.");
+  }
+
+  const installedSource = installedSources[0];
+
+  if (installedSource && path.resolve(installedSource.path) !== path.resolve(installedPluginsDir)) {
+    throw new Error("Desktop installed plugin source does not match installedPluginsDir.");
+  }
+
+  return [
+    ...pluginSources.filter((source) => source.kind === "builtin"),
+    installedSource ?? {
+      kind: "installed",
+      path: installedPluginsDir,
+    },
+    ...pluginSources.filter((source) => source.kind === "external"),
+  ];
 }
 
 function findWorkspaceRoot(): string {

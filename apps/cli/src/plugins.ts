@@ -1,8 +1,10 @@
 import path from "node:path";
 
-import { ManifestIndex, scanPluginSources, type PluginScanSource } from "@tooldeck/runtime-node";
+import { PluginManagementService } from "@tooldeck/plugin-management-node";
 import type { LocalizedString } from "@tooldeck/protocol";
-import { PluginRepository, type PluginRow, withRepository } from "@tooldeck/storage";
+import type { PluginScanSource } from "@tooldeck/runtime-node";
+import type { PluginRow } from "@tooldeck/storage";
+import { withTooldeckDatabase } from "@tooldeck/storage";
 import { defineCommand } from "citty";
 import { consola } from "consola";
 
@@ -12,7 +14,9 @@ import {
   createPluginDirCommandArg,
   createPluginsCommandArg,
   createStorageCommandArg,
+  ensureCliInstalledPluginSource,
   requireCliArgument,
+  resolveCliInstalledPluginsDir,
   resolveCliPluginDirOption,
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
@@ -41,41 +45,39 @@ export interface ListedCliPlugin {
 }
 
 export async function listCliPlugins(options: ListCliPluginsOptions): Promise<ListedCliPlugin[]> {
-  return withRepository(
-    options.storagePath,
-    (db) => new PluginRepository(db),
-    async (plugins) => {
-      await syncScannedPlugins({
-        pluginSources: resolvePluginSources(options),
-        plugins,
-      });
+  return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
+    const pluginSources = ensureCliInstalledPluginSource(
+      resolvePluginSources(options),
+      options.storagePath,
+    );
+    const management = new PluginManagementService({
+      database,
+      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
+      pluginSources,
+    });
+    const catalog = await management.scanAndSyncCatalog();
 
-      return plugins.list().map(formatListedPlugin);
-    },
-  );
+    return catalog.plugins.map(formatListedPlugin);
+  });
 }
 
 export async function setCliPluginEnabled(
   options: SetCliPluginEnabledOptions,
 ): Promise<ListedCliPlugin> {
-  return withRepository(
-    options.storagePath,
-    (db) => new PluginRepository(db),
-    async (plugins) => {
-      await syncScannedPlugins({
-        pluginSources: resolvePluginSources(options),
-        plugins,
-      });
+  return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
+    const pluginSources = ensureCliInstalledPluginSource(
+      resolvePluginSources(options),
+      options.storagePath,
+    );
+    const management = new PluginManagementService({
+      database,
+      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
+      pluginSources,
+    });
+    const plugin = await management.setEnabled(options.pluginId, options.enabled);
 
-      const plugin = plugins.setEnabled(options.pluginId, options.enabled);
-
-      if (!plugin) {
-        throw new Error(`Plugin is not registered: ${options.pluginId}`);
-      }
-
-      return formatListedPlugin(plugin);
-    },
-  );
+    return formatListedPlugin(plugin);
+  });
 }
 
 export function definePluginCommand(options: CreateCliCommandOptions) {
@@ -190,31 +192,10 @@ function formatListedPlugin(plugin: PluginRow): ListedCliPlugin {
   };
 }
 
-async function syncScannedPlugins(options: {
-  pluginSources: PluginScanSource[];
-  plugins: PluginRepository;
-}): Promise<ManifestIndex> {
-  const manifestIndex = new ManifestIndex();
-
-  await scanPluginSources({
-    sources: options.pluginSources,
-    manifestIndex,
-  });
-  options.plugins.syncScannedPlugins({
-    plugins: manifestIndex.listPlugins().map((plugin) => ({
-      manifest: plugin.manifest,
-      manifestPath: plugin.manifestPath,
-      sourceKind: plugin.source.kind,
-      installDir: plugin.source.kind === "installed" ? path.dirname(plugin.manifestPath) : null,
-    })),
-  });
-
-  return manifestIndex;
-}
-
 function resolvePluginSources(options: {
   pluginsRoot?: string;
   pluginSources?: PluginScanSource[];
+  storagePath: string;
 }): PluginScanSource[] {
   if (options.pluginSources) {
     return options.pluginSources;
@@ -228,6 +209,10 @@ function resolvePluginSources(options: {
     {
       kind: "builtin",
       path: options.pluginsRoot,
+    },
+    {
+      kind: "installed",
+      path: path.join(path.dirname(options.storagePath), "installed-plugins"),
     },
   ];
 }
