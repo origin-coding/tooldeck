@@ -25,10 +25,10 @@ type PluginScanSourceKind = "builtin" | "installed" | "external";
 
 含义：
 
-| 来源          | 含义                                                |
-|-------------|---------------------------------------------------|
-| `builtin`   | Tooldeck 内置插件。                                    |
-| `installed` | 用户安装到 Tooldeck 管理目录的插件。                           |
+| 来源        | 含义                                                       |
+| ----------- | ---------------------------------------------------------- |
+| `builtin`   | Tooldeck 内置插件。                                        |
+| `installed` | 用户安装到 Tooldeck 管理目录的插件。                       |
 | `external`  | 开发期通过 `--plugin-dir` 或 `TOOLDECK_PLUGIN_DIRS` 指定。 |
 
 ## 默认扫描顺序

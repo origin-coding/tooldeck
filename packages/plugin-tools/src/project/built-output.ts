@@ -20,7 +20,8 @@ export async function checkBuiltOutput(
       message: "manifest.runtime.entry does not point to an existing built file.",
       path: entryPath,
       fieldPath: "runtime.entry",
-      suggestion: "Run tooldeck-plugin build --bundler vite, or update manifest.runtime.entry to the built file path.",
+      suggestion:
+        "Run tooldeck-plugin build --bundler vite, or update manifest.runtime.entry to the built file path.",
     });
 
     return;
@@ -38,7 +39,8 @@ export async function checkBuiltOutput(
       message: `Built runtime entry is not ESM-loadable: ${formatUnknownError(error)}`,
       path: entryPath,
       fieldPath: "runtime.entry",
-      suggestion: "Ensure the built runtime entry is valid Node ESM and can be imported without activating commands.",
+      suggestion:
+        "Ensure the built runtime entry is valid Node ESM and can be imported without activating commands.",
     });
 
     return;

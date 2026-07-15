@@ -70,11 +70,11 @@ P0 职责：
 P0 可以提供以下能力方向，具体命名由实现阶段决定：
 
 ```ts
-readTooldeckPackage(path)
-validateTooldeckPackage(path)
-packTooldeckPlugin(options)
-unpackTooldeckPackage(options)
-computePackageDigest(path)
+readTooldeckPackage(path);
+validateTooldeckPackage(path);
+packTooldeckPlugin(options);
+unpackTooldeckPackage(options);
+computePackageDigest(path);
 ```
 
 这些 API 应返回结构化结果或抛出包含可行动信息的错误。错误信息应包含：

@@ -127,7 +127,11 @@ export class FflateZipAdapter implements ZipAdapter {
 
       const outputPath = path.resolve(destinationDir, ...normalizedPath.split("/"));
       assertContainedPath(resolvedDestinationDir, outputPath, normalizedPath);
-      await createExtractionDirectory(path.dirname(outputPath), options.archivePath, normalizedPath);
+      await createExtractionDirectory(
+        path.dirname(outputPath),
+        options.archivePath,
+        normalizedPath,
+      );
       await writeExtractedFile(outputPath, fileData, options.archivePath, normalizedPath);
 
       const outputRealpath = await getExtractionRealpath(
@@ -204,11 +208,15 @@ async function createExtractionDirectory(
   try {
     await mkdir(directoryPath, { recursive: true });
   } catch (error) {
-    throw packageError("PACKAGE_EXTRACT_FAILED", "Package extraction directory could not be created.", {
-      packagePath: archivePath,
-      entryPath,
-      reason: formatUnknownError(error),
-    });
+    throw packageError(
+      "PACKAGE_EXTRACT_FAILED",
+      "Package extraction directory could not be created.",
+      {
+        packagePath: archivePath,
+        entryPath,
+        reason: formatUnknownError(error),
+      },
+    );
   }
 }
 
@@ -285,9 +293,13 @@ function validateEntries(entries: CentralDirectoryEntry[], limits: TooldeckPacka
   }
 
   if (uncompressedSizeBytes > limits.maxUncompressedSizeBytes) {
-    throw packageError("UNCOMPRESSED_SIZE_TOO_LARGE", "Tooldeck package is too large after unzip.", {
-      reason: `${uncompressedSizeBytes} > ${limits.maxUncompressedSizeBytes}`,
-    });
+    throw packageError(
+      "UNCOMPRESSED_SIZE_TOO_LARGE",
+      "Tooldeck package is too large after unzip.",
+      {
+        reason: `${uncompressedSizeBytes} > ${limits.maxUncompressedSizeBytes}`,
+      },
+    );
   }
 }
 
@@ -406,10 +418,14 @@ function assertContainedPath(root: string, target: string, entryPath: string): v
   const relative = path.relative(root, target);
 
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw packageError("EXTRACTION_ESCAPE", "Package extraction escaped the destination directory.", {
-      entryPath,
-      reason: target,
-    });
+    throw packageError(
+      "EXTRACTION_ESCAPE",
+      "Package extraction escaped the destination directory.",
+      {
+        entryPath,
+        reason: target,
+      },
+    );
   }
 }
 

@@ -1,8 +1,4 @@
-import type {
-  JsonValue,
-  LocalizedString,
-  PluginContributes,
-} from "@tooldeck/protocol";
+import type { JsonValue, LocalizedString, PluginContributes } from "@tooldeck/protocol";
 
 export interface TooldeckPackageLimits {
   maxPackageSizeBytes: number;

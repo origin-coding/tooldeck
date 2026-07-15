@@ -133,9 +133,7 @@ describe("scanPluginDirectory", () => {
     });
 
     expect(manifestIndex.getCommandOwner("builtin.run")).toBe("dev.tooldeck.builtin-plugin");
-    expect(manifestIndex.getCommandOwner("installed.run")).toBe(
-      "dev.tooldeck.installed-plugin",
-    );
+    expect(manifestIndex.getCommandOwner("installed.run")).toBe("dev.tooldeck.installed-plugin");
     expect(manifestIndex.getCommandOwner("external.run")).toBe("dev.tooldeck.external-plugin");
     expect(manifestIndex.getCommand("installed.run")).toMatchObject({
       source: {

@@ -171,7 +171,9 @@ describe("checkPluginProject", () => {
       suggestion: 'Add "runtime.entry": "./dist/index.js".',
     });
     expect(formatPluginCheckResult(result)).toContain("Field: runtime.entry");
-    expect(formatPluginCheckResult(result)).toContain('Fix: Add "runtime.entry": "./dist/index.js".');
+    expect(formatPluginCheckResult(result)).toContain(
+      'Fix: Add "runtime.entry": "./dist/index.js".',
+    );
   });
 
   it("rejects unsupported field x-ui properties for the selected control", async () => {
@@ -238,8 +240,7 @@ describe("checkPluginProject", () => {
     expect(
       result.diagnostics.some(
         (diagnostic) =>
-          diagnostic.code === "SCHEMA_X_I18N" &&
-          diagnostic.message.includes("enumLabels.pretty"),
+          diagnostic.code === "SCHEMA_X_I18N" && diagnostic.message.includes("enumLabels.pretty"),
       ),
     ).toBe(true);
   });

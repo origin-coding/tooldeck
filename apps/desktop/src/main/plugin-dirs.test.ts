@@ -2,11 +2,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import {
-  parsePluginDirArgs,
-  parsePluginDirsEnv,
-  resolveDesktopPluginDirs,
-} from "./plugin-dirs";
+import { parsePluginDirArgs, parsePluginDirsEnv, resolveDesktopPluginDirs } from "./plugin-dirs";
 
 describe("desktop plugin dir resolution", () => {
   it("parses repeated --plugin-dir arguments", () => {
@@ -39,10 +35,7 @@ describe("desktop plugin dir resolution", () => {
           TOOLDECK_PLUGIN_DIRS: "../external-b",
         },
       }),
-    ).toEqual([
-      path.resolve(baseDir, "../external-a"),
-      path.resolve(baseDir, "../external-b"),
-    ]);
+    ).toEqual([path.resolve(baseDir, "../external-a"), path.resolve(baseDir, "../external-b")]);
   });
 
   it("throws a clear error when --plugin-dir has no value", () => {

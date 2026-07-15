@@ -11,12 +11,12 @@
     "tooldeck-plugin": "bin/tooldeck-plugin.js",
     "tooldeck-plugin-types": "bin/tooldeck-plugin-types.js"
   },
-  "type": "module",
-  "types": "./dist/index.d.ts",
   "files": [
     "bin",
     "dist"
   ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

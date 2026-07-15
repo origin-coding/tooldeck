@@ -62,19 +62,19 @@ export default defineConfig({
 
 1.2 只支持 commands-only Node 插件构建。默认约定：
 
-| 项目 | 默认值 |
-| --- | --- |
-| manifest | `manifest.json` |
-| runtime kind | `node` |
-| source entry | `src/index.ts` |
-| output dir | `dist` |
-| output file | `index.js` |
-| output format | ESM |
-| target | `node22` |
-| sourcemap | `true` |
-| minify | `false` |
-| code splitting | `false` |
-| cache dir | `.vite/cache` |
+| 项目           | 默认值          |
+| -------------- | --------------- |
+| manifest       | `manifest.json` |
+| runtime kind   | `node`          |
+| source entry   | `src/index.ts`  |
+| output dir     | `dist`          |
+| output file    | `index.js`      |
+| output format  | ESM             |
+| target         | `node22`        |
+| sourcemap      | `true`          |
+| minify         | `false`         |
+| code splitting | `false`         |
+| cache dir      | `.vite/cache`   |
 
 生成产物默认路径：
 
@@ -99,27 +99,27 @@ dist/index.js
 
 ```ts
 export default {
-    cacheDir: ".vite/cache",
-    build: {
-        emptyOutDir: true,
-        minify: false,
-        outDir: "dist",
-        sourcemap: true,
-        ssr: "src/index.ts",
-        target: "node22",
-        rollupOptions: {
-            external: nodeBuiltins,
-            output: {
-                codeSplitting: false,
-                entryFileNames: "index.js",
-                format: "es",
-            },
-        },
+  cacheDir: ".vite/cache",
+  build: {
+    emptyOutDir: true,
+    minify: false,
+    outDir: "dist",
+    sourcemap: true,
+    ssr: "src/index.ts",
+    target: "node22",
+    rollupOptions: {
+      external: nodeBuiltins,
+      output: {
+        codeSplitting: false,
+        entryFileNames: "index.js",
+        format: "es",
+      },
     },
-    ssr: {
-        noExternal: true,
-    },
-}
+  },
+  ssr: {
+    noExternal: true,
+  },
+};
 ```
 
 实现时不需要暴露这份对象本身，但行为应与该约定等价。

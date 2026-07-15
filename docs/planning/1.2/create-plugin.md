@@ -83,14 +83,14 @@ my-plugin/
 
 `@tooldeck/create-plugin` 初版使用：
 
-| 能力 | 选择 |
-| --- | --- |
-| CLI framework | `citty` |
-| Prompts | `@clack/prompts` |
-| Logs | `consola` |
-| Local template IO | `node:fs/promises` |
-| Template rendering | `eta` |
-| Dependency install | `nypm` |
+| 能力               | 选择               |
+| ------------------ | ------------------ |
+| CLI framework      | `citty`            |
+| Prompts            | `@clack/prompts`   |
+| Logs               | `consola`          |
+| Local template IO  | `node:fs/promises` |
+| Template rendering | `eta`              |
+| Dependency install | `nypm`             |
 
 1.2 暂不支持远程模板，因此不引入 giget 作为必要依赖。未来如果需要支持远程 template registry、GitHub 子目录模板或缓存下载，可以单独评估 giget。
 

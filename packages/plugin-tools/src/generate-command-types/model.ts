@@ -1,6 +1,5 @@
-import { camelCase, pascalCase } from "scule";
-
 import type { PluginManifest, TooldeckInputJsonSchema } from "@tooldeck/protocol";
+import { camelCase, pascalCase } from "scule";
 
 import type { GeneratePluginCommandTypesOptions, GeneratedCommandTypesModel } from "./types";
 

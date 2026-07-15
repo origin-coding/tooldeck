@@ -11,12 +11,12 @@
     "create-plugin": "dist/create-tooldeck-plugin.js",
     "create-tooldeck-plugin": "dist/create-tooldeck-plugin.js"
   },
-  "type": "module",
-  "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "templates"
   ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

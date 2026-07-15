@@ -1,4 +1,9 @@
-import type { CommandResult, ContentBlock, LocalizedString, PluginManifest } from "@tooldeck/protocol";
+import type {
+  CommandResult,
+  ContentBlock,
+  LocalizedString,
+  PluginManifest,
+} from "@tooldeck/protocol";
 
 type MaybePromise<T> = T | Promise<T>;
 type JsonPrimitive = string | number | boolean | null;
@@ -356,7 +361,12 @@ function validateContentBlock(commandId: string, block: unknown, path: string): 
     };
   }
 
-  throwInvalidCommandResult(commandId, `${path}.type`, "text | code | json | properties", block.type);
+  throwInvalidCommandResult(
+    commandId,
+    `${path}.type`,
+    "text | code | json | properties",
+    block.type,
+  );
 }
 
 function validateCommandError(commandId: string, error: unknown): CommandResult["error"] {

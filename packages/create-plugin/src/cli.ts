@@ -59,7 +59,9 @@ async function resolveCreatePluginOptions(
   parsed: ReturnType<typeof parseCreatePluginArgs>,
 ): Promise<CreatePluginProjectOptions> {
   if (parsed.template && parsed.template !== "plugin-node-vite") {
-    throw new Error(`Unsupported template: ${parsed.template}. Only plugin-node-vite is available.`);
+    throw new Error(
+      `Unsupported template: ${parsed.template}. Only plugin-node-vite is available.`,
+    );
   }
 
   if (parsed.yes) {
@@ -110,8 +112,7 @@ async function resolveCreatePluginOptions(
       validatePromptId("Command ID"),
     ));
   const install =
-    parsed.install ??
-    (await promptConfirm(prompts, "Install dependencies now?", false));
+    parsed.install ?? (await promptConfirm(prompts, "Install dependencies now?", false));
 
   prompts.outro("Scaffolding project");
 

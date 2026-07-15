@@ -1,6 +1,5 @@
-import { compile } from "json-schema-to-typescript";
-
 import type { PluginManifest } from "@tooldeck/protocol";
+import { compile } from "json-schema-to-typescript";
 
 import { createCommandTypesModel, quotePropertyName } from "./model";
 import { sanitizeSchemaForTypescript } from "./schema";

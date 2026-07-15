@@ -82,13 +82,7 @@ export function checkSupportedSchemaExtensions(
           continue;
         }
 
-        checkInputFieldUi(
-          propertySchema,
-          manifestPath,
-          commandIndex,
-          propertyName,
-          diagnostics,
-        );
+        checkInputFieldUi(propertySchema, manifestPath, commandIndex, propertyName, diagnostics);
       }
     }
 
@@ -101,7 +95,8 @@ export function checkSupportedSchemaExtensions(
         message: `Command ${command.id} outputSchema must not use x-ui.`,
         path: manifestPath,
         fieldPath: `contributes.commands[${commandIndex}].outputSchema.x-ui`,
-        suggestion: "Remove x-ui from outputSchema. UI hints are only supported on command input schemas.",
+        suggestion:
+          "Remove x-ui from outputSchema. UI hints are only supported on command input schemas.",
       });
     }
   });
@@ -380,7 +375,8 @@ function checkSchemaI18n(
         message: `Command at index ${commandIndex} ${schemaPath}.x-i18n.enumLabels must be an object of locale key strings.`,
         path: manifestPath,
         fieldPath: inputSchemaFieldPath(commandIndex, schemaPath, "x-i18n.enumLabels"),
-        suggestion: "Change x-i18n.enumLabels to an object mapping enum values to locale key strings.",
+        suggestion:
+          "Change x-i18n.enumLabels to an object mapping enum values to locale key strings.",
       });
       return;
     }
@@ -440,7 +436,8 @@ function checkInputFieldUi(
       message: `Unsupported x-ui.control on ${propertyName}: ${String(control)}`,
       path: manifestPath,
       fieldPath: inputFieldUiPath(commandIndex, propertyName, "control"),
-      suggestion: "Use a supported control: text, textarea, number, checkbox, radio, select, checkboxGroup, or multiSelect.",
+      suggestion:
+        "Use a supported control: text, textarea, number, checkbox, radio, select, checkboxGroup, or multiSelect.",
     });
 
     return;
@@ -551,13 +548,8 @@ function isLocalizedString(value: unknown): boolean {
   );
 }
 
-function inputSchemaFieldPath(
-  commandIndex: number,
-  schemaPath: string,
-  suffix?: string,
-): string {
-  const normalizedSchemaPath =
-    schemaPath === "$" ? "" : schemaPath.replace(/^\$\.?/, ".");
+function inputSchemaFieldPath(commandIndex: number, schemaPath: string, suffix?: string): string {
+  const normalizedSchemaPath = schemaPath === "$" ? "" : schemaPath.replace(/^\$\.?/, ".");
   const basePath = `contributes.commands[${commandIndex}].inputSchema${normalizedSchemaPath}`;
 
   return suffix ? `${basePath}.${suffix}` : basePath;

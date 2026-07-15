@@ -54,7 +54,7 @@ tooldeckPlugin({
   outputFile: "index.js",
   target: "node22",
   sourcemap: true,
-  minify: false
+  minify: false,
 });
 ```
 
