@@ -57,6 +57,9 @@ importers:
       '@tooldeck/json-tools':
         specifier: workspace:*
         version: link:../../plugins/json-tools
+      '@tooldeck/plugin-management-node':
+        specifier: workspace:*
+        version: link:../../packages/plugin-management-node
       '@tooldeck/preferences':
         specifier: workspace:*
         version: link:../../packages/preferences
@@ -124,6 +127,9 @@ importers:
       '@tooldeck/json-tools':
         specifier: workspace:*
         version: link:../../plugins/json-tools
+      '@tooldeck/plugin-management-node':
+        specifier: workspace:*
+        version: link:../../packages/plugin-management-node
       '@tooldeck/preferences':
         specifier: workspace:*
         version: link:../../packages/preferences
@@ -218,6 +224,25 @@ importers:
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../shared
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+
+  packages/plugin-management-node:
+    dependencies:
+      '@tooldeck/plugin-package':
+        specifier: workspace:*
+        version: link:../plugin-package
+      '@tooldeck/runtime-node':
+        specifier: workspace:*
+        version: link:../runtime-node
+      '@tooldeck/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@tooldeck/storage':
+        specifier: workspace:*
+        version: link:../storage
     devDependencies:
       '@types/node':
         specifier: ^25.9.1
