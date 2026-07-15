@@ -1,7 +1,8 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 import {
   desktopIpcChannels,
+  type CatalogLocaleRequest,
   type DesktopApi,
   type GetPreferenceRequest,
   type ListCommandsRequest,
@@ -31,6 +32,18 @@ const api: DesktopApi = {
   },
   setPluginEnabled(request: SetPluginEnabledRequest) {
     return ipcRenderer.invoke(desktopIpcChannels.setPluginEnabled, request);
+  },
+  installDroppedPluginPackage(file: File, request: CatalogLocaleRequest = {}) {
+    const packagePath = webUtils.getPathForFile(file);
+
+    if (!packagePath) {
+      throw new Error("Dropped plugin package is not backed by a local file.");
+    }
+
+    return ipcRenderer.invoke(desktopIpcChannels.installPluginPackage, {
+      packagePath,
+      ...request,
+    });
   },
   rescanPlugins(request?: RescanPluginsRequest) {
     return ipcRenderer.invoke(desktopIpcChannels.rescanPlugins, request);

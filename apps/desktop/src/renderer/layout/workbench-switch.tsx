@@ -91,6 +91,9 @@ function PluginWorkbenchContainer() {
     selectedCommandId,
     selectedPluginId,
     isLoadingData,
+    pluginInstall,
+    installDroppedPluginPackage,
+    rescanPlugins,
     selectCommand,
     setPluginEnabled,
   } = useDesktopStore(
@@ -100,6 +103,9 @@ function PluginWorkbenchContainer() {
       selectedCommandId: state.selectedCommandId,
       selectedPluginId: state.selectedPluginId,
       isLoadingData: state.isLoadingData,
+      pluginInstall: state.pluginInstall,
+      installDroppedPluginPackage: state.installDroppedPluginPackage,
+      rescanPlugins: state.rescanPlugins,
       selectCommand: state.selectCommand,
       setPluginEnabled: state.setPluginEnabled,
     })),
@@ -123,7 +129,10 @@ function PluginWorkbenchContainer() {
     <PluginWorkbench
       plugin={selectedPlugin}
       commands={selectedPluginCommands}
+      installState={pluginInstall}
       isLoading={isLoadingData}
+      onInstall={installDroppedPluginPackage}
+      onRescan={rescanPlugins}
       onSelectCommand={selectCommand}
       onSetEnabled={setPluginEnabled}
     />

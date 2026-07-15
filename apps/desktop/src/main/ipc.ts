@@ -3,6 +3,7 @@ import { ipcMain } from "electron";
 import {
   desktopIpcChannels,
   type GetPreferenceRequest,
+  type InstallPluginPackageIpcRequest,
   type ListCommandsRequest,
   type ListCommandRunsRequest,
   type ListPluginsRequest,
@@ -31,6 +32,10 @@ export function registerTooldeckIpc(service: TooldeckDesktopService): () => void
   ipcMain.handle(desktopIpcChannels.setPluginEnabled, (_event, request: SetPluginEnabledRequest) =>
     service.setPluginEnabled(request),
   );
+  ipcMain.handle(
+    desktopIpcChannels.installPluginPackage,
+    (_event, request: InstallPluginPackageIpcRequest) => service.installPluginPackage(request),
+  );
   ipcMain.handle(desktopIpcChannels.rescanPlugins, (_event, request?: RescanPluginsRequest) =>
     service.rescanPlugins(request),
   );
@@ -48,6 +53,7 @@ export function registerTooldeckIpc(service: TooldeckDesktopService): () => void
     ipcMain.removeHandler(desktopIpcChannels.getPreference);
     ipcMain.removeHandler(desktopIpcChannels.setPreference);
     ipcMain.removeHandler(desktopIpcChannels.setPluginEnabled);
+    ipcMain.removeHandler(desktopIpcChannels.installPluginPackage);
     ipcMain.removeHandler(desktopIpcChannels.rescanPlugins);
     ipcMain.removeHandler(desktopIpcChannels.runCommand);
     ipcMain.removeHandler(desktopIpcChannels.listCommandRuns);

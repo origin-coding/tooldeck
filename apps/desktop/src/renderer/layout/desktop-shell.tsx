@@ -26,6 +26,7 @@ export function DesktopShell() {
     isLoadingData,
     isRunning,
     loadError,
+    pluginInstall,
     view,
   } = useDesktopStore(
     useShallow((state) => ({
@@ -38,6 +39,7 @@ export function DesktopShell() {
       isLoadingData: state.isLoadingData,
       isRunning: state.isRunning,
       loadError: state.loadError,
+      pluginInstall: state.pluginInstall,
       view: state.view,
     })),
   );
@@ -159,7 +161,12 @@ export function DesktopShell() {
           view === "main" && selectedCommand ? (
             <Button
               key="run"
-              disabled={!selectedCommand.pluginEnabled || isLoadingData || isRunning}
+              disabled={
+                !selectedCommand.pluginEnabled ||
+                isLoadingData ||
+                isRunning ||
+                pluginInstall.status === "refresh-failed"
+              }
               htmlType="button"
               icon={<Play size={15} />}
               loading={isRunning}

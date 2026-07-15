@@ -31,7 +31,8 @@ export const createCommandSlice: DesktopStoreSlice<CommandSlice> = (set, get) =>
       !selectedCommand ||
       !selectedCommand.pluginEnabled ||
       current.isLoadingData ||
-      current.isRunning
+      current.isRunning ||
+      current.pluginInstall.status === "refresh-failed"
     ) {
       return;
     }

@@ -1,8 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { packTooldeckPlugin } from "@tooldeck/plugin-package";
 import { openTooldeckDatabase, PluginRepository } from "@tooldeck/storage";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -320,6 +321,75 @@ describe("TooldeckDesktopService", () => {
     }
   });
 
+  it("installs a package, refreshes the runtime, and runs its command", async () => {
+    const rootDir = createTempDir();
+    const pluginsRoot = path.join(rootDir, "builtin-plugins");
+    const installedPluginsDir = path.join(rootDir, "installed-plugins");
+    const storagePath = path.join(rootDir, "tooldeck.sqlite");
+    const activationMarkerPath = path.join(rootDir, "installed-plugin-activated.txt");
+    const packagePath = await createInstallablePluginPackage({
+      rootDir,
+      activationMarkerPath,
+      commandId: "installed.echo",
+      pluginId: "dev.example.desktop-installed",
+    });
+    const service = new TooldeckDesktopService({
+      installedPluginsDir,
+      pluginsRoot,
+      storagePath,
+    });
+
+    mkdirSync(pluginsRoot, { recursive: true });
+    await service.start();
+
+    try {
+      const installed = await service.installPluginPackage({
+        packagePath,
+        locale: "en-US",
+      });
+
+      expect(installed).toMatchObject({
+        status: "installed",
+        installedPluginId: "dev.example.desktop-installed",
+        packageName: path.basename(packagePath),
+        plugins: expect.arrayContaining([
+          expect.objectContaining({
+            id: "dev.example.desktop-installed",
+            sourceKind: "installed",
+            runtimeState: "inactive",
+          }),
+        ]),
+        commands: expect.arrayContaining([
+          expect.objectContaining({
+            id: "installed.echo",
+            pluginId: "dev.example.desktop-installed",
+          }),
+        ]),
+      });
+      expect(existsSync(activationMarkerPath)).toBe(false);
+
+      await expect(
+        service.runCommand({
+          commandId: "installed.echo",
+        }),
+      ).resolves.toEqual({
+        status: "success",
+        blocks: [{ type: "text", text: "installed ok" }],
+      });
+      expect(existsSync(activationMarkerPath)).toBe(true);
+      expect(service.listCommandRuns()).toEqual([
+        expect.objectContaining({
+          commandId: "installed.echo",
+          pluginId: "dev.example.desktop-installed",
+          source: "desktop",
+          status: "success",
+        }),
+      ]);
+    } finally {
+      await service.dispose();
+    }
+  });
+
   it("removes plugin registry rows missing from the scanned plugin directory", async () => {
     const storagePath = createDatabasePath();
     const pluginsRoot = path.join(createTempDir(), "plugins");
@@ -582,4 +652,66 @@ async function createEchoPlugin(options: {
     `,
     "utf8",
   );
+}
+
+async function createInstallablePluginPackage(options: {
+  activationMarkerPath: string;
+  commandId: string;
+  pluginId: string;
+  rootDir: string;
+}): Promise<string> {
+  const projectDir = path.join(options.rootDir, "installable-plugin-project");
+  const runtimeDir = path.join(projectDir, "dist");
+  const packagePath = path.join(options.rootDir, `${options.pluginId}-1.0.0.tdplugin`);
+
+  mkdirSync(runtimeDir, { recursive: true });
+  await writeFile(
+    path.join(projectDir, "manifest.json"),
+    JSON.stringify({
+      schemaVersion: "1.0",
+      id: options.pluginId,
+      name: "Desktop Installed Plugin",
+      version: "1.0.0",
+      runtime: {
+        kind: "node",
+        entry: "./dist/index.js",
+      },
+      contributes: {
+        commands: [
+          {
+            id: options.commandId,
+            title: "Installed Echo",
+          },
+        ],
+      },
+    }),
+    "utf8",
+  );
+  await writeFile(
+    path.join(runtimeDir, "index.js"),
+    `
+      import { writeFile } from "node:fs/promises";
+
+      await writeFile(${JSON.stringify(options.activationMarkerPath)}, "activated", "utf8");
+
+      export default {
+        activate(ctx) {
+          ctx.subscriptions.push(
+            ctx.commands.register(${JSON.stringify(options.commandId)}, () => ({
+              status: "success",
+              blocks: [{ type: "text", text: "installed ok" }],
+            })),
+          );
+        },
+      };
+    `,
+    "utf8",
+  );
+  await packTooldeckPlugin({
+    projectDir,
+    outputPath: packagePath,
+    createdAt: new Date("2026-07-15T00:00:00.000Z"),
+  });
+
+  return packagePath;
 }

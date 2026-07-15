@@ -70,6 +70,7 @@ function createPlugin(id: string): DesktopPlugin {
     name: id,
     version: "1.0.0",
     manifestPath: `plugins/${id}/manifest.json`,
+    sourceKind: "builtin",
     enabled: true,
     runtimeState: "inactive",
     commandCount: 1,
