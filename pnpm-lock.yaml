@@ -227,6 +227,9 @@ importers:
       '@tooldeck/runtime-node':
         specifier: workspace:*
         version: link:../runtime-node
+      '@tooldeck/sdk-node':
+        specifier: workspace:*
+        version: link:../sdk-node
       '@tooldeck/shared':
         specifier: workspace:*
         version: link:../shared

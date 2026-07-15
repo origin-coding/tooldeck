@@ -6,7 +6,7 @@ import type {
   PluginContextV1,
   PluginStorage,
   ToolboxPluginV1,
-} from "@tooldeck/runtime-node";
+} from "@tooldeck/sdk-node";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 export interface NodePluginHostOptions {

@@ -73,10 +73,6 @@
       "json": "JSON",
       "properties": "属性",
       "code": "代码"
-    },
-    "historyList": {
-      "loading": "正在加载历史",
-      "empty": "暂无命令运行记录"
     }
   },
   "plugin": {

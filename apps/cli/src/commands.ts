@@ -52,6 +52,7 @@ import {
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
 } from "./runtime";
+import { serializeError } from "./serialize-error";
 
 export interface RunCliCommandOptions {
   commandId: string;
@@ -323,28 +324,35 @@ export function defineRunCommand(options: CreateCliCommandOptions) {
       });
       const outputFormat = await getCliOutputFormat({ storagePath });
 
-      printContentBlocks(result, outputFormat);
+      printCommandResult(result, outputFormat);
     },
   });
 }
 
-export function printContentBlocks(
+export function printCommandResult(
   result: CommandResult,
   outputFormat: CliOutputFormat = "text",
 ): void {
   if (outputFormat === "json") {
     consola.log(JSON.stringify(result, null, 2));
-    return;
+  } else {
+    for (const block of result.blocks) {
+      if (block.type === "text" || block.type === "code") {
+        consola.log(block.text);
+      } else if (block.type === "json") {
+        consola.log(JSON.stringify(block.value, null, 2));
+      } else if (block.type === "properties") {
+        consola.log(formatPropertiesBlock(block));
+      }
+    }
+
+    if (result.status === "error" && result.blocks.length === 0) {
+      consola.error(result.error?.message ?? "Command failed.");
+    }
   }
 
-  for (const block of result.blocks) {
-    if (block.type === "text" || block.type === "code") {
-      consola.log(block.text);
-    } else if (block.type === "json") {
-      consola.log(JSON.stringify(block.value, null, 2));
-    } else if (block.type === "properties") {
-      consola.log(formatPropertiesBlock(block));
-    }
+  if (result.status === "error") {
+    process.exitCode = 1;
   }
 }
 
@@ -496,18 +504,4 @@ function getCommandHistoryEnabled(preferences: PreferenceRepository): boolean {
   }
 
   return validatePreferenceValue("cli", "command.history.enabled", value) as boolean;
-}
-
-function serializeError(error: unknown): Record<string, unknown> {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
-  }
-
-  return {
-    message: String(error),
-  };
 }

@@ -1,9 +1,8 @@
 import type { CommandResult } from "@tooldeck/protocol";
+import type { CommandHandler, CommandInput, CommandRegistry, Disposable } from "@tooldeck/sdk-node";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
-import type { Disposable } from "../disposable";
 import { validateCommandResult } from "./command-result-validation";
-import type { CommandHandler, CommandInput, CommandRegistry } from "./types";
 
 export interface RegisteredCommand {
   id: string;

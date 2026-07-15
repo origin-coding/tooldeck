@@ -21,6 +21,7 @@ import {
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
 } from "./runtime";
+import { serializeError } from "./serialize-error";
 
 const preferenceScopes: readonly PreferenceScope[] = ["cli", "desktop", "shared"];
 
@@ -335,20 +336,6 @@ function parseScopedPreferenceKey(
   }
 
   return undefined;
-}
-
-function serializeError(error: unknown): Record<string, unknown> {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    };
-  }
-
-  return {
-    message: String(error),
-  };
 }
 
 function createPreferenceCommandArgs() {
