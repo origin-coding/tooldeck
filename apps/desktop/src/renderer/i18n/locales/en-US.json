@@ -87,6 +87,11 @@
     },
     "enable": "Enable",
     "disable": "Disable",
+    "cancel": "Cancel",
+    "uninstall": "Uninstall",
+    "purge": "Purge",
+    "uninstallConfirmTitle": "Uninstall this plugin?",
+    "uninstallConfirmDescription": "Remove {{pluginId}} from the managed plugin directory. Local state, plugin-scoped KV, and command history will be retained.",
     "version": "Version",
     "source": "Source",
     "sourceKind": {
@@ -98,6 +103,15 @@
     "contributedCommands": "Contributed Commands",
     "contributedCommandsDescription": "Commands declared by this plugin manifest.",
     "noCommandsContributed": "No commands contributed",
+    "retainedData": {
+      "title": "Retained plugin data",
+      "description": "Local state and plugin-scoped KV retained after uninstall. Command history is always preserved.",
+      "summary": "State: {{state}} · KV entries: {{kvEntries}}",
+      "statePresent": "stored",
+      "stateAbsent": "none",
+      "confirmTitle": "Purge retained plugin data?",
+      "confirmDescription": "Permanently delete local state and plugin-scoped KV for {{pluginId}}. Command history will be preserved."
+    },
     "install": {
       "title": "Install local plugin",
       "dropAriaLabel": "Drop a Tooldeck plugin package to install it",

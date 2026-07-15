@@ -30,6 +30,7 @@ tooldeck list preferences
 tooldeck run <command-id> [command input flags]
 tooldeck plugin install <package.tdplugin>
 tooldeck plugin uninstall <plugin-id>
+tooldeck plugin purge <plugin-id>
 tooldeck plugin list
 tooldeck plugin enable <plugin-id>
 tooldeck plugin disable <plugin-id>
@@ -41,8 +42,9 @@ tooldeck paths
 
 `plugin install` accepts trusted local `.tdplugin` packages and installs them into Tooldeck's
 managed installed-plugin directory. `plugin uninstall` removes only managed installs; plugin
-state, plugin-scoped KV, and command history are preserved. Plugin list output includes each
-plugin's `builtin`, `installed`, or `external` source.
+state, plugin-scoped KV, and command history are preserved. `plugin purge` requires the plugin to
+be uninstalled, deletes its retained state and plugin-scoped KV, and preserves command history.
+Plugin list output includes each plugin's `builtin`, `installed`, or `external` source.
 
 ## External Plugin Dirs
 

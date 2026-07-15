@@ -8,10 +8,12 @@ import {
   type ListCommandsRequest,
   type ListCommandRunsRequest,
   type ListPluginsRequest,
+  type PurgePluginDataRequest,
   type RescanPluginsRequest,
   type RunCommandRequest,
   type SetPreferenceRequest,
   type SetPluginEnabledRequest,
+  type UninstallPluginRequest,
 } from "@/shared/desktop-api";
 
 const api: DesktopApi = {
@@ -20,6 +22,9 @@ const api: DesktopApi = {
   },
   listPlugins(request?: ListPluginsRequest) {
     return ipcRenderer.invoke(desktopIpcChannels.listPlugins, request);
+  },
+  listPluginDataResidues() {
+    return ipcRenderer.invoke(desktopIpcChannels.listPluginDataResidues);
   },
   listPreferences() {
     return ipcRenderer.invoke(desktopIpcChannels.listPreferences);
@@ -44,6 +49,12 @@ const api: DesktopApi = {
       packagePath,
       ...request,
     });
+  },
+  uninstallPlugin(request: UninstallPluginRequest) {
+    return ipcRenderer.invoke(desktopIpcChannels.uninstallPlugin, request);
+  },
+  purgePluginData(request: PurgePluginDataRequest) {
+    return ipcRenderer.invoke(desktopIpcChannels.purgePluginData, request);
   },
   rescanPlugins(request?: RescanPluginsRequest) {
     return ipcRenderer.invoke(desktopIpcChannels.rescanPlugins, request);

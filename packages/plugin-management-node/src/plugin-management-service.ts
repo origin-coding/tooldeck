@@ -2,15 +2,24 @@ import path from "node:path";
 
 import type { ManifestIndex } from "@tooldeck/runtime-node";
 import { TooldeckError } from "@tooldeck/shared";
-import { PluginInstallRepository, PluginRepository, type PluginRow } from "@tooldeck/storage";
+import {
+  PluginInstallRepository,
+  PluginKvRepository,
+  PluginRepository,
+  PluginStateRepository,
+  type PluginRow,
+} from "@tooldeck/storage";
 
 import { scanAndSyncPluginCatalog, setManagedPluginEnabled, syncPluginCatalog } from "./catalog";
 import { installPluginPackage } from "./install";
 import type { PluginManagementContext } from "./internal";
+import { listPurgeablePluginData, purgePluginData } from "./purge";
 import type {
   InstalledPluginSummary,
   PluginCatalogSnapshot,
   PluginManagementServiceOptions,
+  PurgeablePluginDataSummary,
+  PurgedPluginSummary,
   UninstalledPluginSummary,
 } from "./types";
 import { uninstallPlugin } from "./uninstall";
@@ -23,10 +32,13 @@ export class PluginManagementService {
 
     assertInstalledSourceConfiguration(options.pluginSources, installedPluginsDir);
     this.context = {
+      database: options.database,
       installedPluginsDir,
       pluginSources: options.pluginSources,
       installs: new PluginInstallRepository(options.database.db),
+      kv: new PluginKvRepository(options.database.db),
       plugins: new PluginRepository(options.database.db),
+      states: new PluginStateRepository(options.database.db),
     };
   }
 
@@ -48,6 +60,14 @@ export class PluginManagementService {
 
   uninstall(pluginId: string): Promise<UninstalledPluginSummary> {
     return uninstallPlugin(this.context, pluginId);
+  }
+
+  listPurgeablePluginData(): PurgeablePluginDataSummary[] {
+    return listPurgeablePluginData(this.context);
+  }
+
+  purge(pluginId: string): PurgedPluginSummary {
+    return purgePluginData(this.context, pluginId);
   }
 }
 

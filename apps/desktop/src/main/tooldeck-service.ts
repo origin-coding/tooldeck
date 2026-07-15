@@ -5,16 +5,21 @@ import type {
   DesktopCommand,
   DesktopPreference,
   DesktopPlugin,
+  DesktopPluginDataResidue,
   DesktopPluginInstallResult,
+  DesktopPluginPurgeResult,
+  DesktopPluginUninstallResult,
   GetPreferenceRequest,
   InstallPluginPackageIpcRequest,
   ListCommandsRequest,
   ListCommandRunsRequest,
   ListPluginsRequest,
+  PurgePluginDataRequest,
   RescanPluginsRequest,
   RunCommandRequest,
   SetPreferenceRequest,
   SetPluginEnabledRequest,
+  UninstallPluginRequest,
 } from "@/shared/desktop-api";
 
 import { TooldeckDesktopCatalogService } from "./tooldeck-service/catalog";
@@ -60,6 +65,10 @@ export class TooldeckDesktopService implements TooldeckDesktopServiceFacade {
     return this.catalog.listPlugins(request);
   }
 
+  listPluginDataResidues(): DesktopPluginDataResidue[] {
+    return this.catalog.listPluginDataResidues();
+  }
+
   rescanPlugins(request?: RescanPluginsRequest): Promise<{
     commands: DesktopCommand[];
     plugins: DesktopPlugin[];
@@ -75,6 +84,14 @@ export class TooldeckDesktopService implements TooldeckDesktopServiceFacade {
     request: InstallPluginPackageIpcRequest,
   ): Promise<DesktopPluginInstallResult> {
     return this.catalog.installPluginPackage(request);
+  }
+
+  uninstallPlugin(request: UninstallPluginRequest): Promise<DesktopPluginUninstallResult> {
+    return this.catalog.uninstallPlugin(request);
+  }
+
+  purgePluginData(request: PurgePluginDataRequest): DesktopPluginPurgeResult {
+    return this.catalog.purgePluginData(request);
   }
 
   listPreferences(): DesktopPreference[] {

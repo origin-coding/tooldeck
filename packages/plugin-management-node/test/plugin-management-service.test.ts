@@ -206,6 +206,66 @@ describe("PluginManagementService", () => {
     expect(reinstalled.plugin.enabled).toBe(false);
   });
 
+  it("purges state and scoped KV only after uninstall while preserving command history", async () => {
+    const harness = await createHarness();
+    const pluginId = "dev.example.purge-tools";
+    const packagePath = await createPluginPackage({
+      rootDir: harness.rootDir,
+      pluginId,
+      commandId: "purge.run",
+    });
+    const states = new PluginStateRepository(harness.database.db);
+    const kv = new PluginKvRepository(harness.database.db);
+    const runs = new CommandRunRepository(harness.database.db);
+
+    await harness.service.installPackage(packagePath);
+    await harness.service.setEnabled(pluginId, false);
+    kv.set({ pluginId, key: "first", value: 1 });
+    kv.set({ pluginId, key: "second", value: 2 });
+    runs.create({
+      id: "run-before-purge",
+      commandId: "purge.run",
+      pluginId,
+      source: "cli",
+      status: "success",
+    });
+
+    expect(() => harness.service.purge(pluginId)).toThrow(
+      `Plugin must be uninstalled before its local data can be purged: ${pluginId}`,
+    );
+    expect(states.getById(pluginId)).toMatchObject({ enabled: false });
+    expect(kv.listByPlugin(pluginId)).toHaveLength(2);
+
+    await harness.service.uninstall(pluginId);
+
+    expect(harness.service.listPurgeablePluginData()).toEqual([
+      {
+        pluginId,
+        statePresent: true,
+        kvEntries: 2,
+      },
+    ]);
+    expect(harness.service.purge(pluginId)).toEqual({
+      pluginId,
+      stateRemoved: true,
+      kvEntriesRemoved: 2,
+    });
+    expect(states.getById(pluginId)).toBeUndefined();
+    expect(kv.listByPlugin(pluginId)).toEqual([]);
+    expect(runs.listRecent()).toEqual([
+      expect.objectContaining({
+        id: "run-before-purge",
+        pluginId,
+      }),
+    ]);
+    expect(harness.service.listPurgeablePluginData()).toEqual([]);
+    expect(harness.service.purge(pluginId)).toEqual({
+      pluginId,
+      stateRemoved: false,
+      kvEntriesRemoved: 0,
+    });
+  });
+
   it("keeps a plugin logically uninstalled when quarantine cleanup partially fails", async () => {
     const harness = await createHarness();
     const pluginId = "dev.example.cleanup-failure";

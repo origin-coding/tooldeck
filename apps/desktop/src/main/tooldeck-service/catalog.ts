@@ -3,12 +3,17 @@ import path from "node:path";
 import type {
   DesktopCommand,
   DesktopPlugin,
+  DesktopPluginDataResidue,
   DesktopPluginInstallResult,
+  DesktopPluginPurgeResult,
+  DesktopPluginUninstallResult,
   InstallPluginPackageIpcRequest,
   ListCommandsRequest,
   ListPluginsRequest,
+  PurgePluginDataRequest,
   RescanPluginsRequest,
   SetPluginEnabledRequest,
+  UninstallPluginRequest,
 } from "@/shared/desktop-api";
 
 import { TooldeckDesktopServiceContext } from "./context";
@@ -57,6 +62,10 @@ export class TooldeckDesktopCatalogService implements DesktopCatalogService {
           locale: request.locale,
         }),
       );
+  }
+
+  listPluginDataResidues(): DesktopPluginDataResidue[] {
+    return this.context.requirePluginManagement().listPurgeablePluginData();
   }
 
   async rescanPlugins(request: RescanPluginsRequest = {}): Promise<{
@@ -127,6 +136,62 @@ export class TooldeckDesktopCatalogService implements DesktopCatalogService {
       commands: this.listCommands(request),
       plugins: this.listPlugins(request),
     };
+  }
+
+  async uninstallPlugin(request: UninstallPluginRequest): Promise<DesktopPluginUninstallResult> {
+    assertPluginIdRequest(request, "uninstall");
+
+    await this.runtime.disposePluginRuntime();
+
+    let uninstalled;
+
+    try {
+      uninstalled = await this.context.requirePluginManagement().uninstall(request.pluginId);
+    } catch (error) {
+      try {
+        await this.runtime.scanAndCreateRuntime();
+      } catch (recoveryError) {
+        throw new AggregateError(
+          [error, recoveryError],
+          "Desktop plugin uninstall failed and runtime recovery did not complete.",
+          { cause: error },
+        );
+      }
+
+      throw error;
+    }
+
+    await this.runtime.scanAndCreateRuntime();
+
+    return {
+      ...(uninstalled.cleanupError ? { cleanupError: uninstalled.cleanupError } : {}),
+      cleanupPending: uninstalled.cleanupPending,
+      commands: this.listCommands(request),
+      filesMissing: uninstalled.filesMissing,
+      pluginId: uninstalled.pluginId,
+      plugins: this.listPlugins(request),
+      residues: this.listPluginDataResidues(),
+    };
+  }
+
+  purgePluginData(request: PurgePluginDataRequest): DesktopPluginPurgeResult {
+    assertPluginIdRequest(request, "purge");
+
+    const purged = this.context.requirePluginManagement().purge(request.pluginId);
+
+    return {
+      ...purged,
+      residues: this.listPluginDataResidues(),
+    };
+  }
+}
+
+function assertPluginIdRequest(
+  request: { pluginId?: unknown } | undefined,
+  operation: string,
+): asserts request is { pluginId: string } {
+  if (!request || typeof request.pluginId !== "string" || request.pluginId.length === 0) {
+    throw new Error(`Desktop plugin ${operation} requires a plugin id.`);
   }
 }
 

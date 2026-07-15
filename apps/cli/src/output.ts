@@ -35,6 +35,12 @@ export interface PluginUninstallOutputRow {
   version: string;
 }
 
+export interface PluginPurgeOutputRow {
+  id: string;
+  kvEntriesRemoved: number;
+  stateRemoved: boolean;
+}
+
 export interface PreferenceListOutputRow {
   scope: string;
   key: string;
@@ -104,6 +110,18 @@ export function formatPluginUninstall(plugin: PluginUninstallOutputRow): string 
       : "Managed files and the install record were removed.";
 
   return joinOutput(pc.green(`Uninstalled ${plugin.id}.`), details);
+}
+
+export function formatPluginPurge(plugin: PluginPurgeOutputRow): string {
+  const state = plugin.stateRemoved ? "Removed plugin state." : "No plugin state was stored.";
+  const kvEntries = `${plugin.kvEntriesRemoved} plugin-scoped KV ${
+    plugin.kvEntriesRemoved === 1 ? "entry" : "entries"
+  } removed.`;
+
+  return joinOutput(
+    pc.green(`Purged local data for ${plugin.id}.`),
+    `${state} ${kvEntries} Command history was preserved.`,
+  );
 }
 
 export function formatPreferenceList(preferences: PreferenceListOutputRow[]): string {

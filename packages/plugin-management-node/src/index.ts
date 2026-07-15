@@ -9,5 +9,7 @@ export type {
   InstalledPluginSummary,
   PluginCatalogSnapshot,
   PluginManagementServiceOptions,
+  PurgeablePluginDataSummary,
+  PurgedPluginSummary,
   UninstalledPluginSummary,
 } from "./types";

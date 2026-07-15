@@ -3,12 +3,18 @@ import path from "node:path";
 import { PluginManagementService } from "@tooldeck/plugin-management-node";
 import type { LocalizedString } from "@tooldeck/protocol";
 import type { PluginScanSource } from "@tooldeck/runtime-node";
+import { TooldeckError } from "@tooldeck/shared";
 import type { PluginRow } from "@tooldeck/storage";
 import { withTooldeckDatabase } from "@tooldeck/storage";
 import { defineCommand } from "citty";
 import { consola } from "consola";
 
-import { formatPluginInstall, formatPluginList, formatPluginUninstall } from "./output";
+import {
+  formatPluginInstall,
+  formatPluginList,
+  formatPluginPurge,
+  formatPluginUninstall,
+} from "./output";
 import { getCliOutputFormat, type CliOutputFormat } from "./preferences";
 import {
   createPluginDirCommandArg,
@@ -50,6 +56,8 @@ export interface UninstallCliPluginOptions {
   storagePath: string;
 }
 
+export type PurgeCliPluginOptions = UninstallCliPluginOptions;
+
 export interface ListedCliPlugin {
   id: string;
   enabled: boolean;
@@ -73,6 +81,12 @@ export interface UninstalledCliPlugin {
   id: string;
   installDir: string;
   version: string;
+}
+
+export interface PurgedCliPlugin {
+  id: string;
+  kvEntriesRemoved: number;
+  stateRemoved: boolean;
 }
 
 export async function listCliPlugins(options: ListCliPluginsOptions): Promise<ListedCliPlugin[]> {
@@ -162,6 +176,27 @@ export async function uninstallCliPlugin(
   });
 }
 
+export async function purgeCliPlugin(options: PurgeCliPluginOptions): Promise<PurgedCliPlugin> {
+  return withTooldeckDatabase({ path: options.storagePath }, (database) => {
+    const pluginSources = ensureCliInstalledPluginSource(
+      resolvePluginSources(options),
+      options.storagePath,
+    );
+    const management = new PluginManagementService({
+      database,
+      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
+      pluginSources,
+    });
+    const purged = management.purge(options.pluginId);
+
+    return {
+      id: purged.pluginId,
+      kvEntriesRemoved: purged.kvEntriesRemoved,
+      stateRemoved: purged.stateRemoved,
+    };
+  });
+}
+
 export function definePluginCommand(options: CreateCliCommandOptions) {
   return defineCommand({
     meta: {
@@ -219,6 +254,45 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
           const outputFormat = await getCliOutputFormat({ storagePath });
 
           printPluginUninstall(plugin, outputFormat);
+        },
+      }),
+      purge: defineCommand({
+        meta: {
+          name: "purge",
+          description: "Purge retained local data for an uninstalled plugin.",
+        },
+        args: createPluginEnabledCommandArgs(),
+        async run({ args, rawArgs }) {
+          const { pluginSources, storagePath } = resolveCliRuntimePaths({
+            ...options,
+            pluginDir: resolveCliPluginDirOption({
+              rawArgs,
+              value: args.pluginDir,
+            }),
+            plugins: args.plugins,
+            storage: args.storage,
+          });
+          const pluginId = requireCliArgument(args.pluginId, "pluginId");
+
+          try {
+            const plugin = await purgeCliPlugin({
+              pluginId,
+              pluginSources,
+              storagePath,
+            });
+            const outputFormat = await getCliOutputFormat({ storagePath });
+
+            printPluginPurge(plugin, outputFormat);
+          } catch (error) {
+            if (error instanceof TooldeckError && error.code === "ERR_ALREADY_EXISTS") {
+              throw new Error(
+                `${error.message}. Run "tooldeck plugin uninstall ${pluginId}" first.`,
+                { cause: error },
+              );
+            }
+
+            throw error;
+          }
         },
       }),
       list: defineCommand({
@@ -338,6 +412,18 @@ export function printPluginUninstall(
   }
 
   consola.log(formatPluginUninstall(plugin));
+}
+
+export function printPluginPurge(
+  plugin: PurgedCliPlugin,
+  outputFormat: CliOutputFormat = "text",
+): void {
+  if (outputFormat === "json") {
+    consola.log(JSON.stringify(plugin, null, 2));
+    return;
+  }
+
+  consola.log(formatPluginPurge(plugin));
 }
 
 function formatListedPlugin(plugin: PluginRow): ListedCliPlugin {

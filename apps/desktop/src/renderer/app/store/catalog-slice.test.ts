@@ -4,7 +4,15 @@ import { initialState } from "@/renderer/app/types";
 import type { DesktopApi, DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
 
 let useDesktopStore: (typeof import("@/renderer/app/store"))["useDesktopStore"];
-let tooldeck: Pick<DesktopApi, "installDroppedPluginPackage" | "listCommandRuns" | "rescanPlugins">;
+let tooldeck: Pick<
+  DesktopApi,
+  | "installDroppedPluginPackage"
+  | "listCommandRuns"
+  | "listPluginDataResidues"
+  | "purgePluginData"
+  | "rescanPlugins"
+  | "uninstallPlugin"
+>;
 
 describe("catalog slice plugin installation", () => {
   beforeEach(async () => {
@@ -14,7 +22,10 @@ describe("catalog slice plugin installation", () => {
     tooldeck = {
       installDroppedPluginPackage: vi.fn(),
       listCommandRuns: vi.fn().mockResolvedValue([]),
+      listPluginDataResidues: vi.fn().mockResolvedValue([]),
+      purgePluginData: vi.fn(),
       rescanPlugins: vi.fn(),
+      uninstallPlugin: vi.fn(),
     };
     vi.stubGlobal("window", { tooldeck });
 
@@ -125,6 +136,51 @@ describe("catalog slice plugin installation", () => {
         message: "invalid package",
       },
     });
+  });
+
+  it("uninstalls a plugin and exposes its retained local data", async () => {
+    const plugin = createPlugin("dev.example.installed");
+
+    useDesktopStore.setState({ plugins: [plugin], selectedPluginId: plugin.id });
+    vi.mocked(tooldeck.uninstallPlugin).mockResolvedValue({
+      cleanupPending: false,
+      commands: [],
+      filesMissing: false,
+      pluginId: plugin.id,
+      plugins: [],
+      residues: [{ pluginId: plugin.id, statePresent: true, kvEntries: 2 }],
+    });
+
+    await useDesktopStore.getState().uninstallPlugin(plugin.id);
+
+    expect(tooldeck.uninstallPlugin).toHaveBeenCalledWith({
+      pluginId: plugin.id,
+      locale: expect.any(String),
+    });
+    expect(useDesktopStore.getState()).toMatchObject({
+      plugins: [],
+      pluginDataResidues: [{ pluginId: plugin.id, statePresent: true, kvEntries: 2 }],
+      selectedPluginId: undefined,
+    });
+  });
+
+  it("purges retained plugin data", async () => {
+    const pluginId = "dev.example.uninstalled";
+
+    useDesktopStore.setState({
+      pluginDataResidues: [{ pluginId, statePresent: true, kvEntries: 2 }],
+    });
+    vi.mocked(tooldeck.purgePluginData).mockResolvedValue({
+      pluginId,
+      stateRemoved: true,
+      kvEntriesRemoved: 2,
+      residues: [],
+    });
+
+    await useDesktopStore.getState().purgePluginData(pluginId);
+
+    expect(tooldeck.purgePluginData).toHaveBeenCalledWith({ pluginId });
+    expect(useDesktopStore.getState().pluginDataResidues).toEqual([]);
   });
 });
 

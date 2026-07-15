@@ -38,6 +38,12 @@ export interface DesktopPlugin {
   searchText: string[];
 }
 
+export interface DesktopPluginDataResidue {
+  kvEntries: number;
+  pluginId: string;
+  statePresent: boolean;
+}
+
 export interface CommandRunRecord {
   id: string;
   commandId: string;
@@ -103,6 +109,14 @@ export interface InstallPluginPackageIpcRequest extends CatalogLocaleRequest {
   packagePath: string;
 }
 
+export interface UninstallPluginRequest extends CatalogLocaleRequest {
+  pluginId: string;
+}
+
+export interface PurgePluginDataRequest {
+  pluginId: string;
+}
+
 export interface InstalledDesktopPluginResult {
   status: "installed";
   installedPluginId: string;
@@ -122,9 +136,27 @@ export type DesktopPluginInstallResult =
   | InstalledDesktopPluginResult
   | InstalledDesktopPluginRefreshFailedResult;
 
+export interface DesktopPluginUninstallResult {
+  cleanupError?: string;
+  cleanupPending: boolean;
+  commands: DesktopCommand[];
+  filesMissing: boolean;
+  pluginId: string;
+  plugins: DesktopPlugin[];
+  residues: DesktopPluginDataResidue[];
+}
+
+export interface DesktopPluginPurgeResult {
+  kvEntriesRemoved: number;
+  pluginId: string;
+  residues: DesktopPluginDataResidue[];
+  stateRemoved: boolean;
+}
+
 export interface DesktopApi {
   listCommands(request?: ListCommandsRequest): Promise<DesktopCommand[]>;
   listPlugins(request?: ListPluginsRequest): Promise<DesktopPlugin[]>;
+  listPluginDataResidues(): Promise<DesktopPluginDataResidue[]>;
   listPreferences(): Promise<DesktopPreference[]>;
   getPreference(request: GetPreferenceRequest): Promise<DesktopPreference>;
   setPreference(request: SetPreferenceRequest): Promise<DesktopPreference>;
@@ -133,6 +165,8 @@ export interface DesktopApi {
     file: File,
     request?: CatalogLocaleRequest,
   ): Promise<DesktopPluginInstallResult>;
+  uninstallPlugin(request: UninstallPluginRequest): Promise<DesktopPluginUninstallResult>;
+  purgePluginData(request: PurgePluginDataRequest): Promise<DesktopPluginPurgeResult>;
   rescanPlugins(request?: RescanPluginsRequest): Promise<{
     commands: DesktopCommand[];
     plugins: DesktopPlugin[];
@@ -144,11 +178,14 @@ export interface DesktopApi {
 export const desktopIpcChannels = {
   listCommands: "tooldeck:list-commands",
   listPlugins: "tooldeck:list-plugins",
+  listPluginDataResidues: "tooldeck:list-plugin-data-residues",
   listPreferences: "tooldeck:list-preferences",
   getPreference: "tooldeck:get-preference",
   setPreference: "tooldeck:set-preference",
   setPluginEnabled: "tooldeck:set-plugin-enabled",
   installPluginPackage: "tooldeck:install-plugin-package",
+  uninstallPlugin: "tooldeck:uninstall-plugin",
+  purgePluginData: "tooldeck:purge-plugin-data",
   rescanPlugins: "tooldeck:rescan-plugins",
   runCommand: "tooldeck:run-command",
   listCommandRuns: "tooldeck:list-command-runs",

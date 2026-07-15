@@ -55,4 +55,21 @@ describe("desktop preload plugin installation", () => {
     );
     expect(electron.invoke).not.toHaveBeenCalled();
   });
+
+  it("invokes plugin residue, uninstall, and purge channels", async () => {
+    electron.invoke.mockResolvedValue([]);
+
+    await api.listPluginDataResidues();
+    await api.uninstallPlugin({ pluginId: "dev.example.plugin", locale: "zh-CN" });
+    await api.purgePluginData({ pluginId: "dev.example.plugin" });
+
+    expect(electron.invoke).toHaveBeenNthCalledWith(1, "tooldeck:list-plugin-data-residues");
+    expect(electron.invoke).toHaveBeenNthCalledWith(2, "tooldeck:uninstall-plugin", {
+      pluginId: "dev.example.plugin",
+      locale: "zh-CN",
+    });
+    expect(electron.invoke).toHaveBeenNthCalledWith(3, "tooldeck:purge-plugin-data", {
+      pluginId: "dev.example.plugin",
+    });
+  });
 });
