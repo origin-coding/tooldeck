@@ -8,7 +8,7 @@ import { withTooldeckDatabase } from "@tooldeck/storage";
 import { defineCommand } from "citty";
 import { consola } from "consola";
 
-import { formatPluginList } from "./output";
+import { formatPluginInstall, formatPluginList, formatPluginUninstall } from "./output";
 import { getCliOutputFormat, type CliOutputFormat } from "./preferences";
 import {
   createPluginDirCommandArg,
@@ -36,12 +36,43 @@ export interface SetCliPluginEnabledOptions {
   storagePath: string;
 }
 
+export interface InstallCliPluginOptions {
+  packagePath: string;
+  pluginsRoot?: string;
+  pluginSources?: PluginScanSource[];
+  storagePath: string;
+}
+
+export interface UninstallCliPluginOptions {
+  pluginId: string;
+  pluginsRoot?: string;
+  pluginSources?: PluginScanSource[];
+  storagePath: string;
+}
+
 export interface ListedCliPlugin {
   id: string;
   enabled: boolean;
   version: string;
   manifestPath: string;
   name: string;
+  sourceKind: string;
+}
+
+export interface InstalledCliPlugin extends ListedCliPlugin {
+  installDir: string;
+  packageDigest: string;
+  packageName: string;
+  packageSizeBytes: number;
+}
+
+export interface UninstalledCliPlugin {
+  cleanupError?: string;
+  cleanupPending: boolean;
+  filesMissing: boolean;
+  id: string;
+  installDir: string;
+  version: string;
 }
 
 export async function listCliPlugins(options: ListCliPluginsOptions): Promise<ListedCliPlugin[]> {
@@ -80,6 +111,57 @@ export async function setCliPluginEnabled(
   });
 }
 
+export async function installCliPlugin(
+  options: InstallCliPluginOptions,
+): Promise<InstalledCliPlugin> {
+  return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
+    const pluginSources = ensureCliInstalledPluginSource(
+      resolvePluginSources(options),
+      options.storagePath,
+    );
+    const management = new PluginManagementService({
+      database,
+      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
+      pluginSources,
+    });
+    const installed = await management.installPackage(options.packagePath);
+
+    return {
+      ...formatListedPlugin(installed.plugin),
+      installDir: installed.install.installDir,
+      packageDigest: installed.install.packageDigest,
+      packageName: installed.install.packageName,
+      packageSizeBytes: installed.install.packageSizeBytes,
+    };
+  });
+}
+
+export async function uninstallCliPlugin(
+  options: UninstallCliPluginOptions,
+): Promise<UninstalledCliPlugin> {
+  return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
+    const pluginSources = ensureCliInstalledPluginSource(
+      resolvePluginSources(options),
+      options.storagePath,
+    );
+    const management = new PluginManagementService({
+      database,
+      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
+      pluginSources,
+    });
+    const uninstalled = await management.uninstall(options.pluginId);
+
+    return {
+      ...(uninstalled.cleanupError ? { cleanupError: uninstalled.cleanupError } : {}),
+      cleanupPending: uninstalled.cleanupPending,
+      filesMissing: uninstalled.filesMissing,
+      id: uninstalled.pluginId,
+      installDir: uninstalled.install.installDir,
+      version: uninstalled.install.version,
+    };
+  });
+}
+
 export function definePluginCommand(options: CreateCliCommandOptions) {
   return defineCommand({
     meta: {
@@ -87,6 +169,58 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
       description: "Manage Tooldeck plugins.",
     },
     subCommands: {
+      install: defineCommand({
+        meta: {
+          name: "install",
+          description: "Install a local .tdplugin package.",
+        },
+        args: createPluginInstallCommandArgs(),
+        async run({ args, rawArgs }) {
+          const { pluginSources, storagePath } = resolveCliRuntimePaths({
+            ...options,
+            pluginDir: resolveCliPluginDirOption({
+              rawArgs,
+              value: args.pluginDir,
+            }),
+            plugins: args.plugins,
+            storage: args.storage,
+          });
+          const plugin = await installCliPlugin({
+            packagePath: requireCliArgument(args.packagePath, "packagePath"),
+            pluginSources,
+            storagePath,
+          });
+          const outputFormat = await getCliOutputFormat({ storagePath });
+
+          printPluginInstall(plugin, outputFormat);
+        },
+      }),
+      uninstall: defineCommand({
+        meta: {
+          name: "uninstall",
+          description: "Uninstall a managed local plugin.",
+        },
+        args: createPluginEnabledCommandArgs(),
+        async run({ args, rawArgs }) {
+          const { pluginSources, storagePath } = resolveCliRuntimePaths({
+            ...options,
+            pluginDir: resolveCliPluginDirOption({
+              rawArgs,
+              value: args.pluginDir,
+            }),
+            plugins: args.plugins,
+            storage: args.storage,
+          });
+          const plugin = await uninstallCliPlugin({
+            pluginId: requireCliArgument(args.pluginId, "pluginId"),
+            pluginSources,
+            storagePath,
+          });
+          const outputFormat = await getCliOutputFormat({ storagePath });
+
+          printPluginUninstall(plugin, outputFormat);
+        },
+      }),
       list: defineCommand({
         meta: {
           name: "list",
@@ -182,6 +316,30 @@ export function printPluginList(
   consola.log(formatPluginList(plugins));
 }
 
+export function printPluginInstall(
+  plugin: InstalledCliPlugin,
+  outputFormat: CliOutputFormat = "text",
+): void {
+  if (outputFormat === "json") {
+    consola.log(JSON.stringify(plugin, null, 2));
+    return;
+  }
+
+  consola.log(formatPluginInstall(plugin));
+}
+
+export function printPluginUninstall(
+  plugin: UninstalledCliPlugin,
+  outputFormat: CliOutputFormat = "text",
+): void {
+  if (outputFormat === "json") {
+    consola.log(JSON.stringify(plugin, null, 2));
+    return;
+  }
+
+  consola.log(formatPluginUninstall(plugin));
+}
+
 function formatListedPlugin(plugin: PluginRow): ListedCliPlugin {
   return {
     id: plugin.id,
@@ -189,6 +347,7 @@ function formatListedPlugin(plugin: PluginRow): ListedCliPlugin {
     version: plugin.version,
     manifestPath: plugin.manifestPath,
     name: resolveStoredLocalizedString(plugin.nameJson),
+    sourceKind: plugin.sourceKind,
   };
 }
 
@@ -248,6 +407,18 @@ function createPluginEnabledCommandArgs() {
       required: true,
       description: "Plugin id.",
       valueHint: "plugin",
+    },
+    ...createPluginRuntimeCommandArgs("SQLite database path for plugin registry."),
+  };
+}
+
+function createPluginInstallCommandArgs() {
+  return {
+    packagePath: {
+      type: "positional" as const,
+      required: true,
+      description: "Path to a local .tdplugin package.",
+      valueHint: "package",
     },
     ...createPluginRuntimeCommandArgs("SQLite database path for plugin registry."),
   };

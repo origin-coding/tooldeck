@@ -39,6 +39,7 @@
     "@tooldeck/host-node": "workspace:*",
     "@tooldeck/json-tools": "workspace:*",
     "@tooldeck/plugin-management-node": "workspace:*",
+    "@tooldeck/plugin-package": "workspace:*",
     "@tooldeck/preferences": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/regex-tools": "workspace:*",

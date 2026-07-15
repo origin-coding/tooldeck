@@ -16,6 +16,23 @@ export interface PluginListOutputRow {
   version: string;
   manifestPath: string;
   name: string;
+  sourceKind: string;
+}
+
+export interface PluginInstallOutputRow extends PluginListOutputRow {
+  installDir: string;
+  packageDigest: string;
+  packageName: string;
+  packageSizeBytes: number;
+}
+
+export interface PluginUninstallOutputRow {
+  cleanupError?: string;
+  cleanupPending: boolean;
+  filesMissing: boolean;
+  id: string;
+  installDir: string;
+  version: string;
 }
 
 export interface PreferenceListOutputRow {
@@ -49,19 +66,44 @@ export function formatPluginList(plugins: PluginListOutputRow[]): string {
     return pc.dim("No plugins found.");
   }
 
-  const table = createPlainTable(["Status", "Plugin", "Version", "Name", "Manifest"]);
+  const table = createPlainTable(["Status", "Plugin", "Version", "Source", "Name", "Manifest"]);
 
   for (const plugin of plugins) {
     table.push([
       formatPluginStatus(plugin.enabled),
       pc.cyan(plugin.id),
       plugin.version,
+      plugin.sourceKind,
       plugin.name,
       pc.dim(formatManifestPath(plugin.manifestPath)),
     ]);
   }
 
   return joinOutput(createCountLabel(plugins.length, "plugin"), table.toString());
+}
+
+export function formatPluginInstall(plugin: PluginInstallOutputRow): string {
+  const table = createPlainTable(["Plugin", "Version", "Source", "Package", "Location"]);
+
+  table.push([
+    pc.cyan(plugin.id),
+    plugin.version,
+    plugin.sourceKind,
+    plugin.packageName,
+    pc.dim(plugin.installDir),
+  ]);
+
+  return joinOutput(pc.green(`Installed ${plugin.id}.`), table.toString());
+}
+
+export function formatPluginUninstall(plugin: PluginUninstallOutputRow): string {
+  const details = plugin.filesMissing
+    ? "Managed files were already missing; the stale install record was removed."
+    : plugin.cleanupPending
+      ? `Plugin was logically uninstalled, but file cleanup is pending: ${plugin.cleanupError ?? "unknown cleanup error"}`
+      : "Managed files and the install record were removed.";
+
+  return joinOutput(pc.green(`Uninstalled ${plugin.id}.`), details);
 }
 
 export function formatPreferenceList(preferences: PreferenceListOutputRow[]): string {

@@ -3,16 +3,21 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { packTooldeckPlugin } from "@tooldeck/plugin-package";
 import {
   CommandRunRepository,
   openTooldeckDatabase,
   PreferenceRepository,
+  PluginInstallRepository,
   PluginKvRepository,
   PluginRepository,
 } from "@tooldeck/storage";
-import { afterEach, describe, expect, it } from "vitest";
+import { runCommand } from "citty";
+import { consola } from "consola";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createCliCommand,
   createPluginManager,
   deleteCliPreference,
   ensureCliInstalledPluginSource,
@@ -398,6 +403,98 @@ describe("CLI command support", () => {
       id: "dev.tooldeck.hello-world",
       enabled: true,
     });
+  });
+
+  it("completes the local package install, list, run, and uninstall workflow", async () => {
+    const rootDir = createTempDir();
+    const builtinPluginsDir = path.join(rootDir, "builtin-plugins");
+    const installedPluginsDir = path.join(rootDir, "installed-plugins");
+    const projectDir = path.join(rootDir, "echo-project");
+    const packagePath = path.join(rootDir, "dev.example.cli-echo-0.1.0.tdplugin");
+    const storagePath = path.join(rootDir, "tooldeck.sqlite");
+    const activationMarkerPath = path.join(rootDir, "activated.txt");
+    const pluginId = "dev.example.cli-echo";
+    const commandId = "cli-echo.run";
+
+    await mkdir(builtinPluginsDir, { recursive: true });
+    await createEchoPlugin({
+      activationMarkerPath,
+      commandId,
+      pluginId,
+      pluginRoot: projectDir,
+      responseText: "installed ok",
+      version: "0.1.0",
+    });
+    await packTooldeckPlugin({
+      projectDir,
+      outputPath: packagePath,
+      createdAt: new Date("2026-07-15T00:00:00.000Z"),
+    });
+
+    const cli = createCliCommand({
+      builtinPluginsDir,
+      installedPluginsDir,
+      workspaceRoot: rootDir,
+    });
+    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
+
+    try {
+      await runCommand(cli, {
+        rawArgs: ["plugin", "install", packagePath, "--storage", storagePath],
+      });
+
+      expect(existsSync(activationMarkerPath)).toBe(false);
+      expect(readPluginInstall(storagePath, pluginId)).toMatchObject({
+        pluginId,
+        version: "0.1.0",
+        installDir: path.join(installedPluginsDir, pluginId),
+      });
+      expect(String(log.mock.calls.at(-1)?.[0])).toContain(`Installed ${pluginId}.`);
+
+      log.mockClear();
+      await runCommand(cli, {
+        rawArgs: ["plugin", "list", "--storage", storagePath],
+      });
+
+      expect(existsSync(activationMarkerPath)).toBe(false);
+      expect(String(log.mock.calls.at(-1)?.[0])).toContain("installed");
+      expect(String(log.mock.calls.at(-1)?.[0])).toContain(pluginId);
+
+      log.mockClear();
+      await runCommand(cli, {
+        rawArgs: ["run", commandId, "--storage", storagePath],
+      });
+
+      expect(existsSync(activationMarkerPath)).toBe(true);
+      expect(String(log.mock.calls.at(-1)?.[0])).toBe("installed ok");
+      expect(readCommandRuns(storagePath)).toEqual([
+        expect.objectContaining({
+          commandId,
+          pluginId,
+          source: "cli",
+          status: "success",
+        }),
+      ]);
+
+      log.mockClear();
+      await runCommand(cli, {
+        rawArgs: ["plugin", "uninstall", pluginId, "--storage", storagePath],
+      });
+
+      expect(readPluginInstall(storagePath, pluginId)).toBeUndefined();
+      expect(existsSync(path.join(installedPluginsDir, pluginId))).toBe(false);
+      expect(String(log.mock.calls.at(-1)?.[0])).toContain(`Uninstalled ${pluginId}.`);
+      await expect(
+        listCliCommands({
+          pluginSources: [
+            { kind: "builtin", path: builtinPluginsDir },
+            { kind: "installed", path: installedPluginsDir },
+          ],
+        }),
+      ).resolves.not.toEqual(expect.arrayContaining([expect.objectContaining({ id: commandId })]));
+    } finally {
+      log.mockRestore();
+    }
   });
 
   it("stores and lists known preferences with defaults", async () => {
@@ -998,6 +1095,17 @@ function readPlugins(storagePath: string) {
   }
 }
 
+function readPluginInstall(storagePath: string, pluginId: string) {
+  const database = openTooldeckDatabase({ path: storagePath });
+  const repository = new PluginInstallRepository(database.db);
+
+  try {
+    return repository.getById(pluginId);
+  } finally {
+    database.close();
+  }
+}
+
 function readPreferenceValue(
   storagePath: string,
   scope: "desktop" | "cli" | "shared",
@@ -1025,10 +1133,12 @@ function readPluginKvValue(storagePath: string, pluginId: string, key: string) {
 }
 
 async function createEchoPlugin(options: {
+  activationMarkerPath?: string;
   commandId: string;
   pluginId: string;
   pluginRoot: string;
   responseText: string;
+  version?: string;
 }): Promise<void> {
   await mkdir(options.pluginRoot, { recursive: true });
   await writeFile(
@@ -1037,7 +1147,7 @@ async function createEchoPlugin(options: {
       schemaVersion: "1.0",
       id: options.pluginId,
       name: "External Echo",
-      version: "0.0.0",
+      version: options.version ?? "0.0.0",
       runtime: {
         kind: "node",
         entry: "./index.mjs",
@@ -1056,6 +1166,12 @@ async function createEchoPlugin(options: {
   await writeFile(
     path.join(options.pluginRoot, "index.mjs"),
     `
+      ${
+        options.activationMarkerPath
+          ? `import { writeFile } from "node:fs/promises";
+      await writeFile(${JSON.stringify(options.activationMarkerPath)}, "activated", "utf8");`
+          : ""
+      }
       export default {
         activate(ctx) {
           ctx.subscriptions.push(
