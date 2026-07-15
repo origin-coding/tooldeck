@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { i18n } from "../../i18n";
-import { PluginWorkbench } from "./plugin-workbench";
+import { PluginWorkbench } from "@/renderer/components/plugins/plugin-workbench";
+import { i18n } from "@/renderer/i18n";
 
 describe("PluginWorkbench lifecycle actions", () => {
   beforeEach(() => {

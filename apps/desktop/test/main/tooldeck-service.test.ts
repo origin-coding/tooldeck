@@ -12,7 +12,7 @@ import {
 } from "@tooldeck/storage";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { TooldeckDesktopService } from "./tooldeck-service";
+import { TooldeckDesktopService } from "@/main/tooldeck-service";
 
 const tempDirs: string[] = [];
 

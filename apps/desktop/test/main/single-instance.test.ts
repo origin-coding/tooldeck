@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { focusExistingWindow } from "./single-instance";
+import { focusExistingWindow } from "@/main/single-instance";
 
 function createWindowMock(options: { minimized?: boolean } = {}) {
   return {

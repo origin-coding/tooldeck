@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { i18n } from "../../i18n";
-import { CommandOutput } from "./command-output";
+import { CommandOutput } from "@/renderer/components/commands/command-output";
+import { i18n } from "@/renderer/i18n";
 
 describe("CommandOutput", () => {
   beforeEach(() => {

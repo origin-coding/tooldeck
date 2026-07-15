@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { validatePluginPackageDrop } from "./plugin-package-drop";
+import { validatePluginPackageDrop } from "@/renderer/components/plugins/plugin-package-drop";
 
 describe("validatePluginPackageDrop", () => {
   it("accepts exactly one .tdplugin package", () => {

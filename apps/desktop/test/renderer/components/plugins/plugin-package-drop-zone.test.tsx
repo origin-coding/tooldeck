@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { i18n } from "../../i18n";
-import { PluginPackageDropZone } from "./plugin-package-drop-zone";
+import { PluginPackageDropZone } from "@/renderer/components/plugins/plugin-package-drop-zone";
+import { i18n } from "@/renderer/i18n";
 
 describe("PluginPackageDropZone", () => {
   beforeEach(() => {

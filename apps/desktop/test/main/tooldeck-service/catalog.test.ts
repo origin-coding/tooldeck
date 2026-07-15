@@ -2,9 +2,9 @@ import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { TooldeckDesktopCatalogService } from "./catalog";
-import type { TooldeckDesktopServiceContext } from "./context";
-import type { TooldeckDesktopRuntimeService } from "./runtime";
+import { TooldeckDesktopCatalogService } from "@/main/tooldeck-service/catalog";
+import type { TooldeckDesktopServiceContext } from "@/main/tooldeck-service/context";
+import type { TooldeckDesktopRuntimeService } from "@/main/tooldeck-service/runtime";
 
 describe("TooldeckDesktopCatalogService plugin installation", () => {
   it("reports a committed install when the Desktop runtime refresh fails", async () => {

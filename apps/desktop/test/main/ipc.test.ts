@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { TooldeckDesktopService } from "./tooldeck-service";
+import type { TooldeckDesktopService } from "@/main/tooldeck-service";
 
 const electron = vi.hoisted(() => ({
   handle: vi.fn(),
@@ -14,7 +14,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-import { registerTooldeckIpc } from "./ipc";
+import { registerTooldeckIpc } from "@/main/ipc";
 
 describe("registerTooldeckIpc", () => {
   beforeEach(() => {

@@ -2,7 +2,11 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { parsePluginDirArgs, parsePluginDirsEnv, resolveDesktopPluginDirs } from "./plugin-dirs";
+import {
+  parsePluginDirArgs,
+  parsePluginDirsEnv,
+  resolveDesktopPluginDirs,
+} from "@/main/plugin-dirs";
 
 describe("desktop plugin dir resolution", () => {
   it("parses repeated --plugin-dir arguments", () => {

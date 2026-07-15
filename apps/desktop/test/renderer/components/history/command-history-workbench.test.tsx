@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { i18n } from "../../i18n";
-import { CommandHistoryWorkbench } from "./command-history-workbench";
+import { CommandHistoryWorkbench } from "@/renderer/components/history/command-history-workbench";
+import { i18n } from "@/renderer/i18n";
 
 describe("CommandHistoryWorkbench", () => {
   beforeEach(() => {

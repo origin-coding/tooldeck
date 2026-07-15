@@ -20,7 +20,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-await import("./index");
+await import("@/preload/index");
 
 const api = electron.exposeInMainWorld.mock.calls[0]?.[1] as DesktopApi;
 

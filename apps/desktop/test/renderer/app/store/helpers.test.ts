@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { resolveLoadedSelection } from "@/renderer/app/store/helpers";
 import type { DesktopCommand, DesktopPlugin, DesktopPreference } from "@/shared/desktop-api";
-
-import { resolveLoadedSelection } from "./helpers";
 
 describe("resolveLoadedSelection", () => {
   it("clears a command selection that conflicts with the selected provider", () => {
