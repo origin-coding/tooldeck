@@ -60,6 +60,9 @@ importers:
       '@tooldeck/plugin-management-node':
         specifier: workspace:*
         version: link:../../packages/plugin-management-node
+      '@tooldeck/plugin-package':
+        specifier: workspace:*
+        version: link:../../packages/plugin-package
       '@tooldeck/preferences':
         specifier: workspace:*
         version: link:../../packages/preferences

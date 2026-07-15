@@ -3,8 +3,13 @@ import path from "node:path";
 import { consola } from "consola";
 import { describe, expect, it, vi } from "vitest";
 
-import { printContentBlocks } from "../src/cli";
-import { formatCommandList, formatPluginList } from "../src/output";
+import { printContentBlocks, printPluginInstall, printPluginUninstall } from "../src/cli";
+import {
+  formatCommandList,
+  formatPluginInstall,
+  formatPluginList,
+  formatPluginUninstall,
+} from "../src/output";
 
 describe("CLI list output", () => {
   it("formats command lists as aligned table output", () => {
@@ -33,6 +38,7 @@ describe("CLI list output", () => {
         version: "0.0.0",
         name: "JSON Tools",
         manifestPath: path.join(process.cwd(), "plugins", "json-tools", "manifest.json"),
+        sourceKind: "builtin",
       },
       {
         id: "dev.tooldeck.disabled",
@@ -40,14 +46,47 @@ describe("CLI list output", () => {
         version: "0.0.1",
         name: "Disabled Plugin",
         manifestPath: path.join(process.cwd(), "plugins", "disabled", "manifest.json"),
+        sourceKind: "external",
       },
     ]);
 
     expect(output).toContain("2 plugins");
     expect(output).toContain("enabled");
     expect(output).toContain("disabled");
+    expect(output).toContain("builtin");
+    expect(output).toContain("external");
     expect(output).toContain("dev.tooldeck.json-tools");
     expect(output).toContain(path.join("plugins", "json-tools", "manifest.json"));
+  });
+
+  it("formats install and uninstall summaries", () => {
+    const installed = formatPluginInstall({
+      id: "dev.example.echo",
+      enabled: true,
+      version: "0.1.0",
+      name: "Echo",
+      sourceKind: "installed",
+      manifestPath: path.join("installed-plugins", "dev.example.echo", "manifest.json"),
+      installDir: path.join("installed-plugins", "dev.example.echo"),
+      packageDigest: "abc123",
+      packageName: "dev.example.echo-0.1.0.tdplugin",
+      packageSizeBytes: 123,
+    });
+    const uninstalled = formatPluginUninstall({
+      id: "dev.example.echo",
+      version: "0.1.0",
+      installDir: path.join("installed-plugins", "dev.example.echo"),
+      filesMissing: false,
+      cleanupPending: true,
+      cleanupError: "file is locked",
+    });
+
+    expect(installed).toContain("Installed dev.example.echo.");
+    expect(installed).toContain("installed");
+    expect(installed).toContain("dev.example.echo-0.1.0.tdplugin");
+    expect(uninstalled).toContain("Uninstalled dev.example.echo.");
+    expect(uninstalled).toContain("cleanup is pending");
+    expect(uninstalled).toContain("file is locked");
   });
 
   it("formats empty lists without table headers", () => {
@@ -57,6 +96,49 @@ describe("CLI list output", () => {
 });
 
 describe("CLI command output", () => {
+  it("prints install and uninstall summaries as JSON", () => {
+    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
+
+    try {
+      printPluginInstall(
+        {
+          id: "dev.example.echo",
+          enabled: true,
+          version: "0.1.0",
+          name: "Echo",
+          sourceKind: "installed",
+          manifestPath: "C:/tooldeck/installed-plugins/dev.example.echo/manifest.json",
+          installDir: "C:/tooldeck/installed-plugins/dev.example.echo",
+          packageDigest: "abc123",
+          packageName: "dev.example.echo-0.1.0.tdplugin",
+          packageSizeBytes: 123,
+        },
+        "json",
+      );
+      printPluginUninstall(
+        {
+          id: "dev.example.echo",
+          version: "0.1.0",
+          installDir: "C:/tooldeck/installed-plugins/dev.example.echo",
+          filesMissing: false,
+          cleanupPending: false,
+        },
+        "json",
+      );
+
+      expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toMatchObject({
+        id: "dev.example.echo",
+        sourceKind: "installed",
+      });
+      expect(JSON.parse(String(log.mock.calls[1]?.[0]))).toMatchObject({
+        id: "dev.example.echo",
+        cleanupPending: false,
+      });
+    } finally {
+      log.mockRestore();
+    }
+  });
+
   it("prints text, code, json, and properties content blocks", () => {
     const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
 

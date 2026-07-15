@@ -10,6 +10,7 @@ import {
 export interface CreateCliCommandOptions {
   appInstallDir?: string;
   builtinPluginsDir?: string;
+  installedPluginsDir?: string;
   mode?: TooldeckRuntimeMode;
   workspaceRoot: string;
 }
@@ -17,6 +18,7 @@ export interface CreateCliCommandOptions {
 export interface ResolveCliRuntimePathsOptions {
   appInstallDir?: string;
   builtinPluginsDir?: string;
+  installedPluginsDir?: string;
   mode?: TooldeckRuntimeMode;
   workspaceRoot: string;
   plugins?: string;
@@ -37,6 +39,7 @@ export function resolveCliRuntimePaths(options: ResolveCliRuntimePathsOptions): 
     mode: options.mode ?? "development",
     overrides: {
       builtinPluginsDir: options.builtinPluginsDir,
+      installedPluginsDir: options.installedPluginsDir,
     },
     workspaceRoot: options.workspaceRoot,
   });
