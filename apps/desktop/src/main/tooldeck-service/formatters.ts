@@ -1,6 +1,15 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+import { validatePreferenceValue, type PreferenceDefinition } from "@tooldeck/preferences";
+import type {
+  CommandResult,
+  ContentBlock,
+  LocalizedString,
+  PropertiesContentBlock,
+  PropertyItem,
+  TooldeckJsonSchema,
+} from "@tooldeck/protocol";
 import {
   flattenLocaleResource,
   type IndexedCommand,
@@ -10,15 +19,6 @@ import {
   resolveJsonSchemaI18n,
   resolveLocalizedString,
 } from "@tooldeck/runtime-node";
-import type {
-  CommandResult,
-  ContentBlock,
-  LocalizedString,
-  PropertiesContentBlock,
-  PropertyItem,
-  TooldeckJsonSchema,
-} from "@tooldeck/protocol";
-import { validatePreferenceValue, type PreferenceDefinition } from "@tooldeck/preferences";
 import type { PluginRow, PreferenceRow } from "@tooldeck/storage";
 
 import type { DesktopCommand, DesktopPreference, DesktopPlugin } from "@/shared/desktop-api";
@@ -110,6 +110,7 @@ export function formatDesktopPlugin(options: {
     description,
     version: plugin.version,
     manifestPath: plugin.manifestPath,
+    sourceKind: assertDesktopPluginSourceKind(plugin.sourceKind),
     enabled: plugin.enabled,
     runtimeState: indexedPlugin ? pluginManager.getPluginRuntimeState(plugin.id) : "inactive",
     commandCount,
@@ -125,6 +126,14 @@ export function formatDesktopPlugin(options: {
         : []),
     ]),
   };
+}
+
+function assertDesktopPluginSourceKind(sourceKind: string): DesktopPlugin["sourceKind"] {
+  if (sourceKind === "builtin" || sourceKind === "installed" || sourceKind === "external") {
+    return sourceKind;
+  }
+
+  throw new Error(`Unsupported desktop plugin source kind: ${sourceKind}`);
 }
 
 export function resolveCommandResultI18n(options: {

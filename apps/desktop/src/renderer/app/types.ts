@@ -12,6 +12,18 @@ export type AppView = "main" | "history" | "settings";
 
 export type DesktopNavigationMode = "provider-first" | "entry-first";
 
+export type PluginInstallState =
+  | { status: "idle" }
+  | { status: "installing"; packageName: string }
+  | { status: "success"; pluginId: string; packageName: string }
+  | { status: "error"; message: string }
+  | {
+      status: "refresh-failed";
+      pluginId: string;
+      packageName: string;
+      message: string;
+    };
+
 export interface AppState {
   commands: DesktopCommand[];
   plugins: DesktopPlugin[];
@@ -22,6 +34,7 @@ export interface AppState {
   input: CommandInputState;
   result?: CommandResult;
   history: CommandRunRecord[];
+  pluginInstall: PluginInstallState;
   isLoadingData: boolean;
   isRunning: boolean;
   loadError?: string;
@@ -34,6 +47,7 @@ export const initialState: AppState = {
   preferences: [],
   input: {},
   history: [],
+  pluginInstall: { status: "idle" },
   isLoadingData: false,
   isRunning: false,
 };

@@ -88,10 +88,32 @@
     "enable": "Enable",
     "disable": "Disable",
     "version": "Version",
+    "source": "Source",
+    "sourceKind": {
+      "builtin": "Built-in",
+      "installed": "Installed",
+      "external": "External"
+    },
     "runtime": "Runtime",
     "contributedCommands": "Contributed Commands",
     "contributedCommandsDescription": "Commands declared by this plugin manifest.",
-    "noCommandsContributed": "No commands contributed"
+    "noCommandsContributed": "No commands contributed",
+    "install": {
+      "title": "Install local plugin",
+      "dropAriaLabel": "Drop a Tooldeck plugin package to install it",
+      "dropTitle": "Drop one .tdplugin package here",
+      "dropDescription": "Only local .tdplugin packages are accepted. Clicking does not open a file picker.",
+      "installing": "Installing {{packageName}}",
+      "success": "Installed {{packageName}}",
+      "failed": "Plugin installation failed",
+      "refreshFailed": "Plugin installed, but the runtime refresh failed",
+      "refreshFailedDescription": "Rescan plugins before running or changing plugin state.",
+      "validation": {
+        "empty": "Drop one .tdplugin package.",
+        "multiple": "Only one .tdplugin package can be installed at a time.",
+        "invalid-extension": "Only files ending in .tdplugin can be installed."
+      }
+    }
   },
   "search": {
     "title": "Search",

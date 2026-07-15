@@ -8,6 +8,7 @@ const allowedDesktopApiMethods = [
   "getPreference",
   "setPreference",
   "setPluginEnabled",
+  "installDroppedPluginPackage",
   "rescanPlugins",
   "runCommand",
   "listCommandRuns",
@@ -30,6 +31,12 @@ const checks = [
     name: "renderer/preload must not import local plugin source",
     pattern: String.raw`from\s+["'][^"']*(\.\./|/)?plugins/(json-tools|hello-world)|import\(["'][^"']*(\.\./|/)?plugins/(json-tools|hello-world)`,
     paths: rendererAndPreload,
+    expect: "no-match",
+  },
+  {
+    name: "renderer must not access Electron file path or IPC APIs",
+    pattern: String.raw`from\s+["']electron["']|webUtils|getPathForFile|ipcRenderer`,
+    paths: ["src/renderer"],
     expect: "no-match",
   },
   {

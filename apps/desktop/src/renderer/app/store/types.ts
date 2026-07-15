@@ -12,6 +12,7 @@ export interface DesktopStore extends AppState {
   loadHistory(commandId?: string): Promise<void>;
   openCommandHistory(commandId?: string): Promise<void>;
   rescanPlugins(): Promise<void>;
+  installDroppedPluginPackage(file: File): Promise<void>;
   selectCommand(command: DesktopCommand): void;
   selectPlugin(plugin: DesktopPlugin): void;
   updateInput(key: string, value: CommandInputValue): void;

@@ -1,5 +1,5 @@
-import type { CommandResult, CommandUi, TooldeckInputJsonSchema } from "@tooldeck/protocol";
 import type { PreferenceScope } from "@tooldeck/preferences";
+import type { CommandResult, CommandUi, TooldeckInputJsonSchema } from "@tooldeck/protocol";
 import type { JsonObject } from "@tooldeck/shared";
 
 export type DesktopPluginRuntimeState =
@@ -9,6 +9,8 @@ export type DesktopPluginRuntimeState =
   | "deactivating"
   | "failed"
   | "disposed";
+
+export type DesktopPluginSourceKind = "builtin" | "installed" | "external";
 
 export interface DesktopCommand {
   id: string;
@@ -28,6 +30,7 @@ export interface DesktopPlugin {
   description?: string;
   version: string;
   manifestPath: string;
+  sourceKind: DesktopPluginSourceKind;
   enabled: boolean;
   runtimeState: DesktopPluginRuntimeState;
   commandCount: number;
@@ -96,6 +99,29 @@ export interface SetPluginEnabledRequest {
   enabled: boolean;
 }
 
+export interface InstallPluginPackageIpcRequest extends CatalogLocaleRequest {
+  packagePath: string;
+}
+
+export interface InstalledDesktopPluginResult {
+  status: "installed";
+  installedPluginId: string;
+  packageName: string;
+  commands: DesktopCommand[];
+  plugins: DesktopPlugin[];
+}
+
+export interface InstalledDesktopPluginRefreshFailedResult {
+  status: "installed-refresh-failed";
+  installedPluginId: string;
+  packageName: string;
+  refreshError: string;
+}
+
+export type DesktopPluginInstallResult =
+  | InstalledDesktopPluginResult
+  | InstalledDesktopPluginRefreshFailedResult;
+
 export interface DesktopApi {
   listCommands(request?: ListCommandsRequest): Promise<DesktopCommand[]>;
   listPlugins(request?: ListPluginsRequest): Promise<DesktopPlugin[]>;
@@ -103,6 +129,10 @@ export interface DesktopApi {
   getPreference(request: GetPreferenceRequest): Promise<DesktopPreference>;
   setPreference(request: SetPreferenceRequest): Promise<DesktopPreference>;
   setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin>;
+  installDroppedPluginPackage(
+    file: File,
+    request?: CatalogLocaleRequest,
+  ): Promise<DesktopPluginInstallResult>;
   rescanPlugins(request?: RescanPluginsRequest): Promise<{
     commands: DesktopCommand[];
     plugins: DesktopPlugin[];
@@ -118,6 +148,7 @@ export const desktopIpcChannels = {
   getPreference: "tooldeck:get-preference",
   setPreference: "tooldeck:set-preference",
   setPluginEnabled: "tooldeck:set-plugin-enabled",
+  installPluginPackage: "tooldeck:install-plugin-package",
   rescanPlugins: "tooldeck:rescan-plugins",
   runCommand: "tooldeck:run-command",
   listCommandRuns: "tooldeck:list-command-runs",

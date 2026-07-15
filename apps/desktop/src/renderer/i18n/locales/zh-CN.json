@@ -88,10 +88,32 @@
     "enable": "启用",
     "disable": "禁用",
     "version": "版本",
+    "source": "来源",
+    "sourceKind": {
+      "builtin": "内置",
+      "installed": "已安装",
+      "external": "外部"
+    },
     "runtime": "运行时",
     "contributedCommands": "贡献的命令",
     "contributedCommandsDescription": "此插件 manifest 声明的命令。",
-    "noCommandsContributed": "未贡献命令"
+    "noCommandsContributed": "未贡献命令",
+    "install": {
+      "title": "安装本地插件",
+      "dropAriaLabel": "拖放 Tooldeck 插件包进行安装",
+      "dropTitle": "拖放一个 .tdplugin 插件包到这里",
+      "dropDescription": "只接受本地 .tdplugin 插件包；点击不会打开文件选择器。",
+      "installing": "正在安装 {{packageName}}",
+      "success": "已安装 {{packageName}}",
+      "failed": "插件安装失败",
+      "refreshFailed": "插件已安装，但运行时刷新失败",
+      "refreshFailedDescription": "请先重新扫描插件，再运行插件或修改插件状态。",
+      "validation": {
+        "empty": "请拖放一个 .tdplugin 插件包。",
+        "multiple": "一次只能安装一个 .tdplugin 插件包。",
+        "invalid-extension": "只能安装以 .tdplugin 结尾的文件。"
+      }
+    }
   },
   "search": {
     "title": "搜索",

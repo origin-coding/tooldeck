@@ -1,12 +1,14 @@
-import type { PluginScanSource } from "@tooldeck/runtime-node";
 import type { CommandResult } from "@tooldeck/protocol";
+import type { PluginScanSource } from "@tooldeck/runtime-node";
 
 import type {
   CommandRunRecord,
   DesktopCommand,
   DesktopPreference,
   DesktopPlugin,
+  DesktopPluginInstallResult,
   GetPreferenceRequest,
+  InstallPluginPackageIpcRequest,
   ListCommandsRequest,
   ListCommandRunsRequest,
   ListPluginsRequest,
@@ -38,6 +40,9 @@ export interface DesktopCatalogService {
     plugins: DesktopPlugin[];
   }>;
   setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin>;
+  installPluginPackage(
+    request: InstallPluginPackageIpcRequest,
+  ): Promise<DesktopPluginInstallResult>;
 }
 
 export interface DesktopPreferenceService {

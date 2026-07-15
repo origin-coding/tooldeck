@@ -5,7 +5,9 @@ import type {
   DesktopCommand,
   DesktopPreference,
   DesktopPlugin,
+  DesktopPluginInstallResult,
   GetPreferenceRequest,
+  InstallPluginPackageIpcRequest,
   ListCommandsRequest,
   ListCommandRunsRequest,
   ListPluginsRequest,
@@ -67,6 +69,12 @@ export class TooldeckDesktopService implements TooldeckDesktopServiceFacade {
 
   setPluginEnabled(request: SetPluginEnabledRequest): Promise<DesktopPlugin> {
     return this.catalog.setPluginEnabled(request);
+  }
+
+  installPluginPackage(
+    request: InstallPluginPackageIpcRequest,
+  ): Promise<DesktopPluginInstallResult> {
+    return this.catalog.installPluginPackage(request);
   }
 
   listPreferences(): DesktopPreference[] {
