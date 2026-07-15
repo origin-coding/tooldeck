@@ -92,10 +92,13 @@ function PluginWorkbenchContainer() {
     selectedPluginId,
     isLoadingData,
     pluginInstall,
+    pluginDataResidues,
     installDroppedPluginPackage,
     rescanPlugins,
     selectCommand,
     setPluginEnabled,
+    uninstallPlugin,
+    purgePluginData,
   } = useDesktopStore(
     useShallow((state) => ({
       commands: state.commands,
@@ -104,10 +107,13 @@ function PluginWorkbenchContainer() {
       selectedPluginId: state.selectedPluginId,
       isLoadingData: state.isLoadingData,
       pluginInstall: state.pluginInstall,
+      pluginDataResidues: state.pluginDataResidues,
       installDroppedPluginPackage: state.installDroppedPluginPackage,
       rescanPlugins: state.rescanPlugins,
       selectCommand: state.selectCommand,
       setPluginEnabled: state.setPluginEnabled,
+      uninstallPlugin: state.uninstallPlugin,
+      purgePluginData: state.purgePluginData,
     })),
   );
   const selectedCommand = useMemo(
@@ -130,11 +136,14 @@ function PluginWorkbenchContainer() {
       plugin={selectedPlugin}
       commands={selectedPluginCommands}
       installState={pluginInstall}
+      pluginDataResidues={pluginDataResidues}
       isLoading={isLoadingData}
       onInstall={installDroppedPluginPackage}
       onRescan={rescanPlugins}
       onSelectCommand={selectCommand}
       onSetEnabled={setPluginEnabled}
+      onUninstall={uninstallPlugin}
+      onPurge={purgePluginData}
     />
   );
 }

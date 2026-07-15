@@ -3,11 +3,17 @@ import path from "node:path";
 import { consola } from "consola";
 import { describe, expect, it, vi } from "vitest";
 
-import { printContentBlocks, printPluginInstall, printPluginUninstall } from "../src/cli";
+import {
+  printContentBlocks,
+  printPluginInstall,
+  printPluginPurge,
+  printPluginUninstall,
+} from "../src/cli";
 import {
   formatCommandList,
   formatPluginInstall,
   formatPluginList,
+  formatPluginPurge,
   formatPluginUninstall,
 } from "../src/output";
 
@@ -80,6 +86,11 @@ describe("CLI list output", () => {
       cleanupPending: true,
       cleanupError: "file is locked",
     });
+    const purged = formatPluginPurge({
+      id: "dev.example.echo",
+      stateRemoved: true,
+      kvEntriesRemoved: 2,
+    });
 
     expect(installed).toContain("Installed dev.example.echo.");
     expect(installed).toContain("installed");
@@ -87,6 +98,9 @@ describe("CLI list output", () => {
     expect(uninstalled).toContain("Uninstalled dev.example.echo.");
     expect(uninstalled).toContain("cleanup is pending");
     expect(uninstalled).toContain("file is locked");
+    expect(purged).toContain("Purged local data for dev.example.echo.");
+    expect(purged).toContain("2 plugin-scoped KV entries removed.");
+    expect(purged).toContain("Command history was preserved.");
   });
 
   it("formats empty lists without table headers", () => {
@@ -96,7 +110,7 @@ describe("CLI list output", () => {
 });
 
 describe("CLI command output", () => {
-  it("prints install and uninstall summaries as JSON", () => {
+  it("prints install, uninstall, and purge summaries as JSON", () => {
     const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
 
     try {
@@ -125,6 +139,14 @@ describe("CLI command output", () => {
         },
         "json",
       );
+      printPluginPurge(
+        {
+          id: "dev.example.echo",
+          stateRemoved: true,
+          kvEntriesRemoved: 2,
+        },
+        "json",
+      );
 
       expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toMatchObject({
         id: "dev.example.echo",
@@ -133,6 +155,11 @@ describe("CLI command output", () => {
       expect(JSON.parse(String(log.mock.calls[1]?.[0]))).toMatchObject({
         id: "dev.example.echo",
         cleanupPending: false,
+      });
+      expect(JSON.parse(String(log.mock.calls[2]?.[0]))).toEqual({
+        id: "dev.example.echo",
+        stateRemoved: true,
+        kvEntriesRemoved: 2,
       });
     } finally {
       log.mockRestore();

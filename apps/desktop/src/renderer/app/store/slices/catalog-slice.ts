@@ -8,6 +8,8 @@ export interface CatalogSlice {
   loadData(): Promise<void>;
   rescanPlugins(): Promise<void>;
   installDroppedPluginPackage(file: File): Promise<void>;
+  uninstallPlugin(pluginId: string): Promise<void>;
+  purgePluginData(pluginId: string): Promise<void>;
   setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
 }
 
@@ -20,9 +22,10 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
     }));
 
     try {
-      const [history, preferences] = await Promise.all([
+      const [history, preferences, pluginDataResidues] = await Promise.all([
         window.tooldeck.listCommandRuns({ limit: 25 }),
         window.tooldeck.listPreferences(),
+        window.tooldeck.listPluginDataResidues(),
       ]);
       const locale = await applyLocalePreference(
         getPreferenceValue(preferences, "shared", "locale"),
@@ -32,15 +35,16 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
         window.tooldeck.listPlugins({ locale }),
       ]);
 
-      set((current) =>
-        mergeLoadedState({
+      set((current) => ({
+        ...mergeLoadedState({
           current,
           commands,
           plugins,
           history,
           preferences,
         }),
-      );
+        pluginDataResidues,
+      }));
     } catch (error) {
       set((current) => ({
         ...current,
@@ -57,9 +61,10 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
     }));
 
     try {
-      const [{ commands, plugins }, history] = await Promise.all([
+      const [{ commands, plugins }, history, pluginDataResidues] = await Promise.all([
         window.tooldeck.rescanPlugins({ locale: getCurrentAppLocale() }),
         window.tooldeck.listCommandRuns({ limit: 25 }),
+        window.tooldeck.listPluginDataResidues(),
       ]);
 
       set((current) => {
@@ -75,6 +80,7 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
 
         return {
           ...loaded,
+          pluginDataResidues,
           selectedCommandId: recoveringInstall ? undefined : loaded.selectedCommandId,
           selectedPluginId:
             recoveringInstall && plugins.some((plugin) => plugin.id === recoveringInstall.pluginId)
@@ -128,6 +134,8 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
         return;
       }
 
+      const pluginDataResidues = await window.tooldeck.listPluginDataResidues();
+
       set((current) => ({
         ...mergeLoadedState({
           current,
@@ -138,6 +146,7 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
         }),
         selectedCommandId: undefined,
         selectedPluginId: result.installedPluginId,
+        pluginDataResidues,
         pluginInstall: {
           status: "success",
           pluginId: result.installedPluginId,
@@ -151,6 +160,60 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
           status: "error",
           message: getErrorMessage(error),
         },
+      }));
+    }
+  },
+  async uninstallPlugin(pluginId) {
+    set((current) => ({
+      ...current,
+      isLoadingData: true,
+      loadError: undefined,
+    }));
+
+    try {
+      const result = await window.tooldeck.uninstallPlugin({
+        pluginId,
+        locale: getCurrentAppLocale(),
+      });
+
+      set((current) => ({
+        ...mergeLoadedState({
+          current,
+          commands: result.commands,
+          plugins: result.plugins,
+          history: current.history,
+          preferences: current.preferences,
+        }),
+        pluginDataResidues: result.residues,
+      }));
+    } catch (error) {
+      set((current) => ({
+        ...current,
+        isLoadingData: false,
+        loadError: getErrorMessage(error),
+      }));
+    }
+  },
+  async purgePluginData(pluginId) {
+    set((current) => ({
+      ...current,
+      isLoadingData: true,
+      loadError: undefined,
+    }));
+
+    try {
+      const result = await window.tooldeck.purgePluginData({ pluginId });
+
+      set((current) => ({
+        ...current,
+        isLoadingData: false,
+        pluginDataResidues: result.residues,
+      }));
+    } catch (error) {
+      set((current) => ({
+        ...current,
+        isLoadingData: false,
+        loadError: getErrorMessage(error),
       }));
     }
   },

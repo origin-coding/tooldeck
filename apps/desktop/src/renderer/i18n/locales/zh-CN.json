@@ -87,6 +87,11 @@
     },
     "enable": "启用",
     "disable": "禁用",
+    "cancel": "取消",
+    "uninstall": "卸载",
+    "purge": "清除数据",
+    "uninstallConfirmTitle": "卸载此插件？",
+    "uninstallConfirmDescription": "从托管插件目录移除 {{pluginId}}。本地状态、插件专属 KV 和命令历史将保留。",
     "version": "版本",
     "source": "来源",
     "sourceKind": {
@@ -98,6 +103,15 @@
     "contributedCommands": "贡献的命令",
     "contributedCommandsDescription": "此插件 manifest 声明的命令。",
     "noCommandsContributed": "未贡献命令",
+    "retainedData": {
+      "title": "保留的插件数据",
+      "description": "卸载后保留的本地状态和插件专属 KV。命令历史始终保留。",
+      "summary": "状态：{{state}} · KV 条目：{{kvEntries}}",
+      "statePresent": "已保存",
+      "stateAbsent": "无",
+      "confirmTitle": "清除保留的插件数据？",
+      "confirmDescription": "永久删除 {{pluginId}} 的本地状态和插件专属 KV。命令历史仍会保留。"
+    },
     "install": {
       "title": "安装本地插件",
       "dropAriaLabel": "拖放 Tooldeck 插件包进行安装",

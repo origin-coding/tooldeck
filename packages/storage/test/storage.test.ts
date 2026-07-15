@@ -507,6 +507,12 @@ describe("storage", () => {
         value: 4,
         now: 1000,
       });
+      repository.set({
+        pluginId: "dev.tooldeck.json-tools",
+        key: "theme",
+        value: "dark",
+        now: 1000,
+      });
       const updated = repository.set({
         pluginId: "dev.tooldeck.json-tools",
         key: "indent",
@@ -518,6 +524,11 @@ describe("storage", () => {
 
       expect(repository.get("dev.tooldeck.json-tools", "indent")).toEqual({ size: 8 });
       expect(repository.get("dev.tooldeck.other", "indent")).toBe(4);
+      expect(repository.list().map((entry) => `${entry.pluginId}:${entry.key}`)).toEqual([
+        "dev.tooldeck.json-tools:indent",
+        "dev.tooldeck.json-tools:theme",
+        "dev.tooldeck.other:indent",
+      ]);
       expect(updated).toMatchObject({
         pluginId: "dev.tooldeck.json-tools",
         key: "indent",
@@ -528,6 +539,13 @@ describe("storage", () => {
       repository.delete("dev.tooldeck.json-tools", "indent");
 
       expect(repository.get("dev.tooldeck.json-tools", "indent")).toBeUndefined();
+      expect(repository.get("dev.tooldeck.other", "indent")).toBe(4);
+
+      expect(repository.deleteByPlugin("dev.tooldeck.json-tools")).toEqual([
+        expect.objectContaining({ key: "theme" }),
+      ]);
+      expect(repository.listByPlugin("dev.tooldeck.json-tools")).toEqual([]);
+      expect(repository.deleteByPlugin("dev.tooldeck.json-tools")).toEqual([]);
       expect(repository.get("dev.tooldeck.other", "indent")).toBe(4);
     } finally {
       database.close();

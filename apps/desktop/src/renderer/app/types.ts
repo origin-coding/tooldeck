@@ -5,6 +5,7 @@ import type {
   CommandRunRecord,
   DesktopCommand,
   DesktopPlugin,
+  DesktopPluginDataResidue,
   DesktopPreference,
 } from "@/shared/desktop-api";
 
@@ -27,6 +28,7 @@ export type PluginInstallState =
 export interface AppState {
   commands: DesktopCommand[];
   plugins: DesktopPlugin[];
+  pluginDataResidues: DesktopPluginDataResidue[];
   preferences: DesktopPreference[];
   selectedCommandId?: string;
   selectedPluginId?: string;
@@ -44,6 +46,7 @@ export interface AppState {
 export const initialState: AppState = {
   commands: [],
   plugins: [],
+  pluginDataResidues: [],
   preferences: [],
   input: {},
   history: [],

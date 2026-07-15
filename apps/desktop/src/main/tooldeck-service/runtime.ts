@@ -36,14 +36,22 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
 
   async dispose(): Promise<void> {
     try {
-      await this.context.pluginHost?.disposeAll();
+      await this.disposePluginRuntime();
     } finally {
       this.context.database?.close();
     }
   }
 
-  async scanAndCreateRuntime(): Promise<void> {
+  async disposePluginRuntime(): Promise<void> {
     await this.context.pluginHost?.disposeAll();
+    this.context.pluginHost = undefined;
+    this.context.pluginManager = undefined;
+    this.context.commandService = undefined;
+    this.context.manifestIndex = undefined;
+  }
+
+  async scanAndCreateRuntime(): Promise<void> {
+    await this.disposePluginRuntime();
 
     const pluginKv = this.context.requirePluginKv();
     const runtime = await createNodeRuntime({

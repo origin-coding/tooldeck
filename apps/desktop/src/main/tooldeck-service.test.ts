@@ -4,7 +4,12 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { packTooldeckPlugin } from "@tooldeck/plugin-package";
-import { openTooldeckDatabase, PluginRepository } from "@tooldeck/storage";
+import {
+  openTooldeckDatabase,
+  PluginKvRepository,
+  PluginRepository,
+  PluginStateRepository,
+} from "@tooldeck/storage";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { TooldeckDesktopService } from "./tooldeck-service";
@@ -321,7 +326,7 @@ describe("TooldeckDesktopService", () => {
     }
   });
 
-  it("installs a package, refreshes the runtime, and runs its command", async () => {
+  it("installs, runs, uninstalls, and purges a managed plugin", async () => {
     const rootDir = createTempDir();
     const pluginsRoot = path.join(rootDir, "builtin-plugins");
     const installedPluginsDir = path.join(rootDir, "installed-plugins");
@@ -385,6 +390,64 @@ describe("TooldeckDesktopService", () => {
           status: "success",
         }),
       ]);
+
+      const dataDatabase = openTooldeckDatabase({ path: storagePath });
+
+      try {
+        new PluginKvRepository(dataDatabase.db).set({
+          pluginId: "dev.example.desktop-installed",
+          key: "retained",
+          value: true,
+        });
+      } finally {
+        dataDatabase.close();
+      }
+
+      await expect(
+        service.uninstallPlugin({
+          pluginId: "dev.example.desktop-installed",
+          locale: "en-US",
+        }),
+      ).resolves.toMatchObject({
+        cleanupPending: false,
+        pluginId: "dev.example.desktop-installed",
+        plugins: expect.not.arrayContaining([
+          expect.objectContaining({ id: "dev.example.desktop-installed" }),
+        ]),
+        residues: [
+          {
+            pluginId: "dev.example.desktop-installed",
+            statePresent: true,
+            kvEntries: 1,
+          },
+        ],
+      });
+
+      expect(service.purgePluginData({ pluginId: "dev.example.desktop-installed" })).toMatchObject({
+        pluginId: "dev.example.desktop-installed",
+        stateRemoved: true,
+        kvEntriesRemoved: 1,
+        residues: [],
+      });
+      expect(service.listCommandRuns()).toEqual([
+        expect.objectContaining({
+          commandId: "installed.echo",
+          pluginId: "dev.example.desktop-installed",
+        }),
+      ]);
+
+      const verifiedDatabase = openTooldeckDatabase({ path: storagePath });
+
+      try {
+        expect(
+          new PluginStateRepository(verifiedDatabase.db).getById("dev.example.desktop-installed"),
+        ).toBeUndefined();
+        expect(
+          new PluginKvRepository(verifiedDatabase.db).listByPlugin("dev.example.desktop-installed"),
+        ).toEqual([]);
+      } finally {
+        verifiedDatabase.close();
+      }
     } finally {
       await service.dispose();
     }

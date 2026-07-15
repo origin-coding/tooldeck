@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import type { TooldeckDatabase } from "../database";
 import { pluginKv } from "../schema";
@@ -59,8 +59,29 @@ export class PluginKvRepository {
       .run();
   }
 
+  deleteByPlugin(pluginId: string): PluginKvRow[] {
+    const existing = this.listByPlugin(pluginId);
+
+    if (existing.length === 0) {
+      return [];
+    }
+
+    this.db.delete(pluginKv).where(eq(pluginKv.pluginId, pluginId)).run();
+
+    return existing;
+  }
+
+  list(): PluginKvRow[] {
+    return this.db.select().from(pluginKv).orderBy(asc(pluginKv.pluginId), asc(pluginKv.key)).all();
+  }
+
   listByPlugin(pluginId: string): PluginKvRow[] {
-    return this.db.select().from(pluginKv).where(eq(pluginKv.pluginId, pluginId)).all();
+    return this.db
+      .select()
+      .from(pluginKv)
+      .where(eq(pluginKv.pluginId, pluginId))
+      .orderBy(asc(pluginKv.key))
+      .all();
   }
 
   private getRow(pluginId: string, key: string): PluginKvRow | undefined {

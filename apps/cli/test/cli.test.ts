@@ -11,6 +11,7 @@ import {
   PluginInstallRepository,
   PluginKvRepository,
   PluginRepository,
+  PluginStateRepository,
 } from "@tooldeck/storage";
 import { runCommand } from "citty";
 import { consola } from "consola";
@@ -475,6 +476,14 @@ describe("CLI command support", () => {
           status: "success",
         }),
       ]);
+      writePluginKvValue(storagePath, pluginId, "retained", true);
+
+      await expect(
+        runCommand(cli, {
+          rawArgs: ["plugin", "purge", pluginId, "--storage", storagePath],
+        }),
+      ).rejects.toThrow(`tooldeck plugin uninstall ${pluginId}`);
+      expect(readPluginKvValue(storagePath, pluginId, "retained")).toBe(true);
 
       log.mockClear();
       await runCommand(cli, {
@@ -484,6 +493,23 @@ describe("CLI command support", () => {
       expect(readPluginInstall(storagePath, pluginId)).toBeUndefined();
       expect(existsSync(path.join(installedPluginsDir, pluginId))).toBe(false);
       expect(String(log.mock.calls.at(-1)?.[0])).toContain(`Uninstalled ${pluginId}.`);
+
+      log.mockClear();
+      await runCommand(cli, {
+        rawArgs: ["plugin", "purge", pluginId, "--storage", storagePath],
+      });
+
+      expect(readPluginState(storagePath, pluginId)).toBeUndefined();
+      expect(readPluginKvValue(storagePath, pluginId, "retained")).toBeUndefined();
+      expect(readCommandRuns(storagePath)).toEqual([
+        expect.objectContaining({
+          commandId,
+          pluginId,
+          status: "success",
+        }),
+      ]);
+      expect(String(log.mock.calls.at(-1)?.[0])).toContain(`Purged local data for ${pluginId}.`);
+      expect(String(log.mock.calls.at(-1)?.[0])).toContain("Command history was preserved.");
       await expect(
         listCliCommands({
           pluginSources: [
@@ -1127,6 +1153,31 @@ function readPluginKvValue(storagePath: string, pluginId: string, key: string) {
 
   try {
     return repository.get(pluginId, key);
+  } finally {
+    database.close();
+  }
+}
+
+function writePluginKvValue(
+  storagePath: string,
+  pluginId: string,
+  key: string,
+  value: unknown,
+): void {
+  const database = openTooldeckDatabase({ path: storagePath });
+
+  try {
+    new PluginKvRepository(database.db).set({ pluginId, key, value });
+  } finally {
+    database.close();
+  }
+}
+
+function readPluginState(storagePath: string, pluginId: string) {
+  const database = openTooldeckDatabase({ path: storagePath });
+
+  try {
+    return new PluginStateRepository(database.db).getById(pluginId);
   } finally {
     database.close();
   }

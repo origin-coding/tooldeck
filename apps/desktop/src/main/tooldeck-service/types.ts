@@ -6,16 +6,21 @@ import type {
   DesktopCommand,
   DesktopPreference,
   DesktopPlugin,
+  DesktopPluginDataResidue,
   DesktopPluginInstallResult,
+  DesktopPluginPurgeResult,
+  DesktopPluginUninstallResult,
   GetPreferenceRequest,
   InstallPluginPackageIpcRequest,
   ListCommandsRequest,
   ListCommandRunsRequest,
   ListPluginsRequest,
+  PurgePluginDataRequest,
   RescanPluginsRequest,
   RunCommandRequest,
   SetPreferenceRequest,
   SetPluginEnabledRequest,
+  UninstallPluginRequest,
 } from "@/shared/desktop-api";
 
 export interface TooldeckDesktopServiceOptions {
@@ -35,6 +40,7 @@ export interface DesktopLifecycleService {
 export interface DesktopCatalogService {
   listCommands(request?: ListCommandsRequest): DesktopCommand[];
   listPlugins(request?: ListPluginsRequest): DesktopPlugin[];
+  listPluginDataResidues(): DesktopPluginDataResidue[];
   rescanPlugins(request?: RescanPluginsRequest): Promise<{
     commands: DesktopCommand[];
     plugins: DesktopPlugin[];
@@ -43,6 +49,8 @@ export interface DesktopCatalogService {
   installPluginPackage(
     request: InstallPluginPackageIpcRequest,
   ): Promise<DesktopPluginInstallResult>;
+  uninstallPlugin(request: UninstallPluginRequest): Promise<DesktopPluginUninstallResult>;
+  purgePluginData(request: PurgePluginDataRequest): DesktopPluginPurgeResult;
 }
 
 export interface DesktopPreferenceService {

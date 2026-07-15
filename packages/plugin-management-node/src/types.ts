@@ -24,3 +24,15 @@ export interface UninstalledPluginSummary {
   install: PluginInstallRow;
   pluginId: string;
 }
+
+export interface PurgedPluginSummary {
+  kvEntriesRemoved: number;
+  pluginId: string;
+  stateRemoved: boolean;
+}
+
+export interface PurgeablePluginDataSummary {
+  kvEntries: number;
+  pluginId: string;
+  statePresent: boolean;
+}

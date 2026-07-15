@@ -1,12 +1,12 @@
-import { Button, Card, Divider, Typography } from "antd";
-import { Power } from "lucide-react";
+import { Button, Card, Divider, List, Popconfirm, Typography } from "antd";
+import { Power, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { PluginInstallState } from "@/renderer/app/types";
 import { EmptyCard } from "@/renderer/components/common/empty-card";
 import { EmptyState } from "@/renderer/components/common/empty-state";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
-import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import type { DesktopCommand, DesktopPlugin, DesktopPluginDataResidue } from "@/shared/desktop-api";
 
 import { PluginPackageDropZone } from "./plugin-package-drop-zone";
 
@@ -14,20 +14,26 @@ export function PluginWorkbench({
   plugin,
   commands,
   installState,
+  pluginDataResidues,
   isLoading,
   onInstall,
   onRescan,
   onSelectCommand,
   onSetEnabled,
+  onUninstall,
+  onPurge,
 }: {
   plugin?: DesktopPlugin;
   commands: DesktopCommand[];
   installState: PluginInstallState;
+  pluginDataResidues: DesktopPluginDataResidue[];
   isLoading: boolean;
   onInstall(file: File): void;
   onRescan(): void;
   onSelectCommand(command: DesktopCommand): void;
   onSetEnabled(pluginId: string, enabled: boolean): void;
+  onUninstall(pluginId: string): void;
+  onPurge(pluginId: string): void;
 }) {
   const { t } = useTranslation();
 
@@ -43,6 +49,48 @@ export function PluginWorkbench({
         onRescan={onRescan}
       />
 
+      {pluginDataResidues.length > 0 ? (
+        <Card title={t("plugin.retainedData.title")}>
+          <Typography.Paragraph type="secondary">
+            {t("plugin.retainedData.description")}
+          </Typography.Paragraph>
+          <List
+            dataSource={pluginDataResidues}
+            renderItem={(residue) => (
+              <List.Item
+                actions={[
+                  <Popconfirm
+                    key="purge"
+                    cancelText={t("plugin.cancel")}
+                    okButtonProps={{ danger: true }}
+                    okText={t("plugin.purge")}
+                    onConfirm={() => onPurge(residue.pluginId)}
+                    title={t("plugin.retainedData.confirmTitle")}
+                    description={t("plugin.retainedData.confirmDescription", {
+                      pluginId: residue.pluginId,
+                    })}
+                  >
+                    <Button danger disabled={operationsDisabled} icon={<Trash2 size={15} />}>
+                      {t("plugin.purge")}
+                    </Button>
+                  </Popconfirm>,
+                ]}
+              >
+                <List.Item.Meta
+                  title={residue.pluginId}
+                  description={t("plugin.retainedData.summary", {
+                    kvEntries: residue.kvEntries,
+                    state: residue.statePresent
+                      ? t("plugin.retainedData.statePresent")
+                      : t("plugin.retainedData.stateAbsent"),
+                  })}
+                />
+              </List.Item>
+            )}
+          />
+        </Card>
+      ) : null}
+
       {!plugin ? (
         <EmptyCard
           title={t("plugin.empty.title")}
@@ -54,6 +102,22 @@ export function PluginWorkbench({
             extra={
               <div className="flex items-center gap-2">
                 <StatusBadge status={plugin.enabled ? plugin.runtimeState : "disabled"} />
+                {plugin.sourceKind === "installed" ? (
+                  <Popconfirm
+                    cancelText={t("plugin.cancel")}
+                    okButtonProps={{ danger: true }}
+                    okText={t("plugin.uninstall")}
+                    onConfirm={() => onUninstall(plugin.id)}
+                    title={t("plugin.uninstallConfirmTitle")}
+                    description={t("plugin.uninstallConfirmDescription", {
+                      pluginId: plugin.id,
+                    })}
+                  >
+                    <Button danger disabled={operationsDisabled} icon={<Trash2 size={15} />}>
+                      {t("plugin.uninstall")}
+                    </Button>
+                  </Popconfirm>
+                ) : null}
                 <Button
                   disabled={operationsDisabled}
                   htmlType="button"

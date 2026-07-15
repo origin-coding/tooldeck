@@ -6,6 +6,10 @@ The desktop app provides the renderer UI while the main process owns plugin scan
 runtime execution, and SQLite access. Renderer code talks to the main process through the
 preload/API boundary and does not import plugin runtime code or access SQLite directly.
 
+The Plugins workbench installs trusted local `.tdplugin` packages, uninstalls managed plugins,
+and lists local state or plugin-scoped KV retained after uninstall. Purging retained data is a
+separate confirmed action and never deletes command history.
+
 ## Development
 
 From the workspace root:

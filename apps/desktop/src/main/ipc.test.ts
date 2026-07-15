@@ -47,4 +47,23 @@ describe("registerTooldeckIpc", () => {
 
     expect(electron.removeHandler).toHaveBeenCalledWith("tooldeck:install-plugin-package");
   });
+
+  it("forwards plugin uninstall and purge requests", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const uninstallPlugin = vi.fn().mockResolvedValue({ pluginId: "dev.example.plugin" });
+    const purgePluginData = vi.fn().mockReturnValue({ pluginId: "dev.example.plugin" });
+
+    electron.handle.mockImplementation((channel, handler) => handlers.set(channel, handler));
+
+    registerTooldeckIpc({
+      uninstallPlugin,
+      purgePluginData,
+    } as unknown as TooldeckDesktopService);
+
+    await handlers.get("tooldeck:uninstall-plugin")?.({}, { pluginId: "dev.example.plugin" });
+    await handlers.get("tooldeck:purge-plugin-data")?.({}, { pluginId: "dev.example.plugin" });
+
+    expect(uninstallPlugin).toHaveBeenCalledWith({ pluginId: "dev.example.plugin" });
+    expect(purgePluginData).toHaveBeenCalledWith({ pluginId: "dev.example.plugin" });
+  });
 });
