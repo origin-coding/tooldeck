@@ -346,7 +346,7 @@ export function printCommandResult(
       }
     }
 
-    if (result.status === "error" && result.blocks.length === 0) {
+    if (result.status === "error") {
       consola.error(result.error?.message ?? "Command failed.");
     }
   }

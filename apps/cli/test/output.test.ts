@@ -274,6 +274,63 @@ describe("CLI command output", () => {
     }
   });
 
+  it("prints the error message when an error result also contains output blocks", () => {
+    const previousExitCode = process.exitCode;
+    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
+    const error = vi.spyOn(consola, "error").mockImplementation(() => undefined);
+
+    try {
+      process.exitCode = undefined;
+
+      printCommandResult({
+        status: "error",
+        blocks: [
+          {
+            type: "text",
+            text: "Detailed output",
+          },
+        ],
+        error: {
+          code: "ERR_TEST",
+          message: "Command failed with details.",
+        },
+      });
+
+      expect(log).toHaveBeenCalledWith("Detailed output");
+      expect(error).toHaveBeenCalledWith("Command failed with details.");
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExitCode;
+      log.mockRestore();
+      error.mockRestore();
+    }
+  });
+
+  it("prints a fallback error message when an error result with output has no error", () => {
+    const previousExitCode = process.exitCode;
+    const error = vi.spyOn(consola, "error").mockImplementation(() => undefined);
+
+    try {
+      process.exitCode = undefined;
+
+      printCommandResult({
+        status: "error",
+        blocks: [
+          {
+            type: "text",
+            text: "Detailed output",
+          },
+        ],
+      });
+
+      expect(error).toHaveBeenCalledWith("Command failed.");
+      expect(process.exitCode).toBe(1);
+    } finally {
+      process.exitCode = previousExitCode;
+      error.mockRestore();
+    }
+  });
+
   it("keeps structured error results in JSON output", () => {
     const previousExitCode = process.exitCode;
     const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
