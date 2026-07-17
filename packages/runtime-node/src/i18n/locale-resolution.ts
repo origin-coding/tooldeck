@@ -158,6 +158,24 @@ function resolveSchemaDefinitionI18n(
     );
   }
 
+  const ui = readSchemaUi(schema);
+
+  if (ui) {
+    resolved["x-ui"] = {
+      ...ui,
+      ...(isLocalizedString(ui.placeholder)
+        ? {
+            placeholder: resolveLocalizedString({
+              value: ui.placeholder,
+              resources,
+              locale,
+              defaultLocale,
+            }),
+          }
+        : {}),
+    };
+  }
+
   if (schema.properties) {
     resolved.properties = Object.fromEntries(
       Object.entries(schema.properties).map(([key, value]) => [
@@ -206,6 +224,12 @@ function resolveSchemaDefinitionI18n(
   }
 
   return resolved;
+}
+
+function readSchemaUi(schema: JsonSchemaObject): Record<string, unknown> | undefined {
+  const value = schema["x-ui"];
+
+  return isSchemaObject(value) ? value : undefined;
 }
 
 function resolveTranslationKey({
@@ -262,6 +286,19 @@ function isStringRecord(value: unknown): value is Record<string, string> {
     value !== null &&
     !Array.isArray(value) &&
     Object.values(value).every((entry) => typeof entry === "string")
+  );
+}
+
+function isLocalizedString(value: unknown): value is LocalizedString {
+  if (typeof value === "string") {
+    return true;
+  }
+
+  return (
+    isSchemaObject(value) &&
+    Object.keys(value).every((key) => key === "key" || key === "default") &&
+    typeof value.key === "string" &&
+    typeof value.default === "string"
   );
 }
 

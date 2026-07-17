@@ -281,6 +281,9 @@ importers:
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@tooldeck/sdk-node':
+        specifier: workspace:*
+        version: link:../sdk-node
       ajv:
         specifier: ^8.20.0
         version: 8.20.0

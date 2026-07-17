@@ -38,6 +38,7 @@
   "dependencies": {
     "@tooldeck/plugin-package": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
+    "@tooldeck/sdk-node": "workspace:*",
     "ajv": "^8.20.0",
     "citty": "^0.2.2",
     "consola": "^3.4.2",

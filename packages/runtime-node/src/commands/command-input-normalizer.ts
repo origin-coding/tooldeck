@@ -1,4 +1,5 @@
 import type { TooldeckJsonSchema } from "@tooldeck/protocol";
+import { JsonValueValidationError, normalizeJsonValue } from "@tooldeck/sdk-node";
 import type { JsonObject, JsonValue } from "@tooldeck/shared";
 import Ajv from "ajv";
 
@@ -58,6 +59,7 @@ function createAjv(coerceTypes: boolean): Ajv {
     allErrors: true,
     coerceTypes,
     strict: false,
+    strictNumbers: true,
     useDefaults: true,
   });
 }
@@ -71,31 +73,15 @@ function cloneJsonValue(
   value: unknown,
   context: CommandInputContext,
 ): JsonValue {
-  if (
-    value === null ||
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item, index) => cloneJsonValue(`${propertyPath}[${index}]`, item, context));
-  }
-
-  if (typeof value === "object") {
-    const output: JsonObject = {};
-
-    for (const [propertyName, propertyValue] of Object.entries(value)) {
-      const childPath = propertyPath ? `${propertyPath}.${propertyName}` : propertyName;
-      output[propertyName] = cloneJsonValue(childPath, propertyValue, context);
+  try {
+    return normalizeJsonValue(value, propertyPath);
+  } catch (error) {
+    if (error instanceof JsonValueValidationError) {
+      throwNotJsonSerializableError(error.propertyPath, error.value, context);
     }
 
-    return output;
+    throw error;
   }
-
-  throwNotJsonSerializableError(propertyPath, value, context);
 }
 
 function isJsonObject(value: JsonValue): value is JsonObject {

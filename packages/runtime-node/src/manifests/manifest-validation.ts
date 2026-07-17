@@ -3,6 +3,8 @@ import manifestSchema from "@tooldeck/protocol/schema/manifest-v1.schema.json";
 import { TooldeckError } from "@tooldeck/shared";
 import Ajv, { type ErrorObject } from "ajv";
 
+import { collectCommandSchemaUiErrors } from "./manifest-schema-ui-validation";
+
 export interface ParsePluginManifestTextOptions {
   text: string;
   manifestPath?: string;
@@ -77,105 +79,9 @@ function validatePluginManifestSemantics(
   const commands = manifest.contributes?.commands ?? [];
 
   commands.forEach((command, commandIndex) => {
-    const inputSchema = command.inputSchema;
-
-    if (!isRecord(inputSchema)) {
-      return;
-    }
-
-    if (!("x-ui" in inputSchema)) {
-      return;
-    }
-
-    const uiPath = `/contributes/commands/${commandIndex}/inputSchema/x-ui`;
-    const fieldOrderPath = `/contributes/commands/${commandIndex}/inputSchema/x-ui/fieldOrder`;
-    const ui = inputSchema["x-ui"];
-
-    if (!isRecord(ui)) {
-      errors.push({
-        path: uiPath,
-        message: "must be an object",
-        keyword: "x-ui",
-      });
-
-      return;
-    }
-
-    for (const key of Object.keys(ui)) {
-      if (key !== "fieldOrder") {
-        errors.push({
-          path: `${uiPath}/${key}`,
-          message: "is not a supported input schema x-ui property",
-          keyword: "x-ui",
-        });
-      }
-    }
-
-    const fieldOrder = ui.fieldOrder;
-
-    if (fieldOrder === undefined) {
-      return;
-    }
-
-    if (!Array.isArray(fieldOrder)) {
-      errors.push({
-        path: fieldOrderPath,
-        message: "must be an array of input field names",
-        keyword: "x-ui.fieldOrder",
-      });
-
-      return;
-    }
-
-    const properties = isRecord(inputSchema.properties) ? inputSchema.properties : {};
-    const propertyKeys = new Set(Object.keys(properties));
-    const seen = new Set<string>();
-
-    fieldOrder.forEach((fieldName, fieldIndex) => {
-      const itemPath = `${fieldOrderPath}/${fieldIndex}`;
-
-      if (typeof fieldName !== "string" || fieldName.length === 0) {
-        errors.push({
-          path: itemPath,
-          message: "must be a non-empty input field name",
-          keyword: "x-ui.fieldOrder",
-        });
-
-        return;
-      }
-
-      if (seen.has(fieldName)) {
-        errors.push({
-          path: itemPath,
-          message: `duplicates input field '${fieldName}'`,
-          keyword: "x-ui.fieldOrder",
-        });
-
-        return;
-      }
-
-      seen.add(fieldName);
-
-      if (!propertyKeys.has(fieldName)) {
-        errors.push({
-          path: itemPath,
-          message: `references unknown input field '${fieldName}'`,
-          keyword: "x-ui.fieldOrder",
-        });
-      }
-    });
-  });
-
-  commands.forEach((command, commandIndex) => {
-    const outputSchema = command.outputSchema;
-
-    if (isRecord(outputSchema) && "x-ui" in outputSchema) {
-      errors.push({
-        path: `/contributes/commands/${commandIndex}/outputSchema/x-ui`,
-        message: "is not supported on command output schemas",
-        keyword: "x-ui",
-      });
-    }
+    errors.push(
+      ...collectCommandSchemaUiErrors(command.inputSchema, command.outputSchema, commandIndex),
+    );
   });
 
   if (errors.length === 0) {
@@ -213,10 +119,6 @@ function formatManifestErrorMessage(message: string, manifestPath: string | unde
   }
 
   return `${message}: ${manifestPath}`;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function createRuntimeManifestSchema(): object {

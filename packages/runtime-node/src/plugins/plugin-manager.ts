@@ -3,8 +3,8 @@ import type { CommandInput } from "@tooldeck/sdk-node";
 import { TooldeckError, toTooldeckError } from "@tooldeck/shared";
 
 import { normalizeCommandInput, type CommandInputCoercion } from "../commands/command-input";
+import { validateCommandOutputSchema } from "../commands/command-output-schema-validation";
 import type { CommandRunResult, RuntimeCommandRegistry } from "../commands/command-registry";
-import { validateCommandOutputSchema } from "../commands/command-result-validation";
 import {
   initialPluginRuntimeState,
   PluginRuntimeLifecycleMachine,
