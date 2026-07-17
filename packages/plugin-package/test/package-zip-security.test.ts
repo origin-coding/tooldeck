@@ -16,6 +16,49 @@ import {
 
 describe("Tooldeck plugin ZIP validation", () => {
   it.each([
+    ["random non-ZIP bytes", new Uint8Array([0xde, 0xad, 0xbe, 0xef])],
+    ["a truncated ZIP", undefined],
+  ])("rejects damaged packages containing %s", async (_description, packageBytes) => {
+    const readablePackagePath = await createReadablePackage();
+    const packagePath = path.join(path.dirname(readablePackagePath), "damaged.tdplugin");
+    const readablePackageBytes = await readFile(readablePackagePath);
+
+    await writeFile(
+      packagePath,
+      packageBytes ?? readablePackageBytes.subarray(0, Math.floor(readablePackageBytes.length / 2)),
+    );
+
+    await expect(readTooldeckPackage({ packagePath })).rejects.toMatchObject({
+      code: "INVALID_ZIP",
+    } satisfies Partial<TooldeckPackageError>);
+  });
+
+  it("rejects a package whose compressed manifest data is corrupted", async () => {
+    const readablePackagePath = await createReadablePackage();
+    const packagePath = path.join(path.dirname(readablePackagePath), "corrupted-data.tdplugin");
+    const packageBytes = new Uint8Array(await readFile(readablePackagePath));
+    const manifestName = encode("manifest.json");
+    const manifestNameOffset = findBytes(packageBytes, manifestName);
+
+    expect(manifestNameOffset).toBeGreaterThanOrEqual(30);
+
+    const localHeaderOffset = manifestNameOffset - 30;
+    const localHeader = new DataView(
+      packageBytes.buffer,
+      packageBytes.byteOffset,
+      packageBytes.byteLength,
+    );
+    const fileNameLength = localHeader.getUint16(localHeaderOffset + 26, true);
+    const extraFieldLength = localHeader.getUint16(localHeaderOffset + 28, true);
+    const compressedDataOffset = localHeaderOffset + 30 + fileNameLength + extraFieldLength;
+
+    packageBytes[compressedDataOffset] = packageBytes[compressedDataOffset]! ^ 0xff;
+    await writeFile(packagePath, packageBytes);
+
+    await expect(readTooldeckPackage({ packagePath })).rejects.toBeInstanceOf(TooldeckPackageError);
+  });
+
+  it.each([
     ["absolute paths", "/evil.txt", "INVALID_PACKAGE_PATH"],
     ["path traversal", "../evil.txt", "INVALID_PACKAGE_PATH"],
     ["node_modules", "node_modules/pkg/index.js", "NODE_MODULES_NOT_ALLOWED"],
@@ -165,3 +208,13 @@ describe("Tooldeck plugin ZIP validation", () => {
     } satisfies Partial<TooldeckPackageError>);
   });
 });
+
+function findBytes(data: Uint8Array, target: Uint8Array): number {
+  for (let offset = 0; offset <= data.length - target.length; offset += 1) {
+    if (target.every((value, index) => data[offset + index] === value)) {
+      return offset;
+    }
+  }
+
+  return -1;
+}

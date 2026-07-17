@@ -1,9 +1,13 @@
 import { existsSync } from "node:fs";
-import { readdir } from "node:fs/promises";
+import { readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { PluginInstallRepository, PluginStateRepository } from "@tooldeck/storage";
-import { describe, expect, it } from "vitest";
+import {
+  PluginInstallRepository,
+  PluginRepository,
+  PluginStateRepository,
+} from "@tooldeck/storage";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createHarness,
@@ -93,6 +97,49 @@ describe("PluginManagementService catalog and install", () => {
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
 
+  it("rejects plugin id conflicts and removes the staging directory", async () => {
+    const harness = await createHarness();
+    const pluginId = "dev.tooldeck.shared-tools";
+
+    await writePluginProject({
+      projectDir: path.join(harness.builtinPluginsDir, "shared-tools"),
+      pluginId,
+      commandId: "builtin-shared.run",
+    });
+    const packagePath = await createPluginPackage({
+      rootDir: harness.rootDir,
+      pluginId,
+      commandId: "installed-shared.run",
+    });
+
+    await expect(harness.service.installPackage(packagePath)).rejects.toThrow(
+      `Plugin manifest is already indexed: ${pluginId}`,
+    );
+    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
+    expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
+  });
+
+  it("rejects a duplicate installation without changing the existing install", async () => {
+    const harness = await createHarness();
+    const pluginId = "dev.example.already-installed";
+    const packagePath = await createPluginPackage({
+      rootDir: harness.rootDir,
+      pluginId,
+      commandId: "already-installed.run",
+    });
+    const firstInstall = await harness.service.installPackage(packagePath);
+
+    await expect(harness.service.installPackage(packagePath)).rejects.toThrow(
+      `Plugin is already installed: ${pluginId}`,
+    );
+    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toEqual(
+      firstInstall.install,
+    );
+    expect(existsSync(firstInstall.install.installDir)).toBe(true);
+    expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
+  });
+
   it("rejects non-Node packages without leaving install state", async () => {
     const harness = await createHarness();
     const packagePath = await createPluginPackage({
@@ -111,6 +158,21 @@ describe("PluginManagementService catalog and install", () => {
     expect(existsSync(path.join(harness.installedPluginsDir, "dev.example.wasm-tools"))).toBe(
       false,
     );
+  });
+
+  it("rejects a damaged package without leaving files or install state", async () => {
+    const harness = await createHarness();
+    const packagePath = path.join(harness.rootDir, "damaged.tdplugin");
+
+    await writeFile(packagePath, new Uint8Array([0xde, 0xad, 0xbe, 0xef]));
+
+    await expect(harness.service.installPackage(packagePath)).rejects.toMatchObject({
+      code: "INVALID_ZIP",
+    });
+    expect(new PluginInstallRepository(harness.database.db).list()).toEqual([]);
+    expect(new PluginRepository(harness.database.db).list()).toEqual([]);
+    expect(await readdir(harness.installedPluginsDir)).toEqual([".staging"]);
+    expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
 
   it("rolls back installed files when the install record cannot be written", async () => {
@@ -138,5 +200,38 @@ describe("PluginManagementService catalog and install", () => {
     expect(
       new PluginInstallRepository(harness.database.db).getById("dev.example.storage-failure"),
     ).toBeUndefined();
+  });
+
+  it("rolls back files, install state, and catalog when the final rescan fails", async () => {
+    const harness = await createHarness();
+    const pluginId = "dev.example.rescan-failure";
+    const packagePath = await createPluginPackage({
+      rootDir: harness.rootDir,
+      pluginId,
+      commandId: "rescan-failure.run",
+    });
+    const originalSync = PluginRepository.prototype.syncScannedPlugins;
+    let syncCallCount = 0;
+
+    vi.spyOn(PluginRepository.prototype, "syncScannedPlugins").mockImplementation(
+      function (this: PluginRepository, options) {
+        syncCallCount += 1;
+
+        if (syncCallCount === 2) {
+          throw new Error("forced final rescan failure");
+        }
+
+        return originalSync.call(this, options);
+      },
+    );
+
+    await expect(harness.service.installPackage(packagePath)).rejects.toThrow(
+      "forced final rescan failure",
+    );
+    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(new PluginRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
+    expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
+    await expect(harness.service.scanAndSyncCatalog()).resolves.toMatchObject({ plugins: [] });
   });
 });
