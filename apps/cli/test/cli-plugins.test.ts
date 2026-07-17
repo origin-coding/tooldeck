@@ -140,6 +140,36 @@ describe("CLI plugin management", () => {
 
       log.mockClear();
       await runCommand(cli, {
+        rawArgs: ["plugin", "disable", pluginId, "--storage", storagePath],
+      });
+
+      expect(readPluginState(storagePath, pluginId)).toMatchObject({ enabled: false });
+      expect(existsSync(activationMarkerPath)).toBe(false);
+
+      await expect(
+        runCommand(cli, {
+          rawArgs: ["run", commandId, "--storage", storagePath],
+        }),
+      ).rejects.toThrow(`Plugin is disabled for command ${commandId}: ${pluginId}`);
+      expect(existsSync(activationMarkerPath)).toBe(false);
+      expect(readCommandRuns(storagePath)).toEqual([
+        expect.objectContaining({
+          commandId,
+          pluginId,
+          source: "cli",
+          status: "error",
+        }),
+      ]);
+
+      log.mockClear();
+      await runCommand(cli, {
+        rawArgs: ["plugin", "enable", pluginId, "--storage", storagePath],
+      });
+
+      expect(readPluginState(storagePath, pluginId)).toMatchObject({ enabled: true });
+
+      log.mockClear();
+      await runCommand(cli, {
         rawArgs: ["run", commandId, "--storage", storagePath],
       });
 
@@ -151,6 +181,12 @@ describe("CLI plugin management", () => {
           pluginId,
           source: "cli",
           status: "success",
+        }),
+        expect.objectContaining({
+          commandId,
+          pluginId,
+          source: "cli",
+          status: "error",
         }),
       ]);
       writePluginKvValue(storagePath, pluginId, "retained", true);
@@ -183,6 +219,11 @@ describe("CLI plugin management", () => {
           commandId,
           pluginId,
           status: "success",
+        }),
+        expect.objectContaining({
+          commandId,
+          pluginId,
+          status: "error",
         }),
       ]);
       expect(String(log.mock.calls.at(-1)?.[0])).toContain(`Purged local data for ${pluginId}.`);
