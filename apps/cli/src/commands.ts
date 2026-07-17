@@ -6,7 +6,6 @@ import {
   type CreateNodeRuntimeOptions,
   type NodePluginHost,
 } from "@tooldeck/host-node";
-import { PluginManagementService } from "@tooldeck/plugin-management-node";
 import { validatePreferenceValue } from "@tooldeck/preferences";
 import type {
   CommandResult,
@@ -35,6 +34,7 @@ import { defineCommand } from "citty";
 import { consola } from "consola";
 
 import { formatCommandList } from "./output";
+import { createCliPluginManagement } from "./plugin-management";
 import { listCliPlugins, printPluginList } from "./plugins";
 import {
   getCliOutputFormat,
@@ -46,8 +46,6 @@ import {
   createPluginDirCommandArg,
   createPluginsCommandArg,
   createStorageCommandArg,
-  ensureCliInstalledPluginSource,
-  resolveCliInstalledPluginsDir,
   resolveCliPluginDirOption,
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
@@ -133,14 +131,9 @@ export async function runCliCommandWithStorage(
     const preferences = new PreferenceRepository(database.db);
     const plugins = new PluginRepository(database.db);
     const pluginKv = new PluginKvRepository(database.db);
-    const pluginSources = ensureCliInstalledPluginSource(
-      resolvePluginSources(options),
-      options.storagePath,
-    );
-    const management = new PluginManagementService({
-      database,
-      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
-      pluginSources,
+    const { management, pluginSources } = createCliPluginManagement(database, {
+      pluginSources: resolvePluginSources(options),
+      storagePath: options.storagePath,
     });
     const recordCommandHistory = getCommandHistoryEnabled(preferences);
     const startedAt = performance.now();

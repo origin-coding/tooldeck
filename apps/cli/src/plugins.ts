@@ -1,11 +1,9 @@
 import path from "node:path";
 
-import { PluginManagementService } from "@tooldeck/plugin-management-node";
 import type { LocalizedString } from "@tooldeck/protocol";
 import type { PluginScanSource } from "@tooldeck/runtime-node";
 import { TooldeckError } from "@tooldeck/shared";
 import type { PluginRow } from "@tooldeck/storage";
-import { withTooldeckDatabase } from "@tooldeck/storage";
 import { defineCommand } from "citty";
 import { consola } from "consola";
 
@@ -15,14 +13,13 @@ import {
   formatPluginPurge,
   formatPluginUninstall,
 } from "./output";
+import { withCliPluginManagement } from "./plugin-management";
 import { getCliOutputFormat, type CliOutputFormat } from "./preferences";
 import {
   createPluginDirCommandArg,
   createPluginsCommandArg,
   createStorageCommandArg,
-  ensureCliInstalledPluginSource,
   requireCliArgument,
-  resolveCliInstalledPluginsDir,
   resolveCliPluginDirOption,
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
@@ -90,111 +87,96 @@ export interface PurgedCliPlugin {
 }
 
 export async function listCliPlugins(options: ListCliPluginsOptions): Promise<ListedCliPlugin[]> {
-  return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
-    const pluginSources = ensureCliInstalledPluginSource(
-      resolvePluginSources(options),
-      options.storagePath,
-    );
-    const management = new PluginManagementService({
-      database,
-      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
-      pluginSources,
-    });
-    const catalog = await management.scanAndSyncCatalog();
+  return withCliPluginManagement(
+    {
+      pluginSources: resolvePluginSources(options),
+      storagePath: options.storagePath,
+    },
+    async ({ management }) => {
+      const catalog = await management.scanAndSyncCatalog();
 
-    return catalog.plugins.map(formatListedPlugin);
-  });
+      return catalog.plugins.map(formatListedPlugin);
+    },
+  );
 }
 
 export async function setCliPluginEnabled(
   options: SetCliPluginEnabledOptions,
 ): Promise<ListedCliPlugin> {
-  return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
-    const pluginSources = ensureCliInstalledPluginSource(
-      resolvePluginSources(options),
-      options.storagePath,
-    );
-    const management = new PluginManagementService({
-      database,
-      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
-      pluginSources,
-    });
-    const plugin = await management.setEnabled(options.pluginId, options.enabled);
+  return withCliPluginManagement(
+    {
+      pluginSources: resolvePluginSources(options),
+      storagePath: options.storagePath,
+    },
+    async ({ management }) => {
+      const plugin = await management.setEnabled(options.pluginId, options.enabled);
 
-    return formatListedPlugin(plugin);
-  });
+      return formatListedPlugin(plugin);
+    },
+  );
 }
 
 export async function installCliPlugin(
   options: InstallCliPluginOptions,
 ): Promise<InstalledCliPlugin> {
-  return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
-    const pluginSources = ensureCliInstalledPluginSource(
-      resolvePluginSources(options),
-      options.storagePath,
-    );
-    const management = new PluginManagementService({
-      database,
-      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
-      pluginSources,
-    });
-    const installed = await management.installPackage(options.packagePath);
+  return withCliPluginManagement(
+    {
+      pluginSources: resolvePluginSources(options),
+      storagePath: options.storagePath,
+    },
+    async ({ management }) => {
+      const installed = await management.installPackage(options.packagePath);
 
-    return {
-      ...formatListedPlugin(installed.plugin),
-      installDir: installed.install.installDir,
-      packageDigest: installed.install.packageDigest,
-      packageName: installed.install.packageName,
-      packageSizeBytes: installed.install.packageSizeBytes,
-    };
-  });
+      return {
+        ...formatListedPlugin(installed.plugin),
+        installDir: installed.install.installDir,
+        packageDigest: installed.install.packageDigest,
+        packageName: installed.install.packageName,
+        packageSizeBytes: installed.install.packageSizeBytes,
+      };
+    },
+  );
 }
 
 export async function uninstallCliPlugin(
   options: UninstallCliPluginOptions,
 ): Promise<UninstalledCliPlugin> {
-  return withTooldeckDatabase({ path: options.storagePath }, async (database) => {
-    const pluginSources = ensureCliInstalledPluginSource(
-      resolvePluginSources(options),
-      options.storagePath,
-    );
-    const management = new PluginManagementService({
-      database,
-      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
-      pluginSources,
-    });
-    const uninstalled = await management.uninstall(options.pluginId);
+  return withCliPluginManagement(
+    {
+      pluginSources: resolvePluginSources(options),
+      storagePath: options.storagePath,
+    },
+    async ({ management }) => {
+      const uninstalled = await management.uninstall(options.pluginId);
 
-    return {
-      ...(uninstalled.cleanupError ? { cleanupError: uninstalled.cleanupError } : {}),
-      cleanupPending: uninstalled.cleanupPending,
-      filesMissing: uninstalled.filesMissing,
-      id: uninstalled.pluginId,
-      installDir: uninstalled.install.installDir,
-      version: uninstalled.install.version,
-    };
-  });
+      return {
+        ...(uninstalled.cleanupError ? { cleanupError: uninstalled.cleanupError } : {}),
+        cleanupPending: uninstalled.cleanupPending,
+        filesMissing: uninstalled.filesMissing,
+        id: uninstalled.pluginId,
+        installDir: uninstalled.install.installDir,
+        version: uninstalled.install.version,
+      };
+    },
+  );
 }
 
 export async function purgeCliPlugin(options: PurgeCliPluginOptions): Promise<PurgedCliPlugin> {
-  return withTooldeckDatabase({ path: options.storagePath }, (database) => {
-    const pluginSources = ensureCliInstalledPluginSource(
-      resolvePluginSources(options),
-      options.storagePath,
-    );
-    const management = new PluginManagementService({
-      database,
-      installedPluginsDir: resolveCliInstalledPluginsDir(pluginSources),
-      pluginSources,
-    });
-    const purged = management.purge(options.pluginId);
+  return withCliPluginManagement(
+    {
+      pluginSources: resolvePluginSources(options),
+      storagePath: options.storagePath,
+    },
+    ({ management }) => {
+      const purged = management.purge(options.pluginId);
 
-    return {
-      id: purged.pluginId,
-      kvEntriesRemoved: purged.kvEntriesRemoved,
-      stateRemoved: purged.stateRemoved,
-    };
-  });
+      return {
+        id: purged.pluginId,
+        kvEntriesRemoved: purged.kvEntriesRemoved,
+        stateRemoved: purged.stateRemoved,
+      };
+    },
+  );
 }
 
 export function definePluginCommand(options: CreateCliCommandOptions) {
