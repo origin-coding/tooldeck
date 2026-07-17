@@ -35,19 +35,47 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
   }
 
   async dispose(): Promise<void> {
+    let runtimeFailed = false;
+    let runtimeError: unknown;
+
     try {
       await this.disposePluginRuntime();
-    } finally {
-      this.context.database?.close();
+    } catch (error) {
+      runtimeFailed = true;
+      runtimeError = error;
+    }
+
+    const database = this.context.database;
+    this.context.database = undefined;
+
+    try {
+      database?.close();
+    } catch (databaseError) {
+      if (runtimeFailed) {
+        throw new AggregateError(
+          [runtimeError, databaseError],
+          "Desktop runtime and database cleanup both failed.",
+          { cause: runtimeError },
+        );
+      }
+
+      throw databaseError;
+    }
+
+    if (runtimeFailed) {
+      throw runtimeError;
     }
   }
 
   async disposePluginRuntime(): Promise<void> {
-    await this.context.pluginHost?.disposeAll();
+    const pluginHost = this.context.pluginHost;
+
     this.context.pluginHost = undefined;
     this.context.pluginManager = undefined;
     this.context.commandService = undefined;
     this.context.manifestIndex = undefined;
+
+    await pluginHost?.disposeAll();
   }
 
   async scanAndCreateRuntime(): Promise<void> {

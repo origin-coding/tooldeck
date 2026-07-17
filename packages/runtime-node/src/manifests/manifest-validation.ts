@@ -1,5 +1,4 @@
-import type { PluginManifest } from "@tooldeck/protocol";
-import manifestSchema from "@tooldeck/protocol/schema/manifest-v1.schema.json";
+import { manifestV1Schema, type PluginManifest } from "@tooldeck/protocol";
 import { TooldeckError } from "@tooldeck/shared";
 import Ajv, { type ErrorObject } from "ajv";
 
@@ -122,7 +121,7 @@ function formatManifestErrorMessage(message: string, manifestPath: string | unde
 }
 
 function createRuntimeManifestSchema(): object {
-  const schema = structuredClone(manifestSchema) as {
+  const schema = structuredClone(manifestV1Schema) as {
     definitions?: {
       tooldeckInputJsonSchema?: unknown;
       tooldeckJsonSchema?: unknown;

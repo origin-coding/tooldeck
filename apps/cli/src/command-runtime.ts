@@ -115,6 +115,9 @@ export async function runCliCommandWithStorage(
     let pluginHost: NodePluginHost | undefined;
     let pluginId: string | undefined;
     let input = options.input;
+    let operationOutcome:
+      | { success: true; result: CommandResult }
+      | { success: false; error: unknown };
 
     try {
       const created = await createPluginManager({
@@ -172,24 +175,59 @@ export async function runCliCommandWithStorage(
         });
       }
 
-      return run.result;
+      operationOutcome = { success: true, result: run.result };
     } catch (error) {
+      let recordedError = error;
+
       if (recordCommandHistory) {
-        commandRuns.create({
-          commandId: options.commandId,
-          pluginId,
-          source: "cli",
-          status: "error",
-          input,
-          error: serializeError(error),
-          durationMs: elapsedMilliseconds(startedAt),
-        });
+        try {
+          commandRuns.create({
+            commandId: options.commandId,
+            pluginId,
+            source: "cli",
+            status: "error",
+            input,
+            error: serializeError(error),
+            durationMs: elapsedMilliseconds(startedAt),
+          });
+        } catch (historyError) {
+          recordedError = new AggregateError(
+            [error, historyError],
+            "CLI command failed and its error history could not be recorded.",
+            { cause: error },
+          );
+        }
       }
 
-      throw error;
-    } finally {
-      await pluginHost?.disposeAll();
+      operationOutcome = { success: false, error: recordedError };
     }
+
+    let cleanupOutcome: { success: true } | { success: false; error: unknown };
+
+    try {
+      await pluginHost?.disposeAll();
+      cleanupOutcome = { success: true };
+    } catch (error) {
+      cleanupOutcome = { success: false, error };
+    }
+
+    if (!operationOutcome.success) {
+      if (!cleanupOutcome.success) {
+        throw new AggregateError(
+          [operationOutcome.error, cleanupOutcome.error],
+          "CLI command failed and plugin cleanup did not complete.",
+          { cause: operationOutcome.error },
+        );
+      }
+
+      throw operationOutcome.error;
+    }
+
+    if (!cleanupOutcome.success) {
+      throw cleanupOutcome.error;
+    }
+
+    return operationOutcome.result;
   });
 }
 

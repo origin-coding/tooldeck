@@ -202,4 +202,66 @@ describe("CLI command catalog", () => {
       }),
     ]);
   });
+
+  it("preserves command and plugin cleanup failures", async () => {
+    const pluginRoot = path.join(createTempDir(), "cleanup-failure");
+    const storagePath = createDatabasePath();
+
+    await mkdir(pluginRoot, { recursive: true });
+    await writeFile(
+      path.join(pluginRoot, "manifest.json"),
+      JSON.stringify({
+        schemaVersion: "1.0",
+        id: "dev.tooldeck.cleanup-failure",
+        name: "Cleanup Failure",
+        version: "0.0.0",
+        runtime: { kind: "node", entry: "./index.mjs" },
+        contributes: {
+          commands: [{ id: "cleanup.fail", title: "Fail with cleanup error" }],
+        },
+      }),
+      "utf8",
+    );
+    await writeFile(
+      path.join(pluginRoot, "index.mjs"),
+      `
+        export default {
+          activate(ctx) {
+            ctx.subscriptions.push(
+              ctx.commands.register("cleanup.fail", () => {
+                throw new Error("command failed at source");
+              }),
+            );
+          },
+          deactivate() {
+            throw new Error("deactivate failed at source");
+          },
+        };
+      `,
+      "utf8",
+    );
+
+    const error = await runCliCommandWithStorage({
+      commandId: "cleanup.fail",
+      pluginSources: [{ kind: "external", path: pluginRoot }],
+      storagePath,
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AggregateError);
+    expect(error).toMatchObject({
+      message: "CLI command failed and plugin cleanup did not complete.",
+      cause: expect.objectContaining({ message: "command failed at source" }),
+      errors: [
+        expect.objectContaining({ message: "command failed at source" }),
+        expect.objectContaining({ message: "Failed to dispose all active plugins" }),
+      ],
+    });
+    expect(readCommandRuns(storagePath)).toEqual([
+      expect.objectContaining({
+        commandId: "cleanup.fail",
+        status: "error",
+        errorJson: expect.stringContaining("command failed at source"),
+      }),
+    ]);
+  });
 });

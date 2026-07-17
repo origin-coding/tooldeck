@@ -39,6 +39,7 @@ export class PluginManager {
   private readonly commandRegistry: RuntimeCommandRegistry;
   private readonly pluginHost: PluginHost;
   private readonly pluginLifecycles = new Map<string, PluginRuntimeLifecycleMachine>();
+  private readonly pendingActivations = new Map<string, Promise<void>>();
 
   constructor(options: PluginManagerOptions) {
     this.manifestIndex = options.manifestIndex;
@@ -135,21 +136,8 @@ export class PluginManager {
       });
     }
 
-    if (!this.pluginHost.hasPlugin(plugin.id)) {
-      const lifecycle = this.getPluginLifecycle(plugin.id);
-
-      lifecycle.dispatch("activationRequested");
-
-      try {
-        await this.pluginHost.activatePlugin({
-          pluginId: plugin.id,
-          entryPath: plugin.entryPath,
-        });
-        lifecycle.dispatch("activated");
-      } catch (error) {
-        lifecycle.dispatch("activationFailed");
-        throw error;
-      }
+    if (this.pendingActivations.has(plugin.id) || !this.pluginHost.hasPlugin(plugin.id)) {
+      await this.activatePluginOnce(plugin);
     }
 
     if (!this.commandRegistry.has(commandId)) {
@@ -161,6 +149,40 @@ export class PluginManager {
           pluginId: plugin.id,
         },
       });
+    }
+  }
+
+  private async activatePluginOnce(plugin: { id: string; entryPath: string }): Promise<void> {
+    let activation = this.pendingActivations.get(plugin.id);
+
+    if (!activation) {
+      activation = this.activatePlugin(plugin);
+      this.pendingActivations.set(plugin.id, activation);
+    }
+
+    try {
+      await activation;
+    } finally {
+      if (this.pendingActivations.get(plugin.id) === activation) {
+        this.pendingActivations.delete(plugin.id);
+      }
+    }
+  }
+
+  private async activatePlugin(plugin: { id: string; entryPath: string }): Promise<void> {
+    const lifecycle = this.getPluginLifecycle(plugin.id);
+
+    lifecycle.dispatch("activationRequested");
+
+    try {
+      await this.pluginHost.activatePlugin({
+        pluginId: plugin.id,
+        entryPath: plugin.entryPath,
+      });
+      lifecycle.dispatch("activated");
+    } catch (error) {
+      lifecycle.dispatch("activationFailed");
+      throw error;
     }
   }
 

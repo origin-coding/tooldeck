@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   openTooldeckDatabase,
@@ -225,6 +225,44 @@ describe("storage migrations and lifecycle", () => {
 
     expect(result).toMatchObject({ value: 1 });
     expect(() => databaseFromCallback?.sqlite.prepare("select 1")).toThrow();
+  });
+
+  it("closes a partial connection when database initialization fails", () => {
+    const databasePath = createDatabasePath();
+    const malformed = new DatabaseSync(databasePath);
+
+    malformed.exec("create table schema_migrations (unexpected text not null);");
+    malformed.close();
+
+    const close = vi.spyOn(DatabaseSync.prototype, "close");
+
+    try {
+      expect(() => openTooldeckDatabase({ path: databasePath })).toThrow();
+      expect(close).toHaveBeenCalledOnce();
+    } finally {
+      close.mockRestore();
+    }
+  });
+
+  it("preserves callback and close failures", async () => {
+    const callbackError = new Error("callback failed");
+    const closeError = new Error("close failed");
+
+    await expect(
+      withTooldeckDatabase({ path: createDatabasePath() }, (database) => {
+        const close = database.close.bind(database);
+        database.close = () => {
+          close();
+          throw closeError;
+        };
+
+        throw callbackError;
+      }),
+    ).rejects.toMatchObject({
+      message: "Tooldeck database callback failed and the connection did not close cleanly.",
+      cause: callbackError,
+      errors: [callbackError, closeError],
+    });
   });
 
   it("runs callbacks with a managed repository lifecycle", async () => {

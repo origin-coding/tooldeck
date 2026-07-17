@@ -21,23 +21,37 @@ export interface TooldeckDatabase {
 export function openTooldeckDatabase(options: TooldeckDatabaseOptions): TooldeckDatabase {
   const sqlite = new DatabaseSync(options.path);
 
-  sqlite.exec("pragma foreign_keys = on;");
-  sqlite.exec("pragma journal_mode = wal;");
+  try {
+    sqlite.exec("pragma foreign_keys = on;");
+    sqlite.exec("pragma journal_mode = wal;");
 
-  if (options.migrate ?? true) {
-    runMigrations(sqlite);
-  }
+    if (options.migrate ?? true) {
+      runMigrations(sqlite);
+    }
 
-  const db = drizzle({
-    client: sqlite,
-    schema,
-  });
+    const db = drizzle({
+      client: sqlite,
+      schema,
+    });
 
-  return {
-    sqlite,
-    db,
-    close() {
+    return {
+      sqlite,
+      db,
+      close() {
+        sqlite.close();
+      },
+    };
+  } catch (error) {
+    try {
       sqlite.close();
-    },
-  };
+    } catch (closeError) {
+      throw new AggregateError(
+        [error, closeError],
+        "Failed to open Tooldeck database and close the partial connection.",
+        { cause: error },
+      );
+    }
+
+    throw error;
+  }
 }

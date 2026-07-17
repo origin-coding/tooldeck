@@ -75,11 +75,27 @@ export class NodePluginHost {
     try {
       await plugin.activate(context);
     } catch (error) {
-      await this.disposeSubscriptions(context);
+      let cleanupFailed = false;
+      let cleanupError: unknown;
+
+      try {
+        await this.disposeSubscriptions(context);
+      } catch (subscriptionError) {
+        cleanupFailed = true;
+        cleanupError = subscriptionError;
+      }
+
       throw new TooldeckError({
         code: "ERR_PLUGIN_LOAD_FAILED",
         message: `Failed to activate plugin: ${options.pluginId}`,
         cause: error,
+        ...(!cleanupFailed
+          ? {}
+          : {
+              details: {
+                cleanupError: toTooldeckError(cleanupError).message,
+              },
+            }),
       });
     }
 
@@ -203,8 +219,25 @@ export class NodePluginHost {
   }
 
   private async disposeSubscriptions(context: PluginContextV1): Promise<void> {
-    for (const subscription of context.subscriptions.toReversed()) {
-      await subscription.dispose();
+    const subscriptions = context.subscriptions.splice(0).toReversed();
+    const errors: unknown[] = [];
+
+    for (const subscription of subscriptions) {
+      try {
+        await subscription.dispose();
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new TooldeckError({
+        code: "ERR_PLUGIN_LOAD_FAILED",
+        message: `Failed to dispose ${errors.length} plugin subscription(s): ${context.pluginId}`,
+        details: {
+          errors: errors.map((error) => toTooldeckError(error).message),
+        },
+      });
     }
   }
 }

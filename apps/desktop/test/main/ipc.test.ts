@@ -66,4 +66,18 @@ describe("registerTooldeckIpc", () => {
     expect(uninstallPlugin).toHaveBeenCalledWith({ pluginId: "dev.example.plugin" });
     expect(purgePluginData).toHaveBeenCalledWith({ pluginId: "dev.example.plugin" });
   });
+
+  it("removes handlers registered before a later registration fails", () => {
+    electron.handle
+      .mockImplementationOnce(() => undefined)
+      .mockImplementationOnce(() => {
+        throw new Error("duplicate IPC handler");
+      });
+
+    expect(() => registerTooldeckIpc({} as TooldeckDesktopService)).toThrow(
+      "duplicate IPC handler",
+    );
+    expect(electron.removeHandler).toHaveBeenCalledTimes(1);
+    expect(electron.removeHandler).toHaveBeenCalledWith("tooldeck:list-commands");
+  });
 });
