@@ -28,14 +28,12 @@ export async function inspectPluginProject(
     : path.resolve(baseCheck.manifestDir, "dist", "index.js");
   const packageJson = await readJsonIfExists(path.join(baseCheck.manifestDir, "package.json"));
   const buildOutputExists = await pathExists(buildOutputPath);
-  const commandIds = (manifest?.contributes?.commands ?? [])
-    .map((command) => command.id)
-    .sort();
+  const commandIds = (manifest?.contributes?.commands ?? []).map((command) => command.id).sort();
   const locales = (await inspectLocales(manifest, baseCheck.manifestDir)).sort((a, b) =>
     a.locale.localeCompare(b.locale),
   );
-  const tooldeckPackages = collectTooldeckPackages(packageJson).sort((a, b) =>
-    a.name.localeCompare(b.name) || a.source.localeCompare(b.source),
+  const tooldeckPackages = collectTooldeckPackages(packageJson).sort(
+    (a, b) => a.name.localeCompare(b.name) || a.source.localeCompare(b.source),
   );
 
   return {

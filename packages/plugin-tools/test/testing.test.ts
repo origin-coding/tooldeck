@@ -140,10 +140,14 @@ describe("createPluginTestHost", () => {
     const host = await createPluginTestHost<TestCommandInputs>({
       activate(ctx) {
         ctx.subscriptions.push(
-          ctx.commands.register("test.echo", () => ({
-            status: "success",
-            blocks: [{ type: "text", text: 1 }],
-          }) as never),
+          ctx.commands.register(
+            "test.echo",
+            () =>
+              ({
+                status: "success",
+                blocks: [{ type: "text", text: 1 }],
+              }) as never,
+          ),
         );
       },
     });

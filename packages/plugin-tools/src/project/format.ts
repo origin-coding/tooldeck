@@ -62,9 +62,7 @@ export function formatPluginInspection(result: InspectPluginProjectResult): stri
     lines.push("  [missing] No @tooldeck packages found in package.json.");
   } else {
     for (const packageInfo of result.tooldeckPackages) {
-      lines.push(
-        `  [ok] ${packageInfo.name}@${packageInfo.version} (${packageInfo.source})`,
-      );
+      lines.push(`  [ok] ${packageInfo.name}@${packageInfo.version} (${packageInfo.source})`);
     }
   }
 

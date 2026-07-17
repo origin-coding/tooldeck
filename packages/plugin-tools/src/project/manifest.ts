@@ -1,20 +1,13 @@
-import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import path from "node:path";
 
-import type { PluginManifest } from "@tooldeck/protocol";
+import { manifestV1Schema, type PluginManifest } from "@tooldeck/protocol";
 import Ajv from "ajv";
 
 import { checkLocales } from "./locale";
 import { checkSupportedSchemaExtensions } from "./schema-extensions";
 import type { PluginProjectDiagnostic } from "./types";
 import { formatUnknownError, normalizeAjvErrors } from "./utils";
-
-const require = createRequire(import.meta.url);
-const manifestSchema = JSON.parse(
-  readFileSync(require.resolve("@tooldeck/protocol/schema/manifest-v1.schema.json"), "utf8"),
-) as object;
 
 const ajv = new Ajv({
   allErrors: true,
@@ -161,7 +154,7 @@ function normalizePath(value: string): string {
 }
 
 function createRuntimeManifestSchema(): object {
-  const schema = structuredClone(manifestSchema) as {
+  const schema = structuredClone(manifestV1Schema) as {
     definitions?: {
       tooldeckInputJsonSchema?: unknown;
       tooldeckJsonSchema?: unknown;

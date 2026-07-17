@@ -20,11 +20,11 @@ plugin id 级用户状态
 
 1.3 使用三类表：
 
-| 表                 | 职责                                    |
-|-------------------|---------------------------------------|
-| `plugins`         | 当前扫描到的 plugin catalog / registry。     |
+| 表                | 职责                                            |
+| ----------------- | ----------------------------------------------- |
+| `plugins`         | 当前扫描到的 plugin catalog / registry。        |
 | `plugin_installs` | Tooldeck 管理的 installed plugin 文件资产记录。 |
-| `plugin_states`   | plugin id 级用户状态，例如 enabled。           |
+| `plugin_states`   | plugin id 级用户状态，例如 enabled。            |
 
 ## `plugins`
 

@@ -43,11 +43,7 @@ export class PluginInstallRepository {
   }
 
   getById(pluginId: string): PluginInstallRow | undefined {
-    return this.db
-      .select()
-      .from(pluginInstalls)
-      .where(eq(pluginInstalls.pluginId, pluginId))
-      .get();
+    return this.db.select().from(pluginInstalls).where(eq(pluginInstalls.pluginId, pluginId)).get();
   }
 
   list(): PluginInstallRow[] {

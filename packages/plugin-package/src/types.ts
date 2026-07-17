@@ -1,8 +1,4 @@
-import type {
-  JsonValue,
-  LocalizedString,
-  PluginContributes,
-} from "@tooldeck/protocol";
+import type { LocalizedString, PluginContributes } from "@tooldeck/protocol";
 
 export interface TooldeckPackageLimits {
   maxPackageSizeBytes: number;
@@ -82,5 +78,3 @@ export interface PackageJsonTooldeckConfig {
     exclude?: string[];
   };
 }
-
-export type UnknownJsonObject = Record<string, JsonValue | undefined>;

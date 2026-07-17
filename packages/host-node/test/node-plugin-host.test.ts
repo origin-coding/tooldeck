@@ -155,6 +155,47 @@ describe("NodePluginHost", () => {
     expect(module.calls).toEqual(["dispose:dev.example.activation-fails"]);
   });
 
+  it("continues disposing subscriptions after one fails", async () => {
+    const host = createHost();
+    const module = await import(
+      new URL("./fixtures/dispose-subscriptions-fail-plugin.mjs", import.meta.url).href
+    );
+
+    module.calls.length = 0;
+    await host.activatePlugin({
+      pluginId: "dev.example.subscription-cleanup",
+      entryPath: fixturePath("dispose-subscriptions-fail-plugin.mjs"),
+    });
+
+    await expect(host.deactivatePlugin("dev.example.subscription-cleanup")).rejects.toMatchObject({
+      code: "ERR_PLUGIN_LOAD_FAILED",
+      details: {
+        errors: ["Failed to dispose 1 plugin subscription(s): dev.example.subscription-cleanup"],
+      },
+    });
+    expect(module.calls).toEqual(["dispose:last", "dispose:failing", "dispose:first"]);
+    expect(host.hasPlugin("dev.example.subscription-cleanup")).toBe(false);
+  });
+
+  it("preserves activation failures when subscription cleanup also fails", async () => {
+    const host = createHost();
+
+    await expect(
+      host.activatePlugin({
+        pluginId: "dev.example.activation-cleanup-fails",
+        entryPath: fixturePath("activation-and-dispose-fail-plugin.mjs"),
+      }),
+    ).rejects.toMatchObject({
+      code: "ERR_PLUGIN_LOAD_FAILED",
+      message: "Failed to activate plugin: dev.example.activation-cleanup-fails",
+      cause: expect.objectContaining({ message: "activation failed at source" }),
+      details: {
+        cleanupError:
+          "Failed to dispose 1 plugin subscription(s): dev.example.activation-cleanup-fails",
+      },
+    });
+  });
+
   it("disposes all plugins in reverse activation order", async () => {
     const host = createHost();
     const pluginA = await import(new URL("./fixtures/dispose-all-a.mjs", import.meta.url).href);

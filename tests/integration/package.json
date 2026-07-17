@@ -8,10 +8,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tooldeck/runtime-node": "workspace:*",
     "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/host-node": "workspace:*",
-    "@tooldeck/protocol": "workspace:*"
+    "@tooldeck/protocol": "workspace:*",
+    "@tooldeck/runtime-node": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.9.1"

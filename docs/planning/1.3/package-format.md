@@ -74,7 +74,7 @@ locales/
 - locales
 - permissions declaration
 
-1.3 不把 package metadata 写入 `manifest.json`。原因：
+  1.3 不把 package metadata 写入 `manifest.json`。原因：
 
 - package metadata 描述一次打包产物，不是插件能力。
 - digest、文件清单、打包时间等信息属于包容器或安装状态。
@@ -91,23 +91,18 @@ locales/
   "formatVersion": "1.0",
   "manifestPath": "manifest.json",
   "createdAt": "2026-07-01T00:00:00.000Z",
-  "files": [
-    "manifest.json",
-    "tooldeck-package.json",
-    "dist/index.js",
-    "locales/en.json"
-  ]
+  "files": ["manifest.json", "tooldeck-package.json", "dist/index.js", "locales/en.json"]
 }
 ```
 
 字段语义：
 
-| 字段              | 说明                                    |
-|-----------------|---------------------------------------|
-| `formatVersion` | Tooldeck package format version。      |
+| 字段            | 说明                                            |
+| --------------- | ----------------------------------------------- |
+| `formatVersion` | Tooldeck package format version。               |
 | `manifestPath`  | 包内 TPP manifest 路径，1.3 固定为根 manifest。 |
-| `createdAt`     | 包生成时间，使用 ISO 8601 字符串。                |
-| `files`         | 包内所有普通文件的相对路径列表。                      |
+| `createdAt`     | 包生成时间，使用 ISO 8601 字符串。              |
+| `files`         | 包内所有普通文件的相对路径列表。                |
 
 ## 文件清单规则
 

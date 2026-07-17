@@ -19,6 +19,7 @@
   "dependencies": {
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/runtime-node": "workspace:*",
+    "@tooldeck/sdk-node": "workspace:*",
     "@tooldeck/shared": "workspace:*"
   },
   "devDependencies": {

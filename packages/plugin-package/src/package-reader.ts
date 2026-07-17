@@ -11,11 +11,11 @@ import { computePackageDigest } from "./digest.js";
 import { packageError } from "./errors.js";
 import { bytesToText, FflateZipAdapter } from "./fflate-zip-adapter.js";
 import { parsePluginManifestText } from "./manifest.js";
-import { assertSafePackagePath } from "./paths.js";
 import {
   assertPackageFileListMatches,
   validateTooldeckPackageManifest,
 } from "./package-manifest.js";
+import { assertSafePackagePath } from "./paths.js";
 import type {
   ReadTooldeckPackageOptions,
   TooldeckPackageLimits,

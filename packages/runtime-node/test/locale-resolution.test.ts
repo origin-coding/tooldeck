@@ -190,4 +190,44 @@ describe("locale resolution", () => {
       },
     });
   });
+
+  it("resolves localized input placeholders", () => {
+    expect(
+      resolveJsonSchemaI18n({
+        schema: {
+          type: "object",
+          properties: {
+            text: {
+              type: "string",
+              "x-ui": {
+                control: "textarea",
+                rows: 8,
+                placeholder: {
+                  key: "schema.text.placeholder",
+                  default: "Paste text",
+                },
+              },
+            },
+          },
+        },
+        locale: "zh-CN",
+        defaultLocale: "en",
+        resources: {
+          "zh-CN": {
+            "schema.text.placeholder": "粘贴文本",
+          },
+        },
+      }),
+    ).toMatchObject({
+      properties: {
+        text: {
+          "x-ui": {
+            control: "textarea",
+            rows: 8,
+            placeholder: "粘贴文本",
+          },
+        },
+      },
+    });
+  });
 });

@@ -11,12 +11,12 @@
     "tooldeck-plugin": "bin/tooldeck-plugin.js",
     "tooldeck-plugin-types": "bin/tooldeck-plugin-types.js"
   },
-  "type": "module",
-  "types": "./dist/index.d.ts",
   "files": [
     "bin",
     "dist"
   ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -38,6 +38,7 @@
   "dependencies": {
     "@tooldeck/plugin-package": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
+    "@tooldeck/sdk-node": "workspace:*",
     "ajv": "^8.20.0",
     "citty": "^0.2.2",
     "consola": "^3.4.2",

@@ -281,12 +281,7 @@ tooldeck-plugin inspect
 建议导出：
 
 ```ts
-export {
-  generatePluginCommandTypes,
-  checkPluginProject,
-  buildPluginProject,
-  inspectPluginProject,
-};
+export { generatePluginCommandTypes, checkPluginProject, buildPluginProject, inspectPluginProject };
 ```
 
 CLI 应调用同一套内部 API，避免 CLI 逻辑和库逻辑分叉。

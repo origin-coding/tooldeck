@@ -180,10 +180,7 @@ export function parseProjectInspectArgs(
   };
 }
 
-export function parseProjectBuildArgs(
-  args: string[],
-  commandName: string,
-): PluginProjectBuildArgs {
+export function parseProjectBuildArgs(args: string[], commandName: string): PluginProjectBuildArgs {
   const parsed: PluginProjectBuildArgs = {};
 
   for (let index = 0; index < args.length; index += 1) {
@@ -229,21 +226,15 @@ export function parseProjectBuildArgs(
   return parsed;
 }
 
-export function parseProjectPackArgs(
-  args: string[],
-  commandName: string,
-): PluginProjectPackArgs {
+export function parseProjectPackArgs(args: string[], commandName: string): PluginProjectPackArgs {
   const parsed: PluginProjectPackArgs = {};
 
-  parseSharedPackArgs(args, commandName, parsed, packUsage(commandName));
+  parseSharedPackArgs(args, parsed, packUsage(commandName));
 
   return parsed;
 }
 
-export function parseProjectDistArgs(
-  args: string[],
-  commandName: string,
-): PluginProjectDistArgs {
+export function parseProjectDistArgs(args: string[], commandName: string): PluginProjectDistArgs {
   const parsed: PluginProjectDistArgs = {};
   const usage = distUsage(commandName);
 
@@ -280,12 +271,7 @@ export function parseProjectDistArgs(
   return parsed;
 }
 
-function parseSharedPackArgs(
-  args: string[],
-  commandName: string,
-  parsed: PluginProjectPackArgs,
-  usage: string,
-): void {
+function parseSharedPackArgs(args: string[], parsed: PluginProjectPackArgs, usage: string): void {
   for (let index = 0; index < args.length; index += 1) {
     const consumed = parseSharedPackArg(args, index, parsed, usage);
 

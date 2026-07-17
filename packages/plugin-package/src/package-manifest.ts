@@ -50,10 +50,14 @@ export function validateTooldeckPackageManifest(value: unknown): TooldeckPackage
   }
 
   if (typeof value.createdAt !== "string" || Number.isNaN(Date.parse(value.createdAt))) {
-    throw packageError("INVALID_PACKAGE_MANIFEST", "Package createdAt must be an ISO date string.", {
-      manifestPath: TOOLDECK_PACKAGE_MANIFEST_PATH,
-      fieldPath: "createdAt",
-    });
+    throw packageError(
+      "INVALID_PACKAGE_MANIFEST",
+      "Package createdAt must be an ISO date string.",
+      {
+        manifestPath: TOOLDECK_PACKAGE_MANIFEST_PATH,
+        fieldPath: "createdAt",
+      },
+    );
   }
 
   if (!Array.isArray(value.files) || !value.files.every((file) => typeof file === "string")) {

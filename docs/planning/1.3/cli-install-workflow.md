@@ -122,7 +122,7 @@ candidate package
 - existing manifest path
 - incoming manifest path 或 package path
 
-1.3 不引入覆盖规则。任何来源冲突都拒绝安装。
+  1.3 不引入覆盖规则。任何来源冲突都拒绝安装。
 
 ## Rollback
 

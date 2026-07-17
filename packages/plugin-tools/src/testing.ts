@@ -1,8 +1,7 @@
-import type { CommandResult, ContentBlock, LocalizedString, PluginManifest } from "@tooldeck/protocol";
+import type { CommandResult, PluginManifest } from "@tooldeck/protocol";
+import { normalizeCommandResult } from "@tooldeck/sdk-node";
 
 type MaybePromise<T> = T | Promise<T>;
-type JsonPrimitive = string | number | boolean | null;
-type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
 export type PluginTestCommandInputMap = object;
 
@@ -143,7 +142,7 @@ export async function createPluginTestHost<
         throw new Error(`Command is not registered: ${commandId}`);
       }
 
-      return validateCommandResult(commandId, await handler(input));
+      return normalizeCommandResult({ commandId, result: await handler(input) });
     },
     async dispose() {
       if (disposed) {
@@ -257,200 +256,10 @@ async function disposeSubscriptions(subscriptions: PluginTestDisposable[]): Prom
   }
 }
 
-function validateCommandResult(commandId: string, result: unknown): CommandResult {
-  if (!isRecord(result)) {
-    throwInvalidCommandResult(commandId, "", "object", result);
-  }
-
-  if (result.status !== "success" && result.status !== "error") {
-    throwInvalidCommandResult(commandId, "status", "success | error", result.status);
-  }
-
-  if (!Array.isArray(result.blocks)) {
-    throwInvalidCommandResult(commandId, "blocks", "array", result.blocks);
-  }
-
-  return {
-    status: result.status,
-    blocks: result.blocks.map((block, index) =>
-      validateContentBlock(commandId, block, `blocks[${index}]`),
-    ),
-    ...(result.error === undefined ? {} : { error: validateCommandError(commandId, result.error) }),
-  };
-}
-
-function validateContentBlock(commandId: string, block: unknown, path: string): ContentBlock {
-  if (!isRecord(block)) {
-    throwInvalidCommandResult(commandId, path, "object", block);
-  }
-
-  if (block.type === "text") {
-    if (typeof block.text !== "string") {
-      throwInvalidCommandResult(commandId, `${path}.text`, "string", block.text);
-    }
-
-    return { type: "text", text: block.text };
-  }
-
-  if (block.type === "code") {
-    if (typeof block.text !== "string") {
-      throwInvalidCommandResult(commandId, `${path}.text`, "string", block.text);
-    }
-
-    if (block.language !== undefined && typeof block.language !== "string") {
-      throwInvalidCommandResult(commandId, `${path}.language`, "string", block.language);
-    }
-
-    return {
-      type: "code",
-      text: block.text,
-      ...(block.language === undefined ? {} : { language: block.language }),
-    };
-  }
-
-  if (block.type === "json") {
-    if (!isJsonValue(block.value)) {
-      throwInvalidCommandResult(commandId, `${path}.value`, "JSON value", block.value);
-    }
-
-    return { type: "json", value: block.value };
-  }
-
-  if (block.type === "properties") {
-    if (!Array.isArray(block.items)) {
-      throwInvalidCommandResult(commandId, `${path}.items`, "array", block.items);
-    }
-
-    return {
-      type: "properties",
-      items: block.items.map((item, index) => {
-        const itemPath = `${path}.items[${index}]`;
-
-        if (!isRecord(item)) {
-          throwInvalidCommandResult(commandId, itemPath, "object", item);
-        }
-
-        if (!isLocalizedString(item.label)) {
-          throwInvalidCommandResult(commandId, `${itemPath}.label`, "LocalizedString", item.label);
-        }
-
-        if (!isPropertyValue(item.value)) {
-          throwInvalidCommandResult(
-            commandId,
-            `${itemPath}.value`,
-            "string | number | boolean | null",
-            item.value,
-          );
-        }
-
-        if (item.note !== undefined && !isLocalizedString(item.note)) {
-          throwInvalidCommandResult(commandId, `${itemPath}.note`, "LocalizedString", item.note);
-        }
-
-        return {
-          label: item.label,
-          value: item.value,
-          ...(item.note === undefined ? {} : { note: item.note }),
-        };
-      }),
-    };
-  }
-
-  throwInvalidCommandResult(commandId, `${path}.type`, "text | code | json | properties", block.type);
-}
-
-function validateCommandError(commandId: string, error: unknown): CommandResult["error"] {
-  if (!isRecord(error)) {
-    throwInvalidCommandResult(commandId, "error", "object", error);
-  }
-
-  if (typeof error.message !== "string") {
-    throwInvalidCommandResult(commandId, "error.message", "string", error.message);
-  }
-
-  if (error.code !== undefined && typeof error.code !== "string") {
-    throwInvalidCommandResult(commandId, "error.code", "string", error.code);
-  }
-
-  if (error.metadata !== undefined && !isJsonObject(error.metadata)) {
-    throwInvalidCommandResult(commandId, "error.metadata", "JSON object", error.metadata);
-  }
-
-  return {
-    message: error.message,
-    ...(error.code === undefined ? {} : { code: error.code }),
-    ...(error.metadata === undefined ? {} : { metadata: error.metadata }),
-  };
-}
-
-function throwInvalidCommandResult(
-  commandId: string,
-  path: string,
-  expected: string,
-  actual: unknown,
-): never {
-  throw new Error(
-    `Invalid command result for ${commandId}: ${formatPath(path)} expected ${expected}, received ${describeValue(actual)}.`,
-  );
-}
-
 function isPluginManifest(value: unknown): value is PluginManifest {
   return isRecord(value) && value.schemaVersion === "1.0" && typeof value.id === "string";
 }
 
-function isLocalizedString(value: unknown): value is LocalizedString {
-  return (
-    typeof value === "string" ||
-    (isRecord(value) && typeof value.key === "string" && typeof value.default === "string")
-  );
-}
-
-function isPropertyValue(value: unknown): value is string | number | boolean | null {
-  return (
-    value === null ||
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  );
-}
-
-function isJsonObject(value: unknown): value is { [key: string]: JsonValue } {
-  return isRecord(value) && Object.values(value).every(isJsonValue);
-}
-
-function isJsonValue(value: unknown): value is JsonValue {
-  if (
-    value === null ||
-    typeof value === "string" ||
-    typeof value === "number" ||
-    typeof value === "boolean"
-  ) {
-    return true;
-  }
-
-  if (Array.isArray(value)) {
-    return value.every(isJsonValue);
-  }
-
-  return isJsonObject(value);
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function formatPath(path: string): string {
-  return path ? `--${path}` : "--";
-}
-
-function describeValue(value: unknown): string {
-  if (value === null) {
-    return "null";
-  }
-
-  if (Array.isArray(value)) {
-    return "array";
-  }
-
-  return typeof value;
 }

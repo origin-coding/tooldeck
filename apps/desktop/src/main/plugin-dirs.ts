@@ -6,9 +6,7 @@ export interface ResolveDesktopPluginDirsOptions {
   env?: NodeJS.ProcessEnv;
 }
 
-export function resolveDesktopPluginDirs(
-  options: ResolveDesktopPluginDirsOptions = {},
-): string[] {
+export function resolveDesktopPluginDirs(options: ResolveDesktopPluginDirsOptions = {}): string[] {
   const env = options.env ?? process.env;
   const baseDir = options.baseDir ?? env.INIT_CWD ?? process.cwd();
   const argvPluginDirs = parsePluginDirArgs(options.argv ?? process.argv);

@@ -97,5 +97,3 @@ export class PluginRuntimeLifecycleMachine<TContext = undefined> extends StateMa
     });
   }
 }
-
-export { PluginRuntimeLifecycleMachine as PluginLifecycleMachine };

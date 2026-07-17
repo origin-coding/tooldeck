@@ -56,7 +56,7 @@ package digest 是生成后的 `.tdplugin` 文件字节 digest。同一个文件
 - `@tooldeck/plugin-tools` 需要在公开插件作者工具链中依赖它，因此继续保持私有会形成错误的依赖边界。
 - 单数命名更符合产品语义：一个 `.tdplugin` 是一个 plugin package container。
 
-1.3 planning 文档保留早期 plural/private 表述，作为历史规划上下文，不应为了这次命名变化回写修改。当前实现和未来引用应使用 `@tooldeck/plugin-package`。
+  1.3 planning 文档保留早期 plural/private 表述，作为历史规划上下文，不应为了这次命名变化回写修改。当前实现和未来引用应使用 `@tooldeck/plugin-package`。
 
 ## Consequences
 

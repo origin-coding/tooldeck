@@ -793,11 +793,22 @@ type ContentBlock =
   | { type: "code"; language?: string; text: string }
   | { type: "json"; value: JsonValue };
 
+interface CommandError {
+  message: string;
+  code?: string;
+  metadata?: { [key: string]: JsonValue };
+}
+
 interface CommandResult {
   status: "success" | "error";
   blocks: ContentBlock[];
+  error?: CommandError;
 }
 ```
+
+当前 `CommandResultV1` 的 `status` / `error` 兼容形态和未来收紧方向见
+[ADR 0003: CommandResult Status and Error Invariant](./decisions/0003-command-result-status-error-invariant.md)。
+Tooldeck 1.3 不在 minor release 中收紧已经公开的插件结果类型。
 
 `markdown`、`table`、`file` 等 block 会引入额外渲染、安全、数据建模或文件生命周期设计，v1 MVP 先不纳入 `ContentBlock` 联合类型。后续只有在对应设计明确后再作为显式协议扩展加入。
 

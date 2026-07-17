@@ -6,8 +6,8 @@ import {
   scanPluginSources,
   type CommandInputCoercion,
   type PluginScanSource,
-  type PluginStorage,
 } from "@tooldeck/runtime-node";
+import type { PluginStorage } from "@tooldeck/sdk-node";
 
 import { NodePluginHost } from "./node-plugin-host";
 

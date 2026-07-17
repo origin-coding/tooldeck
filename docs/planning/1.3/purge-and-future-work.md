@@ -71,7 +71,7 @@ installed-plugins/.backup/<install-id>/
 - 多版本同 id 会和 duplicate plugin id 规则冲突。
 - 多版本不同 command id 也会放大 UI、storage、activation 和 history 复杂度。
 
-1.3 明确：
+  1.3 明确：
 
 ```text
 one plugin id -> at most one active installed plugin
@@ -117,7 +117,7 @@ one plugin id -> at most one active installed plugin
 - plugin publishing workflow。
 - plugin dependency resolution。
 
-1.3 只解决本地可信 `.tdplugin` 文件安装。
+  1.3 只解决本地可信 `.tdplugin` 文件安装。
 
 ## 文档影响
 

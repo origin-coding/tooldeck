@@ -73,10 +73,6 @@
       "json": "json",
       "properties": "properties",
       "code": "code"
-    },
-    "historyList": {
-      "loading": "Loading history",
-      "empty": "No command runs"
     }
   },
   "plugin": {

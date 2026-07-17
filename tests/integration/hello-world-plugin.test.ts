@@ -2,9 +2,9 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { RuntimeCommandRegistry, ManifestIndex, PluginManager } from "@tooldeck/runtime-node";
 import { NodePluginHost } from "@tooldeck/host-node";
 import type { PluginManifest } from "@tooldeck/protocol";
+import { RuntimeCommandRegistry, ManifestIndex, PluginManager } from "@tooldeck/runtime-node";
 import { describe, expect, it } from "vitest";
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");

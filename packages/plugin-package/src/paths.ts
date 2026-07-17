@@ -37,11 +37,15 @@ export function assertSafePackagePath(input: string, fieldPath?: string): string
 
   const segments = normalized.split("/");
   if (segments.some((segment) => segment === "." || segment === ".." || segment.length === 0)) {
-    throw packageError("INVALID_PACKAGE_PATH", "Package path must not contain traversal segments.", {
-      entryPath: input,
-      fieldPath,
-      reason: "path traversal",
-    });
+    throw packageError(
+      "INVALID_PACKAGE_PATH",
+      "Package path must not contain traversal segments.",
+      {
+        entryPath: input,
+        fieldPath,
+        reason: "path traversal",
+      },
+    );
   }
 
   if (isNodeModulesPath(normalized)) {
@@ -75,5 +79,7 @@ export function packagePathStartsWith(path: string, directory: string): boolean 
   const normalizedPath = normalizePackagePath(path);
   const normalizedDirectory = normalizePackagePath(directory);
 
-  return normalizedPath === normalizedDirectory || normalizedPath.startsWith(`${normalizedDirectory}/`);
+  return (
+    normalizedPath === normalizedDirectory || normalizedPath.startsWith(`${normalizedDirectory}/`)
+  );
 }

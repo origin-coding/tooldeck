@@ -1,4 +1,8 @@
-import { spawnSync } from "node:child_process";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const desktopRoot = fileURLToPath(new URL("../", import.meta.url));
 
 const rendererAndPreload = ["src/renderer", "src/preload"];
 const allowedDesktopApiMethods = [
@@ -53,12 +57,11 @@ const checks = [
 const failures = [];
 
 for (const check of checks) {
-  const result = runRg(check.pattern, check.paths);
-
-  const matched = result.status === 0;
+  const matches = findMatches(check.pattern, check.paths);
+  const matched = matches.length > 0;
 
   if (check.expect === "no-match" && matched) {
-    failures.push(`${check.name}\n${result.stdout.trim()}`);
+    failures.push(`${check.name}\n${matches.map(formatMatch).join("\n")}`);
     continue;
   }
 
@@ -94,27 +97,26 @@ if (failures.length > 0) {
 console.log("Desktop boundary checks passed.");
 
 function assertRequiredMatch({ name, pattern, paths }) {
-  const result = runRg(pattern, paths);
+  const matches = findMatches(pattern, paths);
 
-  if (result.status !== 0) {
+  if (matches.length === 0) {
     failures.push(`${name}\nExpected at least one match for: ${pattern}`);
   }
 }
 
 function assertOnlyAllowedMethods({ name, pattern, paths, allowed, requireAll = true }) {
-  const result = runRg(pattern, paths);
+  const matches = findMatches(pattern, paths);
   const expression = new RegExp(pattern);
 
-  if (result.status !== 0) {
+  if (matches.length === 0) {
     failures.push(`${name}\nExpected at least one API method match for: ${pattern}`);
     return;
   }
 
   const found = new Set();
 
-  for (const line of result.stdout.trim().split(/\r?\n/)) {
-    const text = line.replace(/^(?:[^:]+:)?\d+:/, "");
-    const match = text.match(expression);
+  for (const result of matches) {
+    const match = result.text.match(expression);
 
     if (match) {
       found.add(match[1]);
@@ -131,15 +133,46 @@ function assertOnlyAllowedMethods({ name, pattern, paths, allowed, requireAll = 
   }
 }
 
-function runRg(pattern, paths) {
-  const result = spawnSync("rg", ["--line-number", pattern, ...paths], {
-    cwd: new URL("../", import.meta.url),
-    encoding: "utf8",
-  });
+function findMatches(pattern, searchPaths) {
+  const expression = new RegExp(pattern);
+  const matches = [];
 
-  if (result.error) {
-    throw result.error;
+  for (const filePath of resolveFiles(searchPaths)) {
+    const lines = readFileSync(filePath, "utf8").split(/\r?\n/);
+
+    for (const [index, text] of lines.entries()) {
+      if (expression.test(text)) {
+        matches.push({ filePath, lineNumber: index + 1, text });
+      }
+    }
   }
 
-  return result;
+  return matches;
+}
+
+function resolveFiles(searchPaths) {
+  return searchPaths.flatMap((searchPath) => collectFiles(path.resolve(desktopRoot, searchPath)));
+}
+
+function collectFiles(targetPath) {
+  if (statSync(targetPath).isFile()) {
+    return [targetPath];
+  }
+
+  return readdirSync(targetPath, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .flatMap((entry) => {
+      const entryPath = path.join(targetPath, entry.name);
+
+      if (entry.isDirectory()) {
+        return collectFiles(entryPath);
+      }
+
+      return entry.isFile() ? [entryPath] : [];
+    });
+}
+
+function formatMatch(match) {
+  const relativePath = path.relative(desktopRoot, match.filePath).replaceAll(path.sep, "/");
+  return `${relativePath}:${match.lineNumber}:${match.text}`;
 }

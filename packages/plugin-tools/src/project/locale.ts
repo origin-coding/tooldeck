@@ -2,8 +2,8 @@ import path from "node:path";
 
 import type { LocalizedString, PluginManifest } from "@tooldeck/protocol";
 
-import { isRecord, readJsonIfExists } from "./utils";
 import type { LocaleInspection, PluginProjectDiagnostic } from "./types";
+import { isRecord, readJsonIfExists } from "./utils";
 
 export async function checkLocales(
   manifest: PluginManifest,
@@ -22,7 +22,8 @@ export async function checkLocales(
       code: "LOCALES_MISSING",
       message: "Manifest uses localization keys but does not declare locale files.",
       fieldPath: "locales",
-      suggestion: 'Add a locales map to manifest.json, for example "locales": { "en": "./locales/en.json" }.',
+      suggestion:
+        'Add a locales map to manifest.json, for example "locales": { "en": "./locales/en.json" }.',
     });
 
     return;

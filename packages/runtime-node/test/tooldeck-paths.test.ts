@@ -39,8 +39,7 @@ describe("resolveTooldeckPaths", () => {
       userConfigDir: "/Users/alice/Library/Application Support/tooldeck",
       userDataDir: "/Users/alice/Library/Application Support/tooldeck",
       databasePath: "/Users/alice/Library/Application Support/tooldeck/tooldeck.sqlite",
-      installedPluginsDir:
-        "/Users/alice/Library/Application Support/tooldeck/installed-plugins",
+      installedPluginsDir: "/Users/alice/Library/Application Support/tooldeck/installed-plugins",
       userPluginsDir: "/Users/alice/Library/Application Support/tooldeck/plugins",
       pluginDataDir: "/Users/alice/Library/Application Support/tooldeck/plugin-data",
       cacheDir: "/Users/alice/Library/Caches/tooldeck",

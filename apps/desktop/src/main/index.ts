@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { app, BrowserWindow } from "electron";
 
 import { checkForDesktopUpdates } from "./auto-updates";
+import { DesktopLifecycle } from "./desktop-lifecycle";
 import { registerTooldeckIpc } from "./ipc";
 import { resolveDesktopPluginDirs } from "./plugin-dirs";
 import { focusExistingWindow } from "./single-instance";
@@ -11,38 +12,35 @@ import { TooldeckDesktopService } from "./tooldeck-service";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 
-let mainWindow: BrowserWindow | undefined;
-let disposeIpc: (() => void) | undefined;
-let service: TooldeckDesktopService | undefined;
 let isShuttingDown = false;
 
-async function createWindow(): Promise<void> {
-  service = new TooldeckDesktopService(createServiceOptions());
-  await service.start();
-  disposeIpc = registerTooldeckIpc(service);
+const desktopLifecycle = new DesktopLifecycle({
+  createBackend: () => new TooldeckDesktopService(createServiceOptions()),
+  registerIpc: registerTooldeckIpc,
+  createWindow: () =>
+    new BrowserWindow({
+      width: 1180,
+      height: 760,
+      minWidth: 920,
+      minHeight: 620,
+      title: "Tooldeck",
+      webPreferences: {
+        preload: path.join(currentDirectory, "preload.cjs"),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: false,
+      },
+    }),
+  async loadWindow(window) {
+    const rendererUrl = process.env.TOOLDECK_RENDERER_URL;
 
-  mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 760,
-    minWidth: 920,
-    minHeight: 620,
-    title: "Tooldeck",
-    webPreferences: {
-      preload: path.join(currentDirectory, "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-    },
-  });
-
-  const rendererUrl = process.env.TOOLDECK_RENDERER_URL;
-
-  if (rendererUrl) {
-    await mainWindow.loadURL(rendererUrl);
-  } else {
-    await mainWindow.loadFile(path.join(currentDirectory, "../renderer/index.html"));
-  }
-}
+    if (rendererUrl) {
+      await window.loadURL(rendererUrl);
+    } else {
+      await window.loadFile(path.join(currentDirectory, "../renderer/index.html"));
+    }
+  },
+});
 
 function createServiceOptions(): ConstructorParameters<typeof TooldeckDesktopService>[0] {
   const pluginsRoot = process.env.TOOLDECK_PLUGINS_ROOT;
@@ -74,11 +72,12 @@ if (!hasSingleInstanceLock) {
   app.quit();
 } else {
   app.on("second-instance", () => {
-    focusExistingWindow(mainWindow);
+    focusExistingWindow(desktopLifecycle.getWindow());
   });
 
   app.whenReady().then(() => {
-    void createWindow()
+    void desktopLifecycle
+      .openWindow()
       .then(() => {
         checkForDesktopUpdates();
       })
@@ -89,7 +88,7 @@ if (!hasSingleInstanceLock) {
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) {
-        void createWindow().catch((error) => {
+        void desktopLifecycle.openWindow().catch((error) => {
           console.error("Failed to create Tooldeck window.", error);
         });
       }
@@ -111,17 +110,15 @@ app.on("before-quit", (event) => {
   event.preventDefault();
   isShuttingDown = true;
 
-  void shutdown().finally(() => {
-    app.quit();
-  });
+  void shutdown()
+    .catch((error) => {
+      console.error("Failed to shut down Tooldeck desktop cleanly.", error);
+    })
+    .finally(() => {
+      app.quit();
+    });
 });
 
 async function shutdown(): Promise<void> {
-  disposeIpc?.();
-  disposeIpc = undefined;
-
-  const activeService = service;
-  service = undefined;
-
-  await activeService?.dispose();
+  await desktopLifecycle.shutdown();
 }

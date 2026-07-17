@@ -7,12 +7,12 @@
     "url": "git+https://github.com/origin-coding/tooldeck.git",
     "directory": "packages/protocol"
   },
-  "type": "module",
-  "types": "./dist/index.d.ts",
   "files": [
     "dist",
     "schema"
   ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -1,6 +1,4 @@
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-
+import { manifestV1Schema } from "@tooldeck/protocol";
 import Ajv, { type ErrorObject } from "ajv";
 
 import { packageError } from "./errors.js";
@@ -8,10 +6,6 @@ import { assertSafePackagePath } from "./paths.js";
 import type { TooldeckPackagePluginManifest } from "./types.js";
 import { isRecord } from "./utils.js";
 
-const require = createRequire(import.meta.url);
-const protocolManifestSchema = JSON.parse(
-  readFileSync(require.resolve("@tooldeck/protocol/schema/manifest-v1.schema.json"), "utf8"),
-) as Record<string, unknown>;
 const ajv = new Ajv({
   allErrors: true,
   strict: false,
@@ -60,7 +54,7 @@ export function validatePluginManifestShape(
 }
 
 function createPackageManifestSchema(): object {
-  const schema = structuredClone(protocolManifestSchema) as {
+  const schema = structuredClone(manifestV1Schema) as {
     definitions?: {
       runtime?: {
         properties?: {
