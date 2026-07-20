@@ -197,3 +197,7 @@ is not a security sandbox.
 Tooldeck V1 does not include a plugin marketplace, remote plugin installation, plugin
 signing, an untrusted plugin sandbox, WASM runtime, MCP or OpenAPI adapters, plugin
 dependency resolution, plugin hot reload, or complex custom view plugins.
+
+## License
+
+Tooldeck is licensed under the [Apache License 2.0](LICENSE).

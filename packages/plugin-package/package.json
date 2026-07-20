@@ -2,6 +2,7 @@
   "name": "@tooldeck/plugin-package",
   "version": "0.1.0",
   "description": "Tooldeck .tdplugin package format utilities.",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/origin-coding/tooldeck.git",

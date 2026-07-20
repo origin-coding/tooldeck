@@ -2,6 +2,7 @@
   "name": "@tooldeck/vite-plugin",
   "version": "1.2.0",
   "description": "Vite integration for Tooldeck Node plugins.",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/origin-coding/tooldeck.git",
