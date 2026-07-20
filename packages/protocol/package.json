@@ -2,6 +2,7 @@
   "name": "@tooldeck/protocol",
   "version": "1.2.0",
   "description": "Toolbox Plugin Protocol types for Tooldeck.",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/origin-coding/tooldeck.git",
