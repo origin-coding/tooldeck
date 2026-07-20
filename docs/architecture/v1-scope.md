@@ -1,5 +1,9 @@
 # TPP V1 Scope
 
+> **Status:** Historical Tooldeck 1.0 release scope. This is not the current 1.3 release
+> checklist. See [Tooldeck 1.3 Planning and Implementation Status](../planning/1.3.md)
+> for the implemented local packaging and installation lifecycle.
+
 本文定义 `tooldeck` 当前 V1 / 1.0 发布的收口范围。长期协议方向仍以 [TPP v1 设计文档](./tpp-v1.md) 为准；早期 CLI-first 纵向切片记录见 [CLI-first TPP MVP](./cli-first-mvp.md)。
 
 ## V1 目标
@@ -57,7 +61,7 @@ V1 中 `packages/runtime-node` 负责当前 Node runtime 的协调逻辑：
 - lazy plugin activation 协调。
 - command input / output validation。
 - lifecycle state machine。
-- Node/TS 插件运行时契约类型。
+- Node/TS 插件运行时契约集成；公开作者类型由 `packages/sdk-node` 提供。
 
 V1 只实现 `packages/host-node`，用于加载可信本地 Node 插件。Desktop 和 CLI 在 app 层组合：
 
@@ -67,7 +71,7 @@ packages/runtime-node
   + packages/storage
 ```
 
-`packages/runtime-node` 不应依赖 Electron renderer、React 或 SQLite repository。插件作者 API 由 `packages/sdk-node` 提供，但运行时契约类型由 `packages/runtime-node` 首发定义，`sdk-node` 负责 re-export 和 authoring helpers。
+`packages/runtime-node` 不应依赖 Electron renderer、React 或 SQLite repository。当前公开插件作者契约由 `packages/sdk-node` 提供，`runtime-node` 依赖该契约；早期由 runtime 首发契约、SDK re-export 的安排已被后续包边界收口取代。
 
 ## ContentBlock 范围
 

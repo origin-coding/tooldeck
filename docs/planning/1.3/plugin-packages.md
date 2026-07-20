@@ -1,5 +1,9 @@
 # Plugin Packages
 
+> **Status:** Implemented in Tooldeck 1.3 as the public singular package
+> `@tooldeck/plugin-package`. The plural/private name below is retained as historical
+> planning terminology; see ADR 0001 for the final decision.
+
 本文定义 Tooldeck 1.3 中新增 `@tooldeck/plugin-packages` 包的职责、边界和验收标准。
 
 ## 定位

@@ -1,5 +1,9 @@
 # Plugin Tools Package Commands
 
+> **Status:** Implemented in Tooldeck 1.3. `tooldeck-plugin pack` and
+> `tooldeck-plugin dist` use the final public package name `@tooldeck/plugin-package`; the
+> plural name below is retained as historical planning terminology.
+
 本文定义 Tooldeck 1.3 中 `@tooldeck/plugin-tools` 新增打包命令的目标和边界。
 
 ## 背景

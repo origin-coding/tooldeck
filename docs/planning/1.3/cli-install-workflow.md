@@ -1,5 +1,9 @@
 # CLI Install Workflow
 
+> **Status:** Implemented in Tooldeck 1.3, including the later `plugin purge` workflow.
+> Install, uninstall, state changes, catalog synchronization, and purge now share
+> `@tooldeck/plugin-management-node` with Desktop.
+
 本文定义 Tooldeck 1.3 中 CLI 本地插件安装、卸载和运行闭环。
 
 ## 目标

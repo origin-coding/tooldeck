@@ -72,7 +72,8 @@ TPP 协议，也不应放入 `@tooldeck/protocol`。
 
 当前仓库中的 `packages/runtime-node` 不是 TPP 协议本身，而是当前可信本地 Node 纵向切片的
 TypeScript runtime 实现。它负责 manifest indexing、command orchestration、lazy activation 协调、
-状态机、输入输出校验，以及 Node/TS 插件运行时契约类型。
+状态机和输入输出校验。公开的 Node/TS 插件作者契约由 `packages/sdk-node` 提供；
+`runtime-node` 依赖这份公开契约，不把私有 runtime 类型反向泄漏给插件作者。
 
 V1 不新建宿主无关 `@tooldeck/runtime` 包。当前 runtime-node 与 Node 插件宿主协作：
 
@@ -81,13 +82,31 @@ TPP spec / schema
   ↓
 packages/protocol        # TPP 的 TypeScript 类型和 JSON Schema 表达
   ↓
-packages/runtime-node    # 当前 Node runtime 协调、命令编排和插件契约
+packages/sdk-node        # 公开 Node plugin authoring contract
+  ↓
+packages/runtime-node    # 当前 Node runtime 协调和命令编排
   ↓
 packages/host-node       # Node plugin loading adapter
 packages/host-wasm       # future WASM runtime adapter
 packages/host-process    # future multi-language process/RPC adapter
 packages/host-http       # future HTTP runtime adapter
 ```
+
+Tooldeck 1.3 在协议和运行时之外增加了本地分发产品层：
+
+```text
+packages/protocol
+  -> packages/plugin-package          # 公开 .tdplugin 容器格式实现
+  -> packages/plugin-tools            # 公开作者命令：pack / dist 等
+
+plugin-package + runtime-node + storage + shared
+  -> packages/plugin-management-node  # 私有安装和状态 application service
+  -> CLI / Desktop
+```
+
+`.tdplugin` container、installed plugin directory 和安装记录属于 Tooldeck 产品实现，
+不是新的 TPP contribution。`plugin-package` 不扫描或激活插件；
+`plugin-management-node` 不负责 CLI 输出、Electron IPC 或 renderer 交互。
 
 如果未来以 PySide、Rust 或其他技术栈实现宿主，可以实现另一套 runtime，或通过 RPC 调用当前
 TypeScript runtime-node。这些实现应遵守同一份 TPP 协议，但不要求共享同一种实现语言。
@@ -708,6 +727,11 @@ Manifest 可被静态扫描
 真正调用命令时才 activate
 ```
 
+当前 Tooldeck 1.3 实现支持可信本地 `.tdplugin` 文件安装。安装、卸载、启用、禁用、
+catalog rescan 和 retained-data purge 都不会 import runtime entry；只有调用匹配 command
+才触发 lazy activation。installed plugin 与 builtin、external source 一样参与静态 manifest
+扫描，不引入来源覆盖规则。
+
 懒激活示例：
 
 ```text
@@ -983,6 +1007,21 @@ Plugin scoped KV
 类型和 repository DTO。Drizzle table、SQLite schema、migration 列表以及 `Insert*Row` 等实现细节不属于根入口
 公共 API；storage 包内部通过相对路径使用这些实现，上层 Desktop / CLI 不应依赖 schema/table/migration internals。
 
+当前 1.3 产品实现明确区分：
+
+```text
+plugins          当前扫描到的 catalog，包含 builtin / installed / external 来源
+plugin_installs  Tooldeck 管理的 installed plugin 文件资产记录
+plugin_states    plugin id 级 enabled 状态
+plugin_kv        plugin scoped KV
+command_runs     CLI / Desktop command history
+preferences      shared / CLI / Desktop preferences
+```
+
+普通 manifest scan 可以刷新 `plugins` catalog，但不得把 `plugin_installs` 当作扫描缓存删除。
+uninstall 保留 `plugin_states`、`plugin_kv` 和 `command_runs`；显式 purge 删除前两者，仍保留
+command history。
+
 JSON / Store 存：
 
 ```text
@@ -1232,6 +1271,11 @@ npm scope：
 @tooldeck/runtime-node
 @tooldeck/sdk-node
 @tooldeck/host-node
+@tooldeck/plugin-package
+@tooldeck/plugin-management-node
+@tooldeck/plugin-tools
+@tooldeck/vite-plugin
+@tooldeck/create-plugin
 @tooldeck/storage
 @tooldeck/shared
 ```

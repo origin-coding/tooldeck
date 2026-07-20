@@ -1,12 +1,13 @@
 # Tooldeck Plugin Authoring
 
-This guide covers the current V1/V1.2 plugin authoring path: trusted local,
-commands-only Node plugins built outside the Tooldeck monorepo.
+This guide covers the current Tooldeck 1.3 plugin authoring and local distribution path:
+trusted, commands-only Node plugins built outside the Tooldeck monorepo.
 
 Tooldeck plugins are manifest-first:
 
 ```text
 manifest.json -> generated command types -> Node command handlers -> dist/index.js
+  -> .tdplugin package -> local installation -> lazy activation
 ```
 
 The manifest is a static capability declaration. Tooldeck scans it without importing or
@@ -22,6 +23,7 @@ cd my-tooldeck-plugin
 pnpm install
 pnpm check
 pnpm build
+pnpm exec tooldeck-plugin pack
 ```
 
 The generated project uses:
@@ -131,6 +133,8 @@ pnpm check
 pnpm build
 pnpm test
 pnpm inspect
+pnpm exec tooldeck-plugin pack
+pnpm exec tooldeck-plugin dist
 ```
 
 The underlying `tooldeck-plugin` commands are:
@@ -141,8 +145,47 @@ tooldeck-plugin generate types --manifest manifest.json --out src/generated/comm
 tooldeck-plugin check --manifest manifest.json --generated src/generated/commands.ts
 tooldeck-plugin build --bundler vite
 tooldeck-plugin check --built
+tooldeck-plugin pack
+tooldeck-plugin dist
 tooldeck-plugin inspect
 ```
+
+`pack` validates the project and built runtime before creating a package. `dist` runs the
+supported build path and then packages the result.
+
+## Package a Plugin
+
+After building, create a local installation package:
+
+```bash
+pnpm exec tooldeck-plugin pack
+```
+
+The default output name is:
+
+```text
+<plugin-id>-<manifest-version>.tdplugin
+```
+
+Build and package in one command, or select an output path:
+
+```bash
+pnpm exec tooldeck-plugin dist
+pnpm exec tooldeck-plugin pack --output ./release/my-plugin.tdplugin
+pnpm exec tooldeck-plugin dist --output ./release/my-plugin.tdplugin
+```
+
+`--output` changes only the archive path and filename; it does not change the identities
+or versions stored in `manifest.json` or `tooldeck-package.json`.
+
+A package contains root `manifest.json`, generated root `tooldeck-package.json`, the
+declared runtime entry and locale files, and regular files under `dist/` and `assets/`
+when those directories exist. It must not contain `node_modules`. Tooldeck validates
+archive paths, package metadata, file counts, compressed and uncompressed size limits,
+and the declared runtime entry before installation.
+
+`.tdplugin` is a ZIP-based Tooldeck product package format, not a new TPP capability
+declaration. The manifest remains the static source of plugin identity and capabilities.
 
 ## Verify with the CLI
 
@@ -167,19 +210,46 @@ pnpm --filter @tooldeck/desktop dev -- --plugin-dir ../my-tooldeck-plugin
 You can also set multiple directories through `TOOLDECK_PLUGIN_DIRS` using the platform
 path delimiter.
 
-## Built-in and External Plugins
+## Install the Packaged Plugin
+
+Use the CLI for the full local distribution check:
+
+```bash
+tooldeck plugin install ./dev.example.my-tooldeck-plugin-0.0.0.tdplugin
+tooldeck plugin list
+tooldeck run hello.world --text "Tooldeck"
+tooldeck plugin disable dev.example.my-tooldeck-plugin
+tooldeck plugin enable dev.example.my-tooldeck-plugin
+tooldeck plugin uninstall dev.example.my-tooldeck-plugin
+tooldeck plugin purge dev.example.my-tooldeck-plugin
+```
+
+The Desktop Plugins workbench also accepts one `.tdplugin` file by drag and drop.
+
+Installation, catalog scanning, enable/disable, uninstall, and purge do not import or
+activate plugin runtime code. Runtime activation remains lazy and occurs only when a
+matching command is invoked.
+
+## Built-in, Installed, and External Plugins
 
 Built-in plugins are discovered from Tooldeck's resolved built-in plugin directory.
+Installed plugins come from `.tdplugin` files copied into Tooldeck's managed user-level
+installed plugin directory. They are scanned by default alongside built-in plugins.
 External plugins are included only through explicit development inputs such as
 `--plugin-dir` or `TOOLDECK_PLUGIN_DIRS`.
 
-This keeps V1 scoped to trusted local development. Tooldeck V1.2 does not provide plugin
-installation packages, a remote registry, marketplace discovery, hot reload, or an
-untrusted plugin sandbox.
+Duplicate plugin ids and command ids are rejected across all three sources; no source
+overrides another. `--plugin-dir` is a development-time incremental source and does not
+install or copy the plugin.
+
+Tooldeck 1.3 supports trusted local installation packages. It does not provide remote
+installation, a remote registry, marketplace discovery, signing, hot reload, dependency
+resolution, or an untrusted plugin sandbox.
 
 ## References
 
 - [TPP v1](../architecture/tpp-v1.md)
 - [V1 Scope](../architecture/v1-scope.md)
 - [Tooldeck 1.2 Planning](../planning/1.2.md)
+- [Tooldeck 1.3 Planning and Implementation Status](../planning/1.3.md)
 - [CLI plugin authoring notes](./cli-plugin.md)

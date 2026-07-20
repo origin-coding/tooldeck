@@ -1,5 +1,9 @@
 # Purge and Future Work
 
+> **Status:** The retained-data purge workflow described here is implemented in Tooldeck
+> 1.3 for both CLI and Desktop. Update/replace, multi-version installation, remote
+> installation, signing, and sandboxing remain future work.
+
 本文记录 Tooldeck 1.3 中 P1/P2 的清理能力和后续版本方向，避免 P0 install/uninstall 闭环被额外能力拖大。
 
 ## `tooldeck plugin purge`

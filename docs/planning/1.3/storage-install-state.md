@@ -1,5 +1,9 @@
 # Storage Install State
 
+> **Status:** Implemented and migrated for Tooldeck 1.3. `plugins`, `plugin_installs`, and
+> `plugin_states` retain the distinct catalog, managed-asset, and user-state roles defined
+> below.
+
 本文定义 Tooldeck 1.3 中插件安装资产、扫描 catalog 和用户状态的 storage 模型。
 
 ## 背景
