@@ -1,5 +1,9 @@
 # Package Format
 
+> **Status:** Implemented in Tooldeck 1.3. This document preserves the original planning
+> detail; final package naming and boundaries are summarized in the 1.3 planning index and
+> ADR 0001.
+
 本文定义 Tooldeck 1.3 中 `.tdplugin` 本地插件安装包格式。该格式是 Tooldeck 产品层的插件包容器，不属于 TPP 核心协议。
 
 ## 定位

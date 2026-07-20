@@ -13,6 +13,7 @@ pnpm install
 pnpm check
 pnpm build
 pnpm test
+pnpm exec tooldeck-plugin pack
 ```
 
 After building, scan this plugin from a Tooldeck workspace:
@@ -20,4 +21,19 @@ After building, scan this plugin from a Tooldeck workspace:
 ```bash
 pnpm --filter @tooldeck/cli dev -- list commands --plugin-dir .
 pnpm --filter @tooldeck/cli dev -- run <%= it.commandId %> --plugin-dir . --text "hello"
+```
+
+Create an installable local package, or build and package in one command:
+
+```bash
+pnpm exec tooldeck-plugin pack
+pnpm exec tooldeck-plugin dist
+```
+
+The default output is `<%= it.pluginId %>-0.0.0.tdplugin`. Install it with Tooldeck:
+
+```bash
+tooldeck plugin install ./<%= it.pluginId %>-0.0.0.tdplugin
+tooldeck plugin list
+tooldeck run <%= it.commandId %> --text "hello"
 ```

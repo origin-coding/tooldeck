@@ -27,7 +27,7 @@ Supported options:
 - `--plugin-id <id>` sets the manifest plugin id.
 - `--plugin-name <name>` sets the display name.
 - `--command-id <id>` sets the example command id.
-- `--template <name>` selects a template. V1.2 supports `plugin-node-vite`.
+- `--template <name>` selects a template. The current release supports `plugin-node-vite`.
 - `--install` installs dependencies after scaffolding.
 - `--no-install` skips dependency installation.
 - `--yes` disables prompts and uses provided/default values.
@@ -60,6 +60,7 @@ pnpm install
 pnpm check
 pnpm build
 pnpm test
+pnpm exec tooldeck-plugin pack
 ```
 
 ## Verify from a Tooldeck Workspace
@@ -72,8 +73,27 @@ pnpm --filter @tooldeck/desktop dev -- --plugin-dir ../my-tooldeck-plugin
 
 Replace `hello.world` with the command id generated for your project.
 
-## V1.2 Scope
+## Package and Install
 
-The generated project is a trusted local plugin project. Tooldeck V1.2 does not include
-plugin installation packages, marketplace publishing, a remote registry, plugin hot
-reload, or an untrusted plugin sandbox.
+Create a `.tdplugin` package after building, or build and package in one command:
+
+```bash
+pnpm exec tooldeck-plugin pack
+pnpm exec tooldeck-plugin dist
+```
+
+The default package name is `<plugin-id>-<version>.tdplugin`. Install it through the
+Tooldeck CLI or drag one package into the Desktop Plugins workbench:
+
+```bash
+tooldeck plugin install ./dev.example.my-tooldeck-plugin-0.0.0.tdplugin
+tooldeck plugin list
+tooldeck run hello.world --text "hello"
+```
+
+## Tooldeck 1.3 Scope
+
+The generated project is a trusted local plugin project. Tooldeck 1.3 supports local
+`.tdplugin` packaging and installation, but does not include marketplace publishing,
+remote installation or registry discovery, plugin signing, plugin hot reload, dependency
+resolution, or an untrusted plugin sandbox.

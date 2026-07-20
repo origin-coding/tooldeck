@@ -1,5 +1,9 @@
 # Scan Source Model
 
+> **Status:** Implemented and stable for Tooldeck 1.3. CLI and Desktop scan
+> `builtin -> installed -> external`, with external sources present only when explicitly
+> configured.
+
 本文定义 Tooldeck 1.3 中插件扫描来源模型的变化。该子任务影响 `packages/runtime-node`、`apps/cli`、`apps/desktop` 和 storage 同步语义。
 
 ## 背景

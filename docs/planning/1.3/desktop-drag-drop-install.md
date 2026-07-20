@@ -1,5 +1,8 @@
 # Desktop Drag Drop Install
 
+> **Status:** Implemented in Tooldeck 1.3, including installed-plugin uninstall and
+> retained-data purge. The planning text below preserves the original P1 sequencing.
+
 本文定义 Tooldeck 1.3 中 Desktop 拖拽安装 `.tdplugin` 的窄入口。该能力属于 P1，可以在 CLI 安装闭环稳定后实现。
 
 ## 背景
