@@ -38,6 +38,18 @@ Superseded
 Deprecated
 ```
 
+## Records
+
+- [ADR 0001: `.tdplugin` Zip Container](./0001-tdplugin-zip-container.md)
+- [ADR 0002: Node Plugin Management Service](./0002-node-plugin-management-service.md)
+- [ADR 0003: CommandResult Status and Error Invariant](./0003-command-result-status-error-invariant.md)
+- [ADR 0004: Defer Ant Design Listy Migration](./0004-defer-antd-listy-migration.md)
+- [ADR 0005: Public Packages and Internal Implementation](./0005-public-packages-and-internal-implementation.md)
+- [ADR 0006: Runtime-kind Host Registry](./0006-runtime-kind-host-registry.md)
+- [ADR 0007: ApplicationError-only Application Facade](./0007-application-error-only-facade.md)
+- [ADR 0008: TPP v1 Command Input Schema Profile](./0008-tpp-v1-command-input-schema-profile.md)
+- [ADR 0009: Nuxt CSR Renderer and Preload Bridge](./0009-nuxt-csr-renderer-and-preload-bridge.md)
+
 ## 模板
 
 ```md
