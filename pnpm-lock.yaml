@@ -194,6 +194,16 @@ importers:
         specifier: ^9.0.10
         version: 9.0.10
 
+  internal/runtime-node:
+    dependencies:
+      '@tooldeck/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.1
+
   packages/create-plugin:
     dependencies:
       '@clack/prompts':
