@@ -1,7 +1,9 @@
 import { builtinModules } from "node:module";
+import { fileURLToPath } from "node:url";
 
 import { defineConfig } from "vite";
 
+const sourceRoot = fileURLToPath(new URL("./src", import.meta.url));
 const nodeBuiltins = new Set([
   ...builtinModules,
   ...builtinModules.map((moduleName) => `node:${moduleName}`),
@@ -9,6 +11,11 @@ const nodeBuiltins = new Set([
 
 export default defineConfig({
   cacheDir: ".vite/cache",
+  resolve: {
+    alias: {
+      "@": sourceRoot,
+    },
+  },
   build: {
     emptyOutDir: true,
     minify: false,

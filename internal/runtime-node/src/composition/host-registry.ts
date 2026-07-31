@@ -1,7 +1,7 @@
 import type { JsonObject } from "@tooldeck/protocol";
 
-import type { PluginHost, PluginRuntimeKind } from "../core/plugin-host";
-import { RuntimeError, toRuntimeError } from "../errors/runtime-error";
+import type { PluginHost, PluginRuntimeKind } from "@/core/plugin-host";
+import { RuntimeError, toRuntimeError } from "@/errors/runtime-error";
 
 export interface RequirePluginHostOptions {
   pluginId: string;

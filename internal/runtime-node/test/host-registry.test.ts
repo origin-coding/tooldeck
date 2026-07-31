@@ -6,7 +6,7 @@ import {
   PluginHostRegistry,
   type PluginRuntimeKind,
   RuntimeError,
-} from "../src";
+} from "@/index";
 
 class FakePluginHost<RuntimeKind extends string> implements PluginHost<RuntimeKind> {
   readonly activations: PluginHostActivateOptions[] = [];

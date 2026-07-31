@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isRuntimeError, RuntimeError, toRuntimeError } from "../src";
+import { isRuntimeError, RuntimeError, toRuntimeError } from "@/index";
 
 describe("RuntimeError", () => {
   it("preserves its code, details, and cause", () => {
