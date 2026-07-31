@@ -7,10 +7,12 @@ import { runApplicationOperation } from "@/application/edge";
 import type { ApplicationCommands } from "@/commands/application-commands";
 import { ApplicationError } from "@/errors/application-error";
 import type {
+  ApplicationInstalledPlugin,
   ApplicationPlugin,
   ApplicationPluginCatalog,
   ApplicationPluginDataResidue,
   ApplicationPluginFacade,
+  ApplicationPluginInstall,
   ApplicationPluginInstallResult,
   ApplicationPluginPurgeResult,
   ApplicationPluginUninstallResult,
@@ -73,6 +75,8 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
           status: "installed-refresh-failed",
           installedPluginId: installed.plugin.id,
           packageName: installed.install.packageName,
+          install: formatPluginInstall(installed.install),
+          plugin: formatInstalledPlugin(installed.plugin),
           refreshError: getErrorMessage(error),
         };
       }
@@ -81,6 +85,8 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
         status: "installed",
         installedPluginId: installed.plugin.id,
         packageName: installed.install.packageName,
+        install: formatPluginInstall(installed.install),
+        plugin: formatInstalledPlugin(installed.plugin),
         catalog: await this.createCatalog(),
       };
     });
@@ -116,6 +122,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
         cleanupPending: uninstalled.cleanupPending,
         filesMissing: uninstalled.filesMissing,
         pluginId: uninstalled.pluginId,
+        install: formatPluginInstall(uninstalled.install),
         catalog: await this.createCatalog(),
         residues: this.listDataResiduesUnsafe(),
       };
@@ -159,6 +166,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
           ...(indexedPlugin.manifest.description
             ? { description: indexedPlugin.manifest.description }
             : {}),
+          manifest: indexedPlugin.manifest,
           version: plugin.version,
           manifestPath: plugin.manifestPath,
           sourceKind: assertPluginSourceKind(plugin.sourceKind),
@@ -180,6 +188,40 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
   private listDataResiduesUnsafe(): ApplicationPluginDataResidue[] {
     return this.context.requirePluginManagement().listPurgeablePluginData();
   }
+}
+
+function formatPluginInstall(install: ApplicationPluginInstall): ApplicationPluginInstall {
+  return {
+    pluginId: install.pluginId,
+    version: install.version,
+    installDir: install.installDir,
+    manifestPath: install.manifestPath,
+    packageName: install.packageName,
+    packageDigest: install.packageDigest,
+    packageSizeBytes: install.packageSizeBytes,
+    installedAt: install.installedAt,
+    updatedAt: install.updatedAt,
+  };
+}
+
+function formatInstalledPlugin(plugin: {
+  id: string;
+  nameJson: string;
+  version: string;
+  manifestPath: string;
+  sourceKind: string;
+  enabled: boolean;
+  updatedAt: number;
+}): ApplicationInstalledPlugin {
+  return {
+    id: plugin.id,
+    name: parseLocalizedString(plugin.nameJson),
+    version: plugin.version,
+    manifestPath: plugin.manifestPath,
+    sourceKind: assertPluginSourceKind(plugin.sourceKind),
+    enabled: plugin.enabled,
+    updatedAt: plugin.updatedAt,
+  };
 }
 
 function parseLocalizedString(value: string): LocalizedString {

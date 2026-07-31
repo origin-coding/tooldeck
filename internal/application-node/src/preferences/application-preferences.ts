@@ -60,6 +60,15 @@ export class ApplicationPreferences implements ApplicationPreferenceFacade {
       return formatPreference(definition, row);
     });
   }
+
+  delete(request: GetApplicationPreferenceRequest): Promise<void> {
+    return runApplicationOperation(() => {
+      assertPreferenceRequest(request);
+      const definition = requirePreferenceDefinition(request.scope, request.key);
+
+      this.context.requirePreferences().delete(definition.scope, definition.key);
+    });
+  }
 }
 
 function formatPreference(

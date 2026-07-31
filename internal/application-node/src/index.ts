@@ -27,10 +27,12 @@ export type {
   TooldeckRuntimeMode,
 } from "@/paths";
 export type {
+  ApplicationInstalledPlugin,
   ApplicationPlugin,
   ApplicationPluginCatalog,
   ApplicationPluginDataResidue,
   ApplicationPluginFacade,
+  ApplicationPluginInstall,
   ApplicationPluginInstallResult,
   ApplicationPluginPurgeResult,
   ApplicationPluginUninstallResult,
@@ -42,3 +44,4 @@ export type {
   ListApplicationPreferencesRequest,
   SetApplicationPreferenceRequest,
 } from "@/preferences/facade-types";
+export type { PreferenceScope } from "@/preferences/preferences";
