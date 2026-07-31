@@ -2,9 +2,14 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { NodePluginHost } from "@tooldeck/host-node";
 import type { PluginManifest } from "@tooldeck/protocol";
-import { RuntimeCommandRegistry, ManifestIndex, PluginManager } from "@tooldeck/runtime-node";
+import {
+  ManifestIndex,
+  NodePluginHost,
+  PluginHostRegistry,
+  PluginManager,
+  RuntimeCommandRegistry,
+} from "@tooldeck/runtime-node";
 import { describe, expect, it } from "vitest";
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -24,6 +29,9 @@ describe("hello-world plugin integration", () => {
     const commandRegistry = new RuntimeCommandRegistry();
     const manifestIndex = new ManifestIndex();
     const pluginHost = new NodePluginHost({ commandRegistry });
+    const hostRegistry = new PluginHostRegistry();
+
+    hostRegistry.register(pluginHost);
 
     manifestIndex.addPluginManifest({
       manifest,
@@ -34,7 +42,7 @@ describe("hello-world plugin integration", () => {
     const pluginManager = new PluginManager({
       manifestIndex,
       commandRegistry,
-      pluginHost,
+      hostRegistry,
     });
 
     await expect(pluginManager.runCommand({ commandId: "hello.world" })).resolves.toEqual({
@@ -50,7 +58,7 @@ describe("hello-world plugin integration", () => {
     expect(pluginHost.hasPlugin("dev.tooldeck.hello-world")).toBe(true);
     expect(commandRegistry.has("hello.world")).toBe(true);
 
-    await pluginHost.disposeAll();
+    await hostRegistry.disposeAll();
 
     expect(pluginHost.hasPlugin("dev.tooldeck.hello-world")).toBe(false);
     expect(commandRegistry.has("hello.world")).toBe(false);

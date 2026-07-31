@@ -1,10 +1,10 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-import { NodePluginHost } from "@tooldeck/host-node";
 import { PluginManagementService } from "@tooldeck/plugin-management-node";
 import {
   CommandService,
+  type CreatedRuntime,
   ManifestIndex,
   PluginManager,
   type PluginScanSource,
@@ -31,7 +31,7 @@ export class TooldeckDesktopServiceContext {
   plugins?: PluginRepository;
   pluginKv?: PluginKvRepository;
   pluginManagement?: PluginManagementService;
-  pluginHost?: NodePluginHost;
+  pluginRuntime?: Pick<CreatedRuntime, "dispose">;
   pluginManager?: PluginManager;
   commandService?: CommandService;
   manifestIndex?: ManifestIndex;

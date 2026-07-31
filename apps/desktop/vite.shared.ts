@@ -8,7 +8,6 @@ export const mainProcessExternal = [
   ...builtinModules,
   /^node:/,
   // "@tooldeck/runtime-node",
-  // "@tooldeck/host-node",
   // "@tooldeck/protocol",
   // "@tooldeck/shared",
   // "@tooldeck/storage",

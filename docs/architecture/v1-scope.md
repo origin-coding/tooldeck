@@ -52,26 +52,26 @@ V1 使用 Node 内置的 `node:sqlite` 作为 SQLite driver，并通过 Drizzle 
 
 ## Runtime-node 实现边界
 
-TPP 是语言无关协议；当前仓库的 `packages/runtime-node` 是当前可信本地 Node 纵向切片的 TypeScript runtime 实现，不是协议本身。
+TPP 是语言无关协议；当前仓库的 `internal/runtime-node` 是当前可信本地 Node 纵向切片的 TypeScript runtime 实现，不是协议本身。
 
-V1 中 `packages/runtime-node` 负责当前 Node runtime 的协调逻辑：
+V1 中 `internal/runtime-node` 负责当前 Node runtime 的协调逻辑：
 
 - manifest scanning / indexing。
 - command registry 和 command orchestration。
 - lazy plugin activation 协调。
 - command input / output validation。
 - lifecycle state machine。
+- runtime-kind host routing 和可信本地 Node 插件加载。
 - Node/TS 插件运行时契约集成；公开作者类型由 `packages/sdk-node` 提供。
 
-V1 只实现 `packages/host-node`，用于加载可信本地 Node 插件。Desktop 和 CLI 在 app 层组合：
+V1 只实现 Node host，并通过 runtime 内部 registry 注册。Desktop 和 CLI 在 app 层组合：
 
 ```text
-packages/runtime-node
-  + packages/host-node
+internal/runtime-node
   + packages/storage
 ```
 
-`packages/runtime-node` 不应依赖 Electron renderer、React 或 SQLite repository。当前公开插件作者契约由 `packages/sdk-node` 提供，`runtime-node` 依赖该契约；早期由 runtime 首发契约、SDK re-export 的安排已被后续包边界收口取代。
+`internal/runtime-node` 不应依赖 Electron renderer、React 或 SQLite repository。当前公开插件作者契约由 `packages/sdk-node` 提供，`runtime-node` 依赖该契约；早期由 runtime 首发契约、SDK re-export 的安排已被后续包边界收口取代。
 
 ## ContentBlock 范围
 
