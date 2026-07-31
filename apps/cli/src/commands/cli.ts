@@ -1,14 +1,7 @@
 import { defineCommand } from "citty";
 
-import {
-  normalizeListCliResource,
-  printCommandList,
-  printCommandResult,
-  printUnsupportedListResource,
-} from "./command-output";
-import { listCliCommands, runCliCommandWithStorage } from "./command-runtime";
-import { listCliPlugins, printPluginList } from "./plugins";
-import { getCliOutputFormat, listCliPreferences, printPreferenceList } from "./preferences";
+import { listCliPlugins, printPluginList } from "../plugins";
+import { getCliOutputFormat, listCliPreferences, printPreferenceList } from "../preferences";
 import {
   createPluginDirCommandArg,
   createPluginsCommandArg,
@@ -16,7 +9,14 @@ import {
   resolveCliPluginDirOption,
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
-} from "./runtime";
+} from "../runtime";
+import { listCliCommands, runCliCommandWithStorage } from "./operations";
+import {
+  normalizeListCliResource,
+  printCommandList,
+  printCommandResult,
+  printUnsupportedListResource,
+} from "./output";
 
 export function defineListCommand(options: CreateCliCommandOptions) {
   return defineCommand({
@@ -48,7 +48,7 @@ export function defineListCommand(options: CreateCliCommandOptions) {
       });
 
       if (resource === "commands") {
-        const commands = await listCliCommands({ pluginSources });
+        const commands = await listCliCommands({ pluginSources, storagePath });
         const outputFormat = await getCliOutputFormat({ storagePath });
 
         printCommandList(commands, outputFormat);

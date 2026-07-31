@@ -1,20 +1,7 @@
-import { TooldeckError } from "@tooldeck/shared";
+import { isApplicationError } from "@tooldeck/application-node";
 import { defineCommand } from "citty";
 
-import {
-  installCliPlugin,
-  listCliPlugins,
-  purgeCliPlugin,
-  setCliPluginEnabled,
-  uninstallCliPlugin,
-} from "./plugin-operations";
-import {
-  printPluginInstall,
-  printPluginList,
-  printPluginPurge,
-  printPluginUninstall,
-} from "./plugin-output";
-import { getCliOutputFormat } from "./preferences";
+import { getCliOutputFormat } from "../preferences";
 import {
   createPluginDirCommandArg,
   createPluginsCommandArg,
@@ -23,7 +10,20 @@ import {
   resolveCliPluginDirOption,
   resolveCliRuntimePaths,
   type CreateCliCommandOptions,
-} from "./runtime";
+} from "../runtime";
+import {
+  installCliPlugin,
+  listCliPlugins,
+  purgeCliPlugin,
+  setCliPluginEnabled,
+  uninstallCliPlugin,
+} from "./operations";
+import {
+  printPluginInstall,
+  printPluginList,
+  printPluginPurge,
+  printPluginUninstall,
+} from "./output";
 
 export function definePluginCommand(options: CreateCliCommandOptions) {
   return defineCommand({
@@ -112,7 +112,7 @@ export function definePluginCommand(options: CreateCliCommandOptions) {
 
             printPluginPurge(plugin, outputFormat);
           } catch (error) {
-            if (error instanceof TooldeckError && error.code === "ERR_ALREADY_EXISTS") {
+            if (isApplicationError(error, "ERR_ALREADY_EXISTS")) {
               throw new Error(
                 `${error.message}. Run "tooldeck plugin uninstall ${pluginId}" first.`,
                 { cause: error },

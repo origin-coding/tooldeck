@@ -3,7 +3,6 @@ import path from "node:path";
 import { expect, it, describe } from "vitest";
 
 import {
-  ensureCliInstalledPluginSource,
   parseCliPluginDirArgs,
   resolveCliRuntimePaths,
   resolveCliPluginDirOption,
@@ -86,29 +85,6 @@ describe("CLI runtime paths", () => {
         kind: "external",
         path: path.resolve(workspaceRoot, "../external-b"),
       },
-    ]);
-  });
-
-  it("inserts a derived installed source before custom external sources", () => {
-    const storagePath = path.resolve("workspace", ".data", "tooldeck.sqlite");
-    const builtinPath = path.resolve("workspace", "plugins");
-    const externalPath = path.resolve("external", "plugins");
-
-    expect(
-      ensureCliInstalledPluginSource(
-        [
-          { kind: "builtin", path: builtinPath },
-          { kind: "external", path: externalPath },
-        ],
-        storagePath,
-      ),
-    ).toEqual([
-      { kind: "builtin", path: builtinPath },
-      {
-        kind: "installed",
-        path: path.join(path.dirname(storagePath), "installed-plugins"),
-      },
-      { kind: "external", path: externalPath },
     ]);
   });
 

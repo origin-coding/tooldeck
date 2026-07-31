@@ -1,7 +1,7 @@
 import { consola } from "consola";
 
-import { formatPreferenceList, formatPreferenceValue } from "./output";
-import type { CliOutputFormat, ListedCliPreference } from "./preference-operations";
+import { formatPreferenceList, formatPreferenceValue } from "../output";
+import type { CliOutputFormat, ListedCliPreference } from "./operations";
 
 export function printPreferenceList(
   preferences: ListedCliPreference[],

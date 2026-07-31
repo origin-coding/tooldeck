@@ -1,17 +1,19 @@
+import type { JsonObject, JsonValue } from "@tooldeck/protocol";
+
 type RawCliScalarOptionValue = string | boolean;
 type RawCliOptionValue = RawCliScalarOptionValue | RawCliScalarOptionValue[];
 
-export function parseRawCliInputOptions(options: {
+export function parseRawCommandInputFromCliArgs(options: {
   rawArgs: string[];
   commandId: string;
-  ignoredOptions: string[];
-}): Record<string, RawCliOptionValue> {
+  ignoredOptions?: string[];
+}): JsonObject {
   const input: Record<string, RawCliOptionValue> = {};
-  const ignoredOptions = new Set(options.ignoredOptions);
+  const ignoredOptions = new Set(options.ignoredOptions ?? []);
   let commandIdConsumed = false;
 
   for (let index = 0; index < options.rawArgs.length; index += 1) {
-    const token = options.rawArgs[index];
+    const token = options.rawArgs[index]!;
 
     if (token === "--") {
       break;
@@ -57,7 +59,7 @@ export function parseRawCliInputOptions(options: {
     }
   }
 
-  return input;
+  return input as Record<string, JsonValue>;
 }
 
 function setInputOption(

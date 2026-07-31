@@ -2,10 +2,10 @@ import path from "node:path";
 
 import {
   resolveTooldeckPaths,
+  type ApplicationPluginSource,
   type TooldeckPaths,
   type TooldeckRuntimeMode,
 } from "@tooldeck/application-node";
-import { type PluginScanSource } from "@tooldeck/runtime-node";
 
 export interface CreateCliCommandOptions {
   appInstallDir?: string;
@@ -29,7 +29,7 @@ export interface ResolveCliRuntimePathsOptions {
 export interface CliRuntimePaths {
   tooldeckPaths: TooldeckPaths;
   pluginsRoot: string;
-  pluginSources: PluginScanSource[];
+  pluginSources: ApplicationPluginSource[];
   storagePath: string;
 }
 
@@ -153,36 +153,6 @@ export function requireCliArgument(value: string | undefined, name: string): str
   }
 
   return value;
-}
-
-export function ensureCliInstalledPluginSource(
-  pluginSources: PluginScanSource[],
-  storagePath: string,
-): PluginScanSource[] {
-  const installedSources = pluginSources.filter((source) => source.kind === "installed");
-
-  return [
-    ...pluginSources.filter((source) => source.kind === "builtin"),
-    ...(installedSources.length > 0
-      ? installedSources
-      : [
-          {
-            kind: "installed" as const,
-            path: path.join(path.dirname(storagePath), "installed-plugins"),
-          },
-        ]),
-    ...pluginSources.filter((source) => source.kind === "external"),
-  ];
-}
-
-export function resolveCliInstalledPluginsDir(pluginSources: PluginScanSource[]): string {
-  const installedSource = pluginSources.find((source) => source.kind === "installed");
-
-  if (!installedSource) {
-    throw new Error("Missing installed plugin scan source.");
-  }
-
-  return installedSource.path;
 }
 
 function resolveCliPathOverride(workspaceRoot: string, value?: string): string | undefined {

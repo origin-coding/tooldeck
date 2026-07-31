@@ -1,6 +1,12 @@
 import { defineCommand } from "citty";
 
 import {
+  createStorageCommandArg,
+  requireCliArgument,
+  resolveCliRuntimePaths,
+  type CreateCliCommandOptions,
+} from "../runtime";
+import {
   deleteCliPreference,
   getCliOutputFormat,
   getCliPreference,
@@ -8,14 +14,8 @@ import {
   parsePreferenceJson,
   setCliPreference,
   type CliOutputFormat,
-} from "./preference-operations";
-import { printPreferenceList, printPreferenceValue } from "./preference-output";
-import {
-  createStorageCommandArg,
-  requireCliArgument,
-  resolveCliRuntimePaths,
-  type CreateCliCommandOptions,
-} from "./runtime";
+} from "./operations";
+import { printPreferenceList, printPreferenceValue } from "./output";
 
 export function definePreferenceCommand(options: CreateCliCommandOptions) {
   return defineCommand({

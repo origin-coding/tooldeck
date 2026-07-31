@@ -2,19 +2,24 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
-import {
-  CommandRunRepository,
-  openTooldeckDatabase,
-  PreferenceRepository,
-  PluginInstallRepository,
-  PluginKvRepository,
-  PluginRepository,
-  PluginStateRepository,
-} from "@tooldeck/storage";
 import { afterEach } from "vitest";
 
 const tempDirs: string[] = [];
+
+interface CommandRunRow {
+  id: string;
+  commandId: string;
+  pluginId: string | null;
+  source: string;
+  status: string;
+  inputJson: string | null;
+  outputJson: string | null;
+  errorJson: string | null;
+  durationMs: number | null;
+  createdAt: number;
+}
 
 afterEach(() => {
   for (const dir of tempDirs.splice(0)) {
@@ -34,37 +39,53 @@ export function createTempDir(): string {
   return dir;
 }
 
-export function readCommandRuns(storagePath: string) {
-  const database = openTooldeckDatabase({ path: storagePath });
-  const repository = new CommandRunRepository(database.db);
-
-  try {
-    return repository.listRecent();
-  } finally {
-    database.close();
-  }
+export function readCommandRuns(storagePath: string): CommandRunRow[] {
+  return withDatabase(
+    storagePath,
+    (database) =>
+      database
+        .prepare(
+          `select id, command_id commandId, plugin_id pluginId, source, status,
+            input_json inputJson, output_json outputJson, error_json errorJson,
+            duration_ms durationMs, created_at createdAt
+          from command_runs order by created_at desc`,
+        )
+        .all() as unknown as CommandRunRow[],
+  );
 }
 
-export function readPlugins(storagePath: string) {
-  const database = openTooldeckDatabase({ path: storagePath });
-  const repository = new PluginRepository(database.db);
-
-  try {
-    return repository.list();
-  } finally {
-    database.close();
-  }
+export function readPlugins(storagePath: string): Array<{ id: string; enabled: boolean }> {
+  return withDatabase(storagePath, (database) =>
+    database
+      .prepare("select id, enabled from plugins order by id")
+      .all()
+      .map((row) => ({
+        id: String(row.id),
+        enabled: Boolean(row.enabled),
+      })),
+  );
 }
 
-export function readPluginInstall(storagePath: string, pluginId: string) {
-  const database = openTooldeckDatabase({ path: storagePath });
-  const repository = new PluginInstallRepository(database.db);
-
-  try {
-    return repository.getById(pluginId);
-  } finally {
-    database.close();
-  }
+export function readPluginInstall(
+  storagePath: string,
+  pluginId: string,
+):
+  | {
+      pluginId: string;
+      version: string;
+      installDir: string;
+    }
+  | undefined {
+  return withDatabase(
+    storagePath,
+    (database) =>
+      database
+        .prepare(
+          `select plugin_id pluginId, version, install_dir installDir
+          from plugin_installs where plugin_id = ?`,
+        )
+        .get(pluginId) as ReturnType<typeof readPluginInstall>,
+  );
 }
 
 export function readPreferenceValue(
@@ -72,25 +93,23 @@ export function readPreferenceValue(
   scope: "desktop" | "cli" | "shared",
   key: string,
 ) {
-  const database = openTooldeckDatabase({ path: storagePath });
-  const repository = new PreferenceRepository(database.db);
+  return withDatabase(storagePath, (database) => {
+    const row = database
+      .prepare("select value_json as valueJson from preferences where scope = ? and key = ?")
+      .get(scope, key) as { valueJson: string } | undefined;
 
-  try {
-    return repository.get(scope, key);
-  } finally {
-    database.close();
-  }
+    return row ? JSON.parse(row.valueJson) : undefined;
+  });
 }
 
 export function readPluginKvValue(storagePath: string, pluginId: string, key: string) {
-  const database = openTooldeckDatabase({ path: storagePath });
-  const repository = new PluginKvRepository(database.db);
+  return withDatabase(storagePath, (database) => {
+    const row = database
+      .prepare("select value_json as valueJson from plugin_kv where plugin_id = ? and key = ?")
+      .get(pluginId, key) as { valueJson: string } | undefined;
 
-  try {
-    return repository.get(pluginId, key);
-  } finally {
-    database.close();
-  }
+    return row ? JSON.parse(row.valueJson) : undefined;
+  });
 }
 
 export function writePluginKvValue(
@@ -99,20 +118,39 @@ export function writePluginKvValue(
   key: string,
   value: unknown,
 ): void {
-  const database = openTooldeckDatabase({ path: storagePath });
-
-  try {
-    new PluginKvRepository(database.db).set({ pluginId, key, value });
-  } finally {
-    database.close();
-  }
+  withDatabase(storagePath, (database) => {
+    database
+      .prepare(
+        `insert into plugin_kv (plugin_id, key, value_json, updated_at)
+        values (?, ?, ?, ?)
+        on conflict (plugin_id, key)
+        do update set value_json = excluded.value_json, updated_at = excluded.updated_at`,
+      )
+      .run(pluginId, key, JSON.stringify(value), Date.now());
+  });
 }
 
-export function readPluginState(storagePath: string, pluginId: string) {
-  const database = openTooldeckDatabase({ path: storagePath });
+export function readPluginState(
+  storagePath: string,
+  pluginId: string,
+): { enabled: boolean } | undefined {
+  return withDatabase(storagePath, (database) => {
+    const row = database
+      .prepare("select enabled from plugin_states where plugin_id = ?")
+      .get(pluginId);
+
+    return row ? { enabled: Boolean(row.enabled) } : undefined;
+  });
+}
+
+function withDatabase<TResult>(
+  storagePath: string,
+  callback: (database: DatabaseSync) => TResult,
+): TResult {
+  const database = new DatabaseSync(storagePath);
 
   try {
-    return new PluginStateRepository(database.db).getById(pluginId);
+    return callback(database);
   } finally {
     database.close();
   }

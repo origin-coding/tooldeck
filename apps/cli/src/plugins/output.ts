@@ -5,14 +5,14 @@ import {
   formatPluginList,
   formatPluginPurge,
   formatPluginUninstall,
-} from "./output";
+} from "../output";
+import type { CliOutputFormat } from "../preferences";
 import type {
   InstalledCliPlugin,
   ListedCliPlugin,
   PurgedCliPlugin,
   UninstalledCliPlugin,
-} from "./plugin-operations";
-import type { CliOutputFormat } from "./preferences";
+} from "./operations";
 
 export function printPluginList(
   plugins: ListedCliPlugin[],

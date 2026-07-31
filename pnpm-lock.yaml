@@ -57,30 +57,15 @@ importers:
       '@tooldeck/json-tools':
         specifier: workspace:*
         version: link:../../plugins/json-tools
-      '@tooldeck/plugin-management-node':
-        specifier: workspace:*
-        version: link:../../packages/plugin-management-node
       '@tooldeck/plugin-package':
         specifier: workspace:*
         version: link:../../packages/plugin-package
-      '@tooldeck/preferences':
-        specifier: workspace:*
-        version: link:../../packages/preferences
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       '@tooldeck/regex-tools':
         specifier: workspace:*
         version: link:../../plugins/regex-tools
-      '@tooldeck/runtime-node':
-        specifier: workspace:*
-        version: link:../../internal/runtime-node
-      '@tooldeck/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@tooldeck/storage':
-        specifier: workspace:*
-        version: link:../../packages/storage
       '@types/node':
         specifier: ^25.9.1
         version: 25.9.1

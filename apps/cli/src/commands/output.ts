@@ -6,9 +6,9 @@ import type {
 } from "@tooldeck/protocol";
 import { consola } from "consola";
 
-import type { ListedCliCommand } from "./command-runtime";
-import { formatCommandList } from "./output";
-import type { CliOutputFormat } from "./preferences";
+import { formatCommandList } from "../output";
+import type { CliOutputFormat } from "../preferences";
+import type { ListedCliCommand } from "./operations";
 
 export type ListCliResource = "commands" | "plugins" | "preferences";
 export function printCommandResult(
