@@ -14,6 +14,7 @@ import type {
   CreateTooldeckApplicationOptions,
 } from "@/application/types";
 import { ApplicationError } from "@/errors/application-error";
+import { combinePrimaryAndCleanupErrors } from "@/errors/application-error-composition";
 import { resolveTooldeckPaths, type TooldeckPaths } from "@/paths";
 import { PluginManagementService } from "@/plugins/management";
 import {
@@ -103,10 +104,10 @@ export class TooldeckApplicationContext {
         await this.disposeResources();
       } catch (cleanupError) {
         this.state = "created";
-        throw new AggregateError(
-          [error, cleanupError],
+        throw combinePrimaryAndCleanupErrors(
+          error,
+          [cleanupError],
           "Application startup failed and partial resources could not be fully released.",
-          { cause: error },
         );
       }
 
@@ -236,7 +237,11 @@ export class TooldeckApplicationContext {
     }
 
     if (failures.length > 1) {
-      throw new AggregateError(failures, "Application resource cleanup failed.");
+      throw combinePrimaryAndCleanupErrors(
+        failures[0],
+        failures.slice(1),
+        "Application resource cleanup failed.",
+      );
     }
   }
 }

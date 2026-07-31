@@ -1,6 +1,7 @@
 import { RuntimeError } from "@tooldeck/runtime-node";
 import { describe, expect, it } from "vitest";
 
+import { combinePrimaryAndCleanupErrors } from "@/errors/application-error-composition";
 import {
   ApplicationError,
   fromRuntimeError,
@@ -116,6 +117,83 @@ describe("ApplicationError", () => {
       message: "Command execution failed",
       details: {
         commandId: "json.format",
+      },
+    });
+  });
+
+  it("preserves a primary failure when cleanup also fails", () => {
+    const primaryError = new RuntimeError({
+      code: "ERR_PLUGIN_LOAD_FAILED",
+      message: "Plugin activation failed",
+      details: {
+        pluginId: "dev.example.plugin",
+      },
+    });
+    const cleanupError = new Error("database close failed");
+    const error = combinePrimaryAndCleanupErrors(
+      primaryError,
+      [cleanupError],
+      "Startup and cleanup failed.",
+    );
+
+    expect(error).toMatchObject({
+      source: "runtime",
+      code: "ERR_PLUGIN_LOAD_FAILED",
+      message: "Plugin activation failed",
+      details: {
+        pluginId: "dev.example.plugin",
+        cleanupFailure: {
+          tag: "ApplicationError",
+          source: "application",
+          code: "ERR_UNKNOWN",
+          message: "database close failed",
+        },
+      },
+      cause: {
+        message: "Startup and cleanup failed.",
+        cause: primaryError,
+        errors: [primaryError, cleanupError],
+      },
+    });
+  });
+
+  it("records every secondary failure when multiple cleanup steps fail", () => {
+    const primaryError = new ApplicationError({
+      source: "application",
+      code: "ERR_INVALID_ARGUMENT",
+      message: "Primary operation failed",
+    });
+    const cleanupErrors = [new Error("runtime dispose failed"), new Error("database close failed")];
+    const error = combinePrimaryAndCleanupErrors(
+      primaryError,
+      cleanupErrors,
+      "Operation and cleanup failed.",
+    );
+
+    expect(error).toMatchObject({
+      source: "application",
+      code: "ERR_INVALID_ARGUMENT",
+      message: "Primary operation failed",
+      details: {
+        cleanupFailures: [
+          {
+            tag: "ApplicationError",
+            source: "application",
+            code: "ERR_UNKNOWN",
+            message: "runtime dispose failed",
+          },
+          {
+            tag: "ApplicationError",
+            source: "application",
+            code: "ERR_UNKNOWN",
+            message: "database close failed",
+          },
+        ],
+      },
+      cause: {
+        message: "Operation and cleanup failed.",
+        cause: primaryError,
+        errors: [primaryError, ...cleanupErrors],
       },
     });
   });

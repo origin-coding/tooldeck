@@ -4,8 +4,8 @@ import { runApplicationOperation } from "@/application/edge";
 import type { CreateTooldeckApplicationOptions } from "@/application/types";
 import { ApplicationCommands } from "@/commands/application-commands";
 import type { ApplicationCommandFacade } from "@/commands/types";
-import { ApplicationError, toApplicationError } from "@/errors/application-error";
-import { toApplicationErrorTransport } from "@/errors/application-error-transport";
+import { toApplicationError } from "@/errors/application-error";
+import { combinePrimaryAndCleanupErrors } from "@/errors/application-error-composition";
 import { ApplicationHistory } from "@/history/application-history";
 import type { ApplicationHistoryFacade } from "@/history/types";
 import type { TooldeckPaths } from "@/paths";
@@ -90,7 +90,11 @@ export async function withTooldeckApplication<TResult>(
 
   if (!callbackOutcome.success) {
     if (!disposeOutcome.success) {
-      throw combineOperationAndDisposeErrors(callbackOutcome.error, disposeOutcome.error);
+      throw combinePrimaryAndCleanupErrors(
+        callbackOutcome.error,
+        [disposeOutcome.error],
+        "Tooldeck application operation failed and resources did not dispose cleanly.",
+      );
     }
 
     throw toApplicationError(callbackOutcome.error);
@@ -107,34 +111,4 @@ export function defineTooldeckApplicationAdapters(
   adapters: TooldeckApplicationAdapters,
 ): TooldeckApplicationAdapters {
   return adapters;
-}
-
-function combineOperationAndDisposeErrors(
-  operationError: unknown,
-  disposeError: unknown,
-): ApplicationError {
-  const primaryError = toApplicationError(operationError);
-  const cleanupError = toApplicationError(disposeError);
-  const cleanupTransport = toApplicationErrorTransport(cleanupError);
-
-  return new ApplicationError({
-    source: primaryError.source,
-    code: primaryError.code,
-    message: primaryError.message,
-    cause: new AggregateError(
-      [operationError, disposeError],
-      "Tooldeck application operation failed and resources did not dispose cleanly.",
-      { cause: operationError },
-    ),
-    details: {
-      ...primaryError.details,
-      cleanupFailure: {
-        tag: cleanupTransport.tag,
-        source: cleanupTransport.source,
-        code: cleanupTransport.code,
-        message: cleanupTransport.message,
-        ...(cleanupTransport.details ? { details: cleanupTransport.details } : {}),
-      },
-    },
-  });
 }
