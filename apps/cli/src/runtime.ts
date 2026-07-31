@@ -2,10 +2,10 @@ import path from "node:path";
 
 import {
   resolveTooldeckPaths,
-  type PluginScanSource,
   type TooldeckPaths,
   type TooldeckRuntimeMode,
-} from "@tooldeck/runtime-node";
+} from "@tooldeck/application-node";
+import { type PluginScanSource } from "@tooldeck/runtime-node";
 
 export interface CreateCliCommandOptions {
   appInstallDir?: string;

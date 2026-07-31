@@ -49,6 +49,8 @@ Deprecated
 - [ADR 0007: ApplicationError-only Application Facade](./0007-application-error-only-facade.md)
 - [ADR 0008: TPP v1 Command Input Schema Profile](./0008-tpp-v1-command-input-schema-profile.md)
 - [ADR 0009: Nuxt CSR Renderer and Preload Bridge](./0009-nuxt-csr-renderer-and-preload-bridge.md)
+- [ADR 0010: Effect-sequenced State Machine Extraction](./0010-effect-sequenced-state-machine-extraction.md)
+- [ADR 0011: Effect-sequenced Application Repository Ownership](./0011-effect-sequenced-application-repository-ownership.md)
 
 ## 模板
 
