@@ -13,6 +13,5 @@ export * from "@/lifecycle/plugin-runtime-lifecycle";
 export * from "@/lifecycle/state-machine";
 export * from "@/manifests/manifest-index";
 export * from "@/manifests/manifest-validation";
-export * from "@/paths/tooldeck-paths";
 export * from "@/plugins/plugin-manager";
 export * from "@/plugins/plugin-scanner";

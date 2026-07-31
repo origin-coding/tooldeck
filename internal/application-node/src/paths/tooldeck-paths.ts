@@ -171,14 +171,26 @@ function resolveMacBasePaths(options: ResolveBasePathsOptions): ResolvedBasePath
 }
 
 function resolveLinuxBasePaths(options: ResolveBasePathsOptions): ResolvedBasePaths {
-  const configBaseDir =
-    options.env.XDG_CONFIG_HOME ?? options.pathModule.join(options.homeDir, ".config");
-  const dataBaseDir =
-    options.env.XDG_DATA_HOME ?? options.pathModule.join(options.homeDir, ".local", "share");
-  const cacheBaseDir =
-    options.env.XDG_CACHE_HOME ?? options.pathModule.join(options.homeDir, ".cache");
-  const stateBaseDir =
-    options.env.XDG_STATE_HOME ?? options.pathModule.join(options.homeDir, ".local", "state");
+  const configBaseDir = resolveXdgBaseDir(
+    options.env.XDG_CONFIG_HOME,
+    options.pathModule.join(options.homeDir, ".config"),
+    options.pathModule,
+  );
+  const dataBaseDir = resolveXdgBaseDir(
+    options.env.XDG_DATA_HOME,
+    options.pathModule.join(options.homeDir, ".local", "share"),
+    options.pathModule,
+  );
+  const cacheBaseDir = resolveXdgBaseDir(
+    options.env.XDG_CACHE_HOME,
+    options.pathModule.join(options.homeDir, ".cache"),
+    options.pathModule,
+  );
+  const stateBaseDir = resolveXdgBaseDir(
+    options.env.XDG_STATE_HOME,
+    options.pathModule.join(options.homeDir, ".local", "state"),
+    options.pathModule,
+  );
 
   return {
     userConfigDir: options.pathModule.join(configBaseDir, options.appName),
@@ -186,6 +198,14 @@ function resolveLinuxBasePaths(options: ResolveBasePathsOptions): ResolvedBasePa
     cacheDir: options.pathModule.join(cacheBaseDir, options.appName),
     logsDir: options.pathModule.join(stateBaseDir, options.appName, "logs"),
   };
+}
+
+function resolveXdgBaseDir(
+  configuredPath: string | undefined,
+  fallbackPath: string,
+  pathModule: typeof path.posix | typeof path.win32,
+): string {
+  return configuredPath && pathModule.isAbsolute(configuredPath) ? configuredPath : fallbackPath;
 }
 
 function getPathModule(platform: NodeJS.Platform): typeof path.win32 | typeof path.posix {

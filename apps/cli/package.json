@@ -36,6 +36,7 @@
     "picocolors": "^1.1.1"
   },
   "devDependencies": {
+    "@tooldeck/application-node": "workspace:*",
     "@tooldeck/hello-world": "workspace:*",
     "@tooldeck/json-tools": "workspace:*",
     "@tooldeck/plugin-management-node": "workspace:*",

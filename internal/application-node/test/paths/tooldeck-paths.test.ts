@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { resolvePluginDataDir, resolveTooldeckPaths } from "@/index";
+import { resolvePluginDataDir, resolveTooldeckPaths } from "@/paths";
 
 describe("resolveTooldeckPaths", () => {
   it("resolves Windows app data paths from APPDATA and LOCALAPPDATA", () => {
@@ -87,6 +87,27 @@ describe("resolveTooldeckPaths", () => {
       userDataDir: "/xdg/data/tooldeck",
       cacheDir: "/xdg/cache/tooldeck",
       logsDir: "/xdg/state/tooldeck/logs",
+    });
+  });
+
+  it("ignores empty and relative XDG base directory values", () => {
+    const paths = resolveTooldeckPaths({
+      platform: "linux",
+      homeDir: "/home/alice",
+      tempDir: "/tmp",
+      env: {
+        XDG_CONFIG_HOME: "",
+        XDG_DATA_HOME: "relative/data",
+        XDG_CACHE_HOME: "",
+        XDG_STATE_HOME: "relative/state",
+      },
+    });
+
+    expect(paths).toMatchObject({
+      userConfigDir: "/home/alice/.config/tooldeck",
+      userDataDir: "/home/alice/.local/share/tooldeck",
+      cacheDir: "/home/alice/.cache/tooldeck",
+      logsDir: "/home/alice/.local/state/tooldeck/logs",
     });
   });
 
