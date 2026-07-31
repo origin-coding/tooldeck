@@ -77,8 +77,6 @@ apps/
 packages/
   protocol/                 TPP data contracts and schema.
   sdk-node/                 Public Node plugin authoring contract.
-  runtime-node/             Private Node runtime coordination.
-  host-node/                Node plugin loading adapter.
   plugin-package/           Public .tdplugin format utilities.
   plugin-management-node/   Private install and state application service.
   plugin-tools/              Public plugin authoring CLI and test helpers.
@@ -87,6 +85,9 @@ packages/
   preferences/              Private product preference definitions.
   storage/                  Private SQLite persistence implementation.
   shared/                   Shared private implementation utilities.
+
+internal/
+  runtime-node/             Private runtime coordination and Node plugin host.
 
 plugins/
   json-tools/               Canonical JSON command and smoke-test plugin.
@@ -115,10 +116,8 @@ Keep package dependencies layered by public contract and private implementation:
 @tooldeck/runtime-node
   Private Node runtime implementation: manifest indexing, command orchestration,
   lazy activation coordination, lifecycle state machines, input normalization,
-  result validation, and plugin manager services.
-
-@tooldeck/host-node
-  Node plugin loading adapter and runtime assembly helpers.
+  result validation, runtime-kind routing, Node plugin loading, and plugin manager
+  services.
 
 @tooldeck/plugin-package
   Public .tdplugin container implementation: package metadata, ZIP adapter,
@@ -137,10 +136,9 @@ Keep package dependencies layered by public contract and private implementation:
 Dependency direction should stay one-way:
 
 ```text
-protocol <- sdk-node <- runtime-node <- host-node <- CLI/Desktop
+protocol <- sdk-node <- runtime-node <- CLI/Desktop
 protocol <- plugin-package <- plugin-tools
 protocol <- preferences <- storage
-protocol <- shared <- runtime-node
 plugin-package + runtime-node + shared + storage
   -> plugin-management-node
   -> CLI/Desktop
@@ -149,7 +147,7 @@ plugin-package + runtime-node + shared + storage
 Rules for dependency changes:
 
 1. Public plugin author types belong in `@tooldeck/sdk-node`, not in private runtime packages.
-2. `@tooldeck/sdk-node` must not depend on `@tooldeck/runtime-node`, `@tooldeck/host-node`, Electron, React, SQLite, or storage.
+2. `@tooldeck/sdk-node` must not depend on `@tooldeck/runtime-node`, Electron, React, SQLite, or storage.
 3. `@tooldeck/runtime-node` may depend on `@tooldeck/sdk-node` for the shared Node plugin contract, but it must not depend on Electron UI or React.
 4. `@tooldeck/protocol` must remain data-only and standards-facing. Do not add function-based Node SDK APIs such as `CommandHandler`, `PluginContext`, or `Disposable` there.
 5. `@tooldeck/storage` and `@tooldeck/preferences` are product implementation packages, not TPP protocol packages.
@@ -164,7 +162,7 @@ Rules for dependency changes:
 Follow these constraints:
 
 1. `packages/protocol` must not depend on Electron, React, SQLite, Node plugin runtime, or UI code.
-2. `packages/runtime-node` must not depend on Electron UI or React.
+2. `internal/runtime-node` must not depend on Electron UI or React.
 3. Renderer code must not access SQLite directly.
 4. Renderer code must not import or execute plugin code directly.
 5. Plugin capabilities must be exposed through `PluginContext`.

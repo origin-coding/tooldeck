@@ -1,14 +1,11 @@
 import path from "node:path";
 import { performance } from "node:perf_hooks";
 
-import {
-  createNodeRuntime,
-  type CreateNodeRuntimeOptions,
-  type NodePluginHost,
-} from "@tooldeck/host-node";
 import { validatePreferenceValue } from "@tooldeck/preferences";
 import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
 import {
+  createRuntime,
+  type CreateRuntimeOptions,
   type CommandService,
   type IndexedCommand,
   ManifestIndex,
@@ -53,35 +50,35 @@ export interface ListedCliCommand {
 export interface CreatePluginManagerOptions {
   pluginsRoot?: string;
   pluginSources?: PluginScanSource[];
-  createPluginStorage?: CreateNodeRuntimeOptions["createPluginStorage"];
+  createPluginStorage?: CreateRuntimeOptions["createPluginStorage"];
 }
 
 export interface CreatedPluginManager {
   pluginManager: PluginManager;
   commandService: CommandService;
-  pluginHost: NodePluginHost;
   manifestIndex: ManifestIndex;
   pluginCount: number;
   commandCount: number;
+  dispose(): Promise<void>;
 }
 
 export async function createPluginManager(
   options: CreatePluginManagerOptions,
 ): Promise<CreatedPluginManager> {
   const pluginSources = resolvePluginSources(options);
-  const runtime = await createNodeRuntime({
+  const runtime = await createRuntime({
     pluginSources,
     coercion: "cli",
     createPluginStorage: options.createPluginStorage,
   });
 
   return {
-    pluginHost: runtime.pluginHost,
     manifestIndex: runtime.manifestIndex,
     pluginCount: runtime.pluginCount,
     commandCount: runtime.commandCount,
     pluginManager: runtime.pluginManager,
     commandService: runtime.commandService,
+    dispose: runtime.dispose,
   };
 }
 
@@ -112,7 +109,7 @@ export async function runCliCommandWithStorage(
     });
     const recordCommandHistory = getCommandHistoryEnabled(preferences);
     const startedAt = performance.now();
-    let pluginHost: NodePluginHost | undefined;
+    let pluginRuntime: Pick<CreatedPluginManager, "dispose"> | undefined;
     let pluginId: string | undefined;
     let input = options.input;
     let operationOutcome:
@@ -141,7 +138,7 @@ export async function runCliCommandWithStorage(
         },
       });
 
-      pluginHost = created.pluginHost;
+      pluginRuntime = created;
       pluginId = created.manifestIndex.getCommandOwner(options.commandId);
 
       assertPluginsAvailable(created, pluginSources);
@@ -205,7 +202,7 @@ export async function runCliCommandWithStorage(
     let cleanupOutcome: { success: true } | { success: false; error: unknown };
 
     try {
-      await pluginHost?.disposeAll();
+      await pluginRuntime?.dispose();
       cleanupOutcome = { success: true };
     } catch (error) {
       cleanupOutcome = { success: false, error };

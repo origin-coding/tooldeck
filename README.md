@@ -139,8 +139,8 @@ Tooldeck implementation keeps these boundaries:
 
 - `packages/protocol` contains data contracts and standards-facing JSON Schema only.
 - `packages/sdk-node` provides the public Node plugin authoring contract.
-- `packages/runtime-node` coordinates scanning, commands, validation, and lazy activation.
-- `packages/host-node` loads trusted local Node plugin runtime entries.
+- `internal/runtime-node` coordinates scanning, commands, validation, runtime-kind routing,
+  lazy activation, and trusted local Node plugin loading.
 - `packages/plugin-package` owns the public `.tdplugin` container implementation.
 - `packages/plugin-management-node` shares install and state orchestration between CLI and
   Desktop.
@@ -167,8 +167,6 @@ apps/
 packages/
   protocol/                 TPP data contracts and schema.
   sdk-node/                 Public Node plugin authoring contract.
-  runtime-node/             Private Node runtime coordination.
-  host-node/                Node plugin loading adapter.
   plugin-package/           Public .tdplugin format utilities.
   plugin-management-node/   Private install and state application service.
   plugin-tools/             Public plugin authoring CLI and test helpers.
@@ -177,6 +175,9 @@ packages/
   preferences/              Private product preference definitions.
   storage/                  Private SQLite persistence implementation.
   shared/                   Shared private implementation utilities.
+
+internal/
+  runtime-node/             Private runtime coordination and Node plugin host.
 
 plugins/
   json-tools/               Canonical JSON command and smoke-test plugin.

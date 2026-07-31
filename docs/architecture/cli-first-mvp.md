@@ -209,11 +209,10 @@ json.format
 即使 Desktop 延后，MVP 也必须保留长期架构边界：
 
 - `packages/protocol` 只定义协议类型和 schema。
-- `packages/runtime-node` 是当前 Node runtime 的 TypeScript 实现，负责 manifest indexing、command orchestration、command result validation 和插件运行时契约类型。
-- `packages/host-node` 负责 Node plugin loading。
-- `packages/sdk-node` 负责 plugin authoring APIs，并 re-export 插件作者需要的 runtime-node 契约类型。
+- `internal/runtime-node` 是当前 Node runtime 的 TypeScript 实现，负责 manifest indexing、command orchestration、command result validation、runtime-kind routing 和 Node plugin loading。
+- `packages/sdk-node` 负责公开的 plugin authoring APIs 和插件作者契约。
 - `packages/storage` 负责 SQLite schema、migrations、repositories。
-- `apps/cli` 组合 runtime-node、host-node、storage 和本地插件。
+- `apps/cli` 组合 runtime-node、storage 和本地插件。
 - 插件代码只能通过 `PluginContext` 使用 host 暴露的能力。
 
 不要为了 CLI 便利引入会阻碍未来 Desktop 的捷径，例如让 renderer 直接访问 SQLite 或直接执行插件代码。

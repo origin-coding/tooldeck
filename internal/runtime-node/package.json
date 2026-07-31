@@ -1,0 +1,28 @@
+{
+  "name": "@tooldeck/runtime-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Private Node runtime implementation for Tooldeck.",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly && tsc-alias -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@tooldeck/protocol": "workspace:*",
+    "@tooldeck/sdk-node": "workspace:*",
+    "ajv": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "tsc-alias": "^1.9.1"
+  }
+}

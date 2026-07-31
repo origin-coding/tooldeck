@@ -1,8 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-import { createNodeRuntime } from "@tooldeck/host-node";
 import { PluginManagementService } from "@tooldeck/plugin-management-node";
+import { createRuntime } from "@tooldeck/runtime-node";
 import {
   CommandRunRepository,
   openTooldeckDatabase,
@@ -68,21 +68,21 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
   }
 
   async disposePluginRuntime(): Promise<void> {
-    const pluginHost = this.context.pluginHost;
+    const pluginRuntime = this.context.pluginRuntime;
 
-    this.context.pluginHost = undefined;
+    this.context.pluginRuntime = undefined;
     this.context.pluginManager = undefined;
     this.context.commandService = undefined;
     this.context.manifestIndex = undefined;
 
-    await pluginHost?.disposeAll();
+    await pluginRuntime?.dispose();
   }
 
   async scanAndCreateRuntime(): Promise<void> {
     await this.disposePluginRuntime();
 
     const pluginKv = this.context.requirePluginKv();
-    const runtime = await createNodeRuntime({
+    const runtime = await createRuntime({
       pluginSources: this.context.pluginSources,
       createPluginStorage(pluginId) {
         return {
@@ -106,7 +106,7 @@ export class TooldeckDesktopRuntimeService implements DesktopLifecycleService {
       },
     });
 
-    this.context.pluginHost = runtime.pluginHost;
+    this.context.pluginRuntime = runtime;
     this.context.pluginManager = runtime.pluginManager;
     this.context.manifestIndex = runtime.manifestIndex;
     this.context.commandService = runtime.commandService;

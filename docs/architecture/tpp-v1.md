@@ -70,12 +70,13 @@ Electron、React 或 SQLite。
 Tooldeck 产品偏好设置属于应用实现层，由 private `@tooldeck/preferences` 包维护；它们不属于
 TPP 协议，也不应放入 `@tooldeck/protocol`。
 
-当前仓库中的 `packages/runtime-node` 不是 TPP 协议本身，而是当前可信本地 Node 纵向切片的
+当前仓库中的 `internal/runtime-node` 不是 TPP 协议本身，而是当前可信本地 Node 纵向切片的
 TypeScript runtime 实现。它负责 manifest indexing、command orchestration、lazy activation 协调、
 状态机和输入输出校验。公开的 Node/TS 插件作者契约由 `packages/sdk-node` 提供；
 `runtime-node` 依赖这份公开契约，不把私有 runtime 类型反向泄漏给插件作者。
 
-V1 不新建宿主无关 `@tooldeck/runtime` 包。当前 runtime-node 与 Node 插件宿主协作：
+V1 不新建宿主无关 `@tooldeck/runtime` 包。Node 插件宿主通过 runtime 内部的 host registry
+注册和选择：
 
 ```text
 TPP spec / schema
@@ -84,12 +85,7 @@ packages/protocol        # TPP 的 TypeScript 类型和 JSON Schema 表达
   ↓
 packages/sdk-node        # 公开 Node plugin authoring contract
   ↓
-packages/runtime-node    # 当前 Node runtime 协调和命令编排
-  ↓
-packages/host-node       # Node plugin loading adapter
-packages/host-wasm       # future WASM runtime adapter
-packages/host-process    # future multi-language process/RPC adapter
-packages/host-http       # future HTTP runtime adapter
+internal/runtime-node    # runtime 协调、runtime-kind routing 和 Node host
 ```
 
 Tooldeck 1.3 在协议和运行时之外增加了本地分发产品层：
@@ -185,14 +181,8 @@ tooldeck/
     preferences/
       # Tooldeck 产品偏好定义和校验，private 包，不属于 TPP 协议
 
-    runtime-node/
-      # 当前 Node runtime 的 TypeScript 实现，负责命令编排和插件契约
-
     sdk/
       # 插件开发者使用的 definePlugin、PluginContext 类型
-
-    host-node/
-      # Node 插件宿主，负责加载 JS/TS 插件
 
     runtime/
       # 生命周期、激活事件、Disposable、事件总线
@@ -208,6 +198,10 @@ tooldeck/
 
     shared/
       # 通用工具、错误类型、日志类型
+
+  internal/
+    runtime-node/
+      # runtime 协调、命令编排、runtime-kind routing 和 Node 插件加载
 
   plugins/
     json-tools/
@@ -249,11 +243,12 @@ tooldeck/
   packages/
     protocol/
     preferences/
-    runtime-node/
     sdk/
-    host-node/
     storage/
     shared/
+
+  internal/
+    runtime-node/
 
   plugins/
     json-tools/
@@ -1089,7 +1084,7 @@ Preload
 Main IPC Handler
   ↓ CommandService
 TPP Core
-  ↓ packages/runtime-node: 当前 Node runtime 的 TypeScript 实现
+  ↓ internal/runtime-node: 当前 Node runtime 的 TypeScript 实现
   ↓ PluginManager / CommandRegistry
 Storage
   ↓ Drizzle / SQLite
@@ -1195,19 +1190,18 @@ tasks
 2. 创建 Electron desktop app
 3. 创建 CLI app
 4. 创建 packages/protocol
-5. 创建 packages/runtime-node
+5. 创建 internal/runtime-node
 6. 创建 packages/sdk-node
-7. 创建 packages/host-node
-8. 创建 packages/storage
-9. 定义 Manifest 类型和 JSON Schema
-10. 实现 Manifest 扫描
-11. 实现 CommandRegistry
-12. 实现 Node 插件 activate/deactivate
-13. 实现 ContentBlock CommandResult
-14. 实现 SQLite 存储
-15. 实现一个 json-tools 示例插件
-16. Desktop 可以展示 commands 并调用 json.format
-17. CLI 可以调用 json.format
+7. 创建 packages/storage
+8. 定义 Manifest 类型和 JSON Schema
+9. 实现 Manifest 扫描
+10. 实现 CommandRegistry
+11. 实现 Node 插件 activate/deactivate
+12. 实现 ContentBlock CommandResult
+13. 实现 SQLite 存储
+14. 实现一个 json-tools 示例插件
+15. Desktop 可以展示 commands 并调用 json.format
+16. CLI 可以调用 json.format
 ```
 
 MVP 成功标准：
@@ -1270,7 +1264,6 @@ npm scope：
 @tooldeck/preferences
 @tooldeck/runtime-node
 @tooldeck/sdk-node
-@tooldeck/host-node
 @tooldeck/plugin-package
 @tooldeck/plugin-management-node
 @tooldeck/plugin-tools
@@ -1305,7 +1298,7 @@ tooldeck table http.status-codes --search 404
 ```text
 1. 优先实现小而清晰的核心，不要过度设计。
 2. packages/protocol 不允许依赖 Electron、React、SQLite。
-3. packages/runtime-node 不允许依赖 Electron UI 或 React。
+3. internal/runtime-node 不允许依赖 Electron UI 或 React。
 4. Renderer 不允许直接访问数据库。
 5. Renderer 不允许直接执行插件代码。
 6. 插件能力必须通过 PluginContext 暴露。
@@ -1341,7 +1334,7 @@ TPP 是一套面向工具箱应用的插件协议。
 并允许 Desktop / CLI / API 共享同一套 TPP runtime 实现。
 ```
 
-当前仓库里的 `packages/runtime-node` 是当前 Node runtime 的 TypeScript 实现，不等同于 TPP 协议本身。
+当前仓库里的 `internal/runtime-node` 是当前 Node runtime 的 TypeScript 实现，不等同于 TPP 协议本身。
 
 当前 1.0 目标：
 

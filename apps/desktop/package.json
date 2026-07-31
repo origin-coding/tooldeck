@@ -31,7 +31,6 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
     "@tooldeck/hello-world": "workspace:*",
-    "@tooldeck/host-node": "workspace:*",
     "@tooldeck/json-tools": "workspace:*",
     "@tooldeck/plugin-management-node": "workspace:*",
     "@tooldeck/plugin-package": "workspace:*",

@@ -23,8 +23,8 @@ const allowedDesktopApiMethods = [
 
 const checks = [
   {
-    name: "renderer/preload must not import storage or host-node",
-    pattern: String.raw`@tooldeck/(storage|host-node)`,
+    name: "renderer/preload must not import storage or runtime-node",
+    pattern: String.raw`@tooldeck/(storage|runtime-node)`,
     paths: rendererAndPreload,
     expect: "no-match",
   },
@@ -47,8 +47,8 @@ const checks = [
     expect: "no-match",
   },
   {
-    name: "main service composes runtime-node, host-node, and storage",
-    pattern: String.raw`@tooldeck/(runtime-node|host-node|storage)`,
+    name: "main service composes runtime-node and storage",
+    pattern: String.raw`@tooldeck/(runtime-node|storage)`,
     paths: ["src/main"],
     expect: "match",
   },

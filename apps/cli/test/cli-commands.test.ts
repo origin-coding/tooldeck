@@ -20,7 +20,7 @@ import {
 describe("CLI command catalog", () => {
   it("runs hello.world from the default plugin directory shape", async () => {
     const pluginsRoot = path.resolve("../..", "plugins");
-    const { pluginManager, pluginHost, pluginCount, commandCount } = await createPluginManager({
+    const { pluginManager, dispose, pluginCount, commandCount } = await createPluginManager({
       pluginsRoot,
     });
 
@@ -38,7 +38,7 @@ describe("CLI command catalog", () => {
       expect(pluginCount).toBeGreaterThanOrEqual(1);
       expect(commandCount).toBeGreaterThanOrEqual(1);
     } finally {
-      await pluginHost.disposeAll();
+      await dispose();
     }
   });
 
@@ -47,7 +47,7 @@ describe("CLI command catalog", () => {
 
     await mkdir(pluginsRoot, { recursive: true });
 
-    const { pluginHost, pluginCount, commandCount } = await createPluginManager({
+    const { dispose, pluginCount, commandCount } = await createPluginManager({
       pluginsRoot,
     });
 
@@ -55,7 +55,7 @@ describe("CLI command catalog", () => {
       expect(pluginCount).toBe(0);
       expect(commandCount).toBe(0);
     } finally {
-      await pluginHost.disposeAll();
+      await dispose();
     }
   });
 
@@ -253,7 +253,17 @@ describe("CLI command catalog", () => {
       cause: expect.objectContaining({ message: "command failed at source" }),
       errors: [
         expect.objectContaining({ message: "command failed at source" }),
-        expect.objectContaining({ message: "Failed to dispose all active plugins" }),
+        expect.objectContaining({
+          message: "Failed to dispose all registered plugin hosts",
+          details: {
+            errors: [
+              expect.objectContaining({
+                runtimeKind: "node",
+                message: "Failed to dispose all active plugins",
+              }),
+            ],
+          },
+        }),
       ],
     });
     expect(readCommandRuns(storagePath)).toEqual([

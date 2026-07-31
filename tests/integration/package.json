@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@tooldeck/hello-world": "workspace:*",
-    "@tooldeck/host-node": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/runtime-node": "workspace:*"
   },
