@@ -30,4 +30,5 @@ export interface ApplicationPreferenceFacade {
   list(request?: ListApplicationPreferencesRequest): Promise<ApplicationPreference[]>;
   get(request: GetApplicationPreferenceRequest): Promise<ApplicationPreference>;
   set(request: SetApplicationPreferenceRequest): Promise<ApplicationPreference>;
+  delete(request: GetApplicationPreferenceRequest): Promise<void>;
 }

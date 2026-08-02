@@ -4,7 +4,7 @@ import { Boxes, Search, Wrench } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import type { DesktopCommand, DesktopPlugin } from "@/shared/api";
 
 type SearchScope = "all" | "commands" | "plugins";
 

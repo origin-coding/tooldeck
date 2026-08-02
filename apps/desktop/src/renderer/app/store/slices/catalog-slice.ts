@@ -23,16 +23,16 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
 
     try {
       const [history, preferences, pluginDataResidues] = await Promise.all([
-        window.tooldeck.listCommandRuns({ limit: 25 }),
-        window.tooldeck.listPreferences(),
-        window.tooldeck.listPluginDataResidues(),
+        window.tooldeck.history.listRuns({ limit: 25 }),
+        window.tooldeck.preferences.list(),
+        window.tooldeck.plugins.listDataResidues(),
       ]);
       const locale = await applyLocalePreference(
         getPreferenceValue(preferences, "shared", "locale"),
       );
       const [commands, plugins] = await Promise.all([
-        window.tooldeck.listCommands({ locale }),
-        window.tooldeck.listPlugins({ locale }),
+        window.tooldeck.commands.list({ locale }),
+        window.tooldeck.plugins.list({ locale }),
       ]);
 
       set((current) => ({
@@ -62,9 +62,9 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
 
     try {
       const [{ commands, plugins }, history, pluginDataResidues] = await Promise.all([
-        window.tooldeck.rescanPlugins({ locale: getCurrentAppLocale() }),
-        window.tooldeck.listCommandRuns({ limit: 25 }),
-        window.tooldeck.listPluginDataResidues(),
+        window.tooldeck.plugins.rescan({ locale: getCurrentAppLocale() }),
+        window.tooldeck.history.listRuns({ limit: 25 }),
+        window.tooldeck.plugins.listDataResidues(),
       ]);
 
       set((current) => {
@@ -117,7 +117,7 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
     }));
 
     try {
-      const result = await window.tooldeck.installDroppedPluginPackage(file, {
+      const result = await window.tooldeck.plugins.installDroppedPackage(file, {
         locale: getCurrentAppLocale(),
       });
 
@@ -134,7 +134,7 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
         return;
       }
 
-      const pluginDataResidues = await window.tooldeck.listPluginDataResidues();
+      const pluginDataResidues = await window.tooldeck.plugins.listDataResidues();
 
       set((current) => ({
         ...mergeLoadedState({
@@ -171,7 +171,7 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
     }));
 
     try {
-      const result = await window.tooldeck.uninstallPlugin({
+      const result = await window.tooldeck.plugins.uninstall({
         pluginId,
         locale: getCurrentAppLocale(),
       });
@@ -202,7 +202,7 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
     }));
 
     try {
-      const result = await window.tooldeck.purgePluginData({ pluginId });
+      const result = await window.tooldeck.plugins.purgeData({ pluginId });
 
       set((current) => ({
         ...current,
@@ -229,13 +229,14 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
     }));
 
     try {
-      await window.tooldeck.setPluginEnabled({
+      await window.tooldeck.plugins.setEnabled({
         pluginId,
         enabled,
+        locale: getCurrentAppLocale(),
       });
       const [commands, plugins] = await Promise.all([
-        window.tooldeck.listCommands({ locale: getCurrentAppLocale() }),
-        window.tooldeck.listPlugins({ locale: getCurrentAppLocale() }),
+        window.tooldeck.commands.list({ locale: getCurrentAppLocale() }),
+        window.tooldeck.plugins.list({ locale: getCurrentAppLocale() }),
       ]);
 
       set((current) =>

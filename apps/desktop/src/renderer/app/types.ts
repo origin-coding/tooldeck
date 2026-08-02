@@ -7,7 +7,7 @@ import type {
   DesktopPlugin,
   DesktopPluginDataResidue,
   DesktopPreference,
-} from "@/shared/desktop-api";
+} from "@/shared/api";
 
 export type AppView = "main" | "history" | "settings";
 

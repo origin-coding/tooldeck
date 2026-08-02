@@ -1,18 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  normalizeCommandInput,
-  parseCommandInputFromCliArgs,
-  parseRawCommandInputFromCliArgs,
-} from "@/index";
+import { normalizeCommandInput } from "@/index";
 
 describe("command input defaults and coercion", () => {
-  it("parses CLI args and applies JSON Schema defaults", () => {
+  it("coerces raw CLI values and applies JSON Schema defaults", () => {
     expect(
-      parseCommandInputFromCliArgs({
+      normalizeCommandInput({
         commandId: "json.format",
-        rawArgs: ["json.format", "--text", '{"a":1}', "--indent", "4", "--storage", "test.sqlite"],
-        ignoredOptions: ["storage"],
+        coercion: "cli",
+        input: {
+          text: '{"a":1}',
+          indent: "4",
+        },
         inputSchema: {
           type: "object",
           required: ["text"],
@@ -63,18 +62,6 @@ describe("command input defaults and coercion", () => {
     });
   });
 
-  it("parses raw CLI args without applying schema defaults", () => {
-    expect(
-      parseRawCommandInputFromCliArgs({
-        commandId: "json.format",
-        rawArgs: ["json.format", "--text", '{"a":1}', "--storage", "test.sqlite"],
-        ignoredOptions: ["storage"],
-      }),
-    ).toEqual({
-      text: '{"a":1}',
-    });
-  });
-
   it("does not coerce string values by default", () => {
     expect(() =>
       normalizeCommandInput({
@@ -119,5 +106,26 @@ describe("command input defaults and coercion", () => {
       indent: 2,
       pretty: true,
     });
+  });
+
+  it("rejects repeated values for scalar schema fields", () => {
+    expect(() =>
+      normalizeCommandInput({
+        commandId: "example.render",
+        coercion: "cli",
+        input: {
+          output: ["text", "code"],
+        },
+        inputSchema: {
+          type: "object",
+          properties: {
+            output: {
+              type: "string",
+              enum: ["text", "code"],
+            },
+          },
+        },
+      }),
+    ).toThrow("Expected string for command input: --output");
   });
 });

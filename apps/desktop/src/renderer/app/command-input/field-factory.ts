@@ -1,4 +1,4 @@
-import type { JsonValue } from "@tooldeck/shared";
+import type { JsonValue } from "@tooldeck/protocol";
 
 import type {
   InputArrayItemType,

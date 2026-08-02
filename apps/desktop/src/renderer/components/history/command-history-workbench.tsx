@@ -2,7 +2,7 @@ import { Card, Descriptions, Drawer, List, Typography } from "antd";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { CommandRunRecord } from "@/shared/desktop-api";
+import type { CommandRunRecord } from "@/shared/api";
 
 import { EmptyState } from "../common/empty-state";
 import { StatusBadge } from "../common/status-badge";

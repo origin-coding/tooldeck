@@ -1,18 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { initialState } from "@/renderer/app/types";
-import type { DesktopApi, DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import type { DesktopApi, DesktopCommand, DesktopPlugin } from "@/shared/api";
 
 let useDesktopStore: (typeof import("@/renderer/app/store"))["useDesktopStore"];
-let tooldeck: Pick<
-  DesktopApi,
-  | "installDroppedPluginPackage"
-  | "listCommandRuns"
-  | "listPluginDataResidues"
-  | "purgePluginData"
-  | "rescanPlugins"
-  | "uninstallPlugin"
->;
+let tooldeck: {
+  plugins: Pick<
+    DesktopApi["plugins"],
+    "installDroppedPackage" | "listDataResidues" | "purgeData" | "rescan" | "uninstall"
+  >;
+  history: Pick<DesktopApi["history"], "listRuns">;
+};
 
 describe("catalog slice plugin installation", () => {
   beforeEach(async () => {
@@ -20,12 +18,16 @@ describe("catalog slice plugin installation", () => {
     vi.stubGlobal("localStorage", createMemoryStorage());
 
     tooldeck = {
-      installDroppedPluginPackage: vi.fn(),
-      listCommandRuns: vi.fn().mockResolvedValue([]),
-      listPluginDataResidues: vi.fn().mockResolvedValue([]),
-      purgePluginData: vi.fn(),
-      rescanPlugins: vi.fn(),
-      uninstallPlugin: vi.fn(),
+      plugins: {
+        installDroppedPackage: vi.fn(),
+        listDataResidues: vi.fn().mockResolvedValue([]),
+        purgeData: vi.fn(),
+        rescan: vi.fn(),
+        uninstall: vi.fn(),
+      },
+      history: {
+        listRuns: vi.fn().mockResolvedValue([]),
+      },
     };
     vi.stubGlobal("window", { tooldeck });
 
@@ -41,7 +43,7 @@ describe("catalog slice plugin installation", () => {
     const plugin = createPlugin("dev.example.installed");
     const command = createCommand(plugin.id);
 
-    vi.mocked(tooldeck.installDroppedPluginPackage).mockResolvedValue({
+    vi.mocked(tooldeck.plugins.installDroppedPackage).mockResolvedValue({
       status: "installed",
       installedPluginId: plugin.id,
       packageName: file.name,
@@ -51,7 +53,7 @@ describe("catalog slice plugin installation", () => {
 
     await useDesktopStore.getState().installDroppedPluginPackage(file);
 
-    expect(tooldeck.installDroppedPluginPackage).toHaveBeenCalledWith(file, {
+    expect(tooldeck.plugins.installDroppedPackage).toHaveBeenCalledWith(file, {
       locale: expect.any(String),
     });
     expect(useDesktopStore.getState()).toMatchObject({
@@ -72,7 +74,7 @@ describe("catalog slice plugin installation", () => {
     const file = { name: "installed.tdplugin" } as File;
 
     useDesktopStore.setState({ plugins: [existingPlugin] });
-    vi.mocked(tooldeck.installDroppedPluginPackage).mockResolvedValue({
+    vi.mocked(tooldeck.plugins.installDroppedPackage).mockResolvedValue({
       status: "installed-refresh-failed",
       installedPluginId: "dev.example.installed",
       packageName: file.name,
@@ -104,7 +106,7 @@ describe("catalog slice plugin installation", () => {
         message: "forced refresh failure",
       },
     });
-    vi.mocked(tooldeck.rescanPlugins).mockResolvedValue({
+    vi.mocked(tooldeck.plugins.rescan).mockResolvedValue({
       commands: [command],
       plugins: [plugin],
     });
@@ -123,7 +125,9 @@ describe("catalog slice plugin installation", () => {
   });
 
   it("stores installation errors separately from workspace load errors", async () => {
-    vi.mocked(tooldeck.installDroppedPluginPackage).mockRejectedValue(new Error("invalid package"));
+    vi.mocked(tooldeck.plugins.installDroppedPackage).mockRejectedValue(
+      new Error("invalid package"),
+    );
 
     await useDesktopStore
       .getState()
@@ -142,7 +146,7 @@ describe("catalog slice plugin installation", () => {
     const plugin = createPlugin("dev.example.installed");
 
     useDesktopStore.setState({ plugins: [plugin], selectedPluginId: plugin.id });
-    vi.mocked(tooldeck.uninstallPlugin).mockResolvedValue({
+    vi.mocked(tooldeck.plugins.uninstall).mockResolvedValue({
       cleanupPending: false,
       commands: [],
       filesMissing: false,
@@ -153,7 +157,7 @@ describe("catalog slice plugin installation", () => {
 
     await useDesktopStore.getState().uninstallPlugin(plugin.id);
 
-    expect(tooldeck.uninstallPlugin).toHaveBeenCalledWith({
+    expect(tooldeck.plugins.uninstall).toHaveBeenCalledWith({
       pluginId: plugin.id,
       locale: expect.any(String),
     });
@@ -170,7 +174,7 @@ describe("catalog slice plugin installation", () => {
     useDesktopStore.setState({
       pluginDataResidues: [{ pluginId, statePresent: true, kvEntries: 2 }],
     });
-    vi.mocked(tooldeck.purgePluginData).mockResolvedValue({
+    vi.mocked(tooldeck.plugins.purgeData).mockResolvedValue({
       pluginId,
       stateRemoved: true,
       kvEntriesRemoved: 2,
@@ -179,7 +183,7 @@ describe("catalog slice plugin installation", () => {
 
     await useDesktopStore.getState().purgePluginData(pluginId);
 
-    expect(tooldeck.purgePluginData).toHaveBeenCalledWith({ pluginId });
+    expect(tooldeck.plugins.purgeData).toHaveBeenCalledWith({ pluginId });
     expect(useDesktopStore.getState().pluginDataResidues).toEqual([]);
   });
 });

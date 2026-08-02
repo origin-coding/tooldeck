@@ -10,6 +10,7 @@ export type {
   ApplicationCommand,
   ApplicationCommandFacade,
   ApplicationPluginRuntimeState,
+  ListApplicationCommandsRequest,
   RunApplicationCommandRequest,
 } from "@/commands/types";
 export * from "@/errors/application-error";
@@ -27,11 +28,14 @@ export type {
   TooldeckRuntimeMode,
 } from "@/paths";
 export type {
+  ApplicationInstalledPlugin,
   ApplicationPlugin,
   ApplicationPluginCatalog,
   ApplicationPluginDataResidue,
   ApplicationPluginFacade,
+  ApplicationPluginInstall,
   ApplicationPluginInstallResult,
+  ApplicationPluginLocaleRequest,
   ApplicationPluginPurgeResult,
   ApplicationPluginUninstallResult,
 } from "@/plugins/facade-types";
@@ -42,3 +46,4 @@ export type {
   ListApplicationPreferencesRequest,
   SetApplicationPreferenceRequest,
 } from "@/preferences/facade-types";
+export type { PreferenceScope } from "@/preferences/preferences";

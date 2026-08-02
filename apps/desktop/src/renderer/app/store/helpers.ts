@@ -1,9 +1,12 @@
-import type { PreferenceScope } from "@tooldeck/preferences";
-
 import { createInputState } from "@/renderer/app/command-input";
 import { getNavigationMode } from "@/renderer/app/selectors";
 import type { AppState } from "@/renderer/app/types";
-import type { DesktopCommand, DesktopPlugin, DesktopPreference } from "@/shared/desktop-api";
+import type {
+  DesktopCommand,
+  DesktopPlugin,
+  DesktopPreference,
+  DesktopPreferenceScope,
+} from "@/shared/api";
 
 export function mergeLoadedState({
   current,
@@ -124,7 +127,7 @@ export function normalizePersistedState(persisted: unknown): unknown {
 
 export function getPreferenceValue(
   preferences: DesktopPreference[],
-  scope: PreferenceScope,
+  scope: DesktopPreferenceScope,
   key: string,
 ): unknown {
   return preferences.find((preference) => preference.scope === scope && preference.key === key)

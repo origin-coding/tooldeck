@@ -1,4 +1,3 @@
-import type { PreferenceScope } from "@tooldeck/preferences";
 import { Button, Card, Divider, Segmented, Select, Switch, Tooltip, Typography } from "antd";
 import { FolderSearch, History, Languages, PanelLeftClose, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -6,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import type { DesktopNavigationMode } from "@/renderer/app/types";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
 import { isTooldeckLocalePreference, type TooldeckLocalePreference } from "@/renderer/i18n";
-import type { DesktopPreference } from "@/shared/desktop-api";
+import type { DesktopPreference, DesktopPreferenceScope } from "@/shared/api";
 
 export function SettingsWorkbench({
   commandCount,
@@ -29,7 +28,7 @@ export function SettingsWorkbench({
   preferences: DesktopPreference[];
   onOpenHistory(commandId?: string): void;
   onRefresh(): void;
-  onSetPreference(scope: PreferenceScope, key: string, value: unknown): void;
+  onSetPreference(scope: DesktopPreferenceScope, key: string, value: unknown): void;
 }) {
   const { t } = useTranslation();
   const localePreference = preferences.find(

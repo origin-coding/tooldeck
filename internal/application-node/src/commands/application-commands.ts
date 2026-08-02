@@ -4,9 +4,14 @@ import type { CommandResult, JsonObject } from "@tooldeck/protocol";
 
 import type { TooldeckApplicationContext } from "@/application/context";
 import { runApplicationOperation } from "@/application/edge";
+import {
+  localizeApplicationCommand,
+  localizeApplicationCommandResult,
+} from "@/application/localization";
 import type {
   ApplicationCommand,
   ApplicationCommandFacade,
+  ListApplicationCommandsRequest,
   RunApplicationCommandRequest,
 } from "@/commands/types";
 import { ApplicationError, toApplicationError } from "@/errors/application-error";
@@ -15,18 +20,24 @@ import { toApplicationErrorTransport } from "@/errors/application-error-transpor
 export class ApplicationCommands implements ApplicationCommandFacade {
   constructor(private readonly context: TooldeckApplicationContext) {}
 
-  list(): Promise<ApplicationCommand[]> {
+  list(request: ListApplicationCommandsRequest = {}): Promise<ApplicationCommand[]> {
     return runApplicationOperation(() => {
       const runtime = this.context.requireRuntime();
       const plugins = this.context.requirePlugins();
 
-      return runtime.manifestIndex.listCommands().map((command) => ({
-        id: command.id,
-        pluginId: command.pluginId,
-        pluginEnabled: plugins.getById(command.pluginId)?.enabled ?? false,
-        pluginRuntimeState: runtime.pluginManager.getPluginRuntimeState(command.pluginId),
-        definition: command.definition,
-      }));
+      return runtime.manifestIndex.listCommands().map((command) =>
+        localizeApplicationCommand(
+          {
+            id: command.id,
+            pluginId: command.pluginId,
+            pluginEnabled: plugins.getById(command.pluginId)?.enabled ?? false,
+            pluginRuntimeState: runtime.pluginManager.getPluginRuntimeState(command.pluginId),
+            definition: command.definition,
+          },
+          runtime.manifestIndex.getPlugin(command.pluginId),
+          request.locale,
+        ),
+      );
     });
   }
 
@@ -59,20 +70,25 @@ export class ApplicationCommands implements ApplicationCommandFacade {
           commandId: request.commandId,
           input: historyInput,
         });
+        const result = localizeApplicationCommandResult(
+          run.result,
+          pluginId ? runtime.manifestIndex.getPlugin(pluginId) : undefined,
+          request.locale,
+        );
 
         if (recordHistory) {
           commandRuns.create({
             commandId: request.commandId,
             pluginId,
             source,
-            status: run.result.status,
+            status: result.status,
             input: run.input,
-            output: run.result,
+            output: result,
             durationMs: elapsedMilliseconds(startedAt),
           });
         }
 
-        return run.result;
+        return result;
       } catch (error) {
         if (recordHistory) {
           commandRuns.create({

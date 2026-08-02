@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildCommandInput, createInputState, getInputFields } from "@/renderer/app/command-input";
-import type { DesktopCommand } from "@/shared/desktop-api";
+import type { DesktopCommand } from "@/shared/api";
 
 describe("command input fields", () => {
   it("orders fields with inputSchema x-ui.fieldOrder and appends unspecified fields", () => {

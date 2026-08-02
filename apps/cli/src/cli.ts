@@ -8,6 +8,7 @@ import { definePreferenceCommand } from "./preferences";
 import type { CreateCliCommandOptions } from "./runtime";
 
 export * from "./commands";
+export * from "./application";
 export * from "./paths";
 export * from "./plugins";
 export * from "./preferences";

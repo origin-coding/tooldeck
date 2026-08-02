@@ -1,6 +1,6 @@
 import { createInputState } from "@/renderer/app/command-input";
 import type { AppView } from "@/renderer/app/types";
-import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import type { DesktopCommand, DesktopPlugin } from "@/shared/api";
 
 import type { DesktopStoreSlice } from "../types";
 

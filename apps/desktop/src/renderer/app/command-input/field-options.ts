@@ -1,4 +1,4 @@
-import type { JsonPrimitive } from "@tooldeck/shared";
+import type { JsonPrimitive } from "@tooldeck/protocol";
 
 import { getSchemaType, isJsonPrimitive, isRecord } from "./schema-values";
 import type { InputFieldOption } from "./types";

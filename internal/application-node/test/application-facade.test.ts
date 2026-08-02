@@ -1,8 +1,9 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import { packTooldeckPlugin } from "@tooldeck/plugin-package";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -70,6 +71,10 @@ describe("Tooldeck application facade", () => {
       {
         id: "dev.tooldeck.fixture",
         name: "Fixture",
+        manifest: {
+          id: "dev.tooldeck.fixture",
+          version: "0.0.0",
+        },
         sourceKind: "builtin",
         enabled: true,
         commandCount: 1,
@@ -110,6 +115,19 @@ describe("Tooldeck application facade", () => {
       value: "zh-CN",
     });
     await expect(application.preferences.list({ scopes: ["shared"] })).resolves.toHaveLength(1);
+    await application.preferences.delete({
+      scope: "shared",
+      key: "locale",
+    });
+    await expect(
+      application.preferences.get({
+        scope: "shared",
+        key: "locale",
+      }),
+    ).resolves.toMatchObject({
+      value: "system",
+      defaultValue: "system",
+    });
 
     await application.plugins.setEnabled("dev.tooldeck.fixture", false);
     await expect(
@@ -136,6 +154,56 @@ describe("Tooldeck application facade", () => {
     );
 
     expect(commandIds).toEqual(["fixture.echo"]);
+  });
+
+  it("returns install metadata needed by downstream application surfaces", async () => {
+    const rootDir = createTempDir();
+    const paths = createPaths(rootDir);
+    const projectDir = path.join(rootDir, "packaged-plugin");
+    const packagePath = path.join(rootDir, "dev.example.packaged-0.1.0.tdplugin");
+    const pluginId = "dev.example.packaged";
+
+    await mkdir(paths.builtinPluginsDir, { recursive: true });
+    await writePackagedPlugin(projectDir, pluginId);
+    await packTooldeckPlugin({
+      projectDir,
+      outputPath: packagePath,
+      createdAt: new Date("2026-07-31T00:00:00.000Z"),
+    });
+
+    const application = createTooldeckApplication({ paths });
+    applications.push(application);
+    await application.start();
+
+    const installed = await application.plugins.installPackage(packagePath);
+
+    expect(installed).toMatchObject({
+      status: "installed",
+      installedPluginId: pluginId,
+      packageName: path.basename(packagePath),
+      install: {
+        pluginId,
+        version: "0.1.0",
+        installDir: path.join(paths.installedPluginsDir, pluginId),
+        manifestPath: path.join(paths.installedPluginsDir, pluginId, "manifest.json"),
+        packageDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+        packageSizeBytes: expect.any(Number),
+      },
+      plugin: {
+        id: pluginId,
+        name: "Packaged Fixture",
+        version: "0.1.0",
+        sourceKind: "installed",
+        enabled: true,
+      },
+    });
+    expect(existsSync(installed.install.installDir)).toBe(true);
+
+    await expect(application.plugins.uninstall(pluginId)).resolves.toMatchObject({
+      pluginId,
+      install: installed.install,
+    });
+    expect(existsSync(installed.install.installDir)).toBe(false);
   });
 
   it("preserves the primary application error when scoped cleanup also fails", async () => {
@@ -262,4 +330,33 @@ async function writeFixturePlugin(
     ].join("\n"),
     "utf8",
   );
+}
+
+async function writePackagedPlugin(projectDir: string, pluginId: string): Promise<void> {
+  const runtimeDir = path.join(projectDir, "dist");
+
+  await mkdir(runtimeDir, { recursive: true });
+  await writeFile(
+    path.join(projectDir, "manifest.json"),
+    JSON.stringify({
+      schemaVersion: "1.0",
+      id: pluginId,
+      name: "Packaged Fixture",
+      version: "0.1.0",
+      runtime: {
+        kind: "node",
+        entry: "./dist/index.js",
+      },
+      contributes: {
+        commands: [
+          {
+            id: "packaged.run",
+            title: "Packaged Run",
+          },
+        ],
+      },
+    }),
+    "utf8",
+  );
+  await writeFile(path.join(runtimeDir, "index.js"), "export default { activate() {} };\n", "utf8");
 }

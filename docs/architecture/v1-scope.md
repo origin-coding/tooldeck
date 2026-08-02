@@ -64,11 +64,11 @@ V1 中 `internal/runtime-node` 负责当前 Node runtime 的协调逻辑：
 - runtime-kind host routing 和可信本地 Node 插件加载。
 - Node/TS 插件运行时契约集成；公开作者类型由 `packages/sdk-node` 提供。
 
-V1 只实现 Node host，并通过 runtime 内部 registry 注册。Desktop 和 CLI 在 app 层组合：
+V1 只实现 Node host，并通过 runtime 内部 registry 注册。Desktop main 和 CLI 通过 application
+facade 使用产品能力：
 
 ```text
-internal/runtime-node
-  + packages/storage
+internal/runtime-node -> internal/application-node -> CLI / Desktop main
 ```
 
 `internal/runtime-node` 不应依赖 Electron renderer、React 或 SQLite repository。当前公开插件作者契约由 `packages/sdk-node` 提供，`runtime-node` 依赖该契约；早期由 runtime 首发契约、SDK re-export 的安排已被后续包边界收口取代。

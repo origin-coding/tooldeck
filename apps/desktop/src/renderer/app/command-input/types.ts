@@ -1,4 +1,4 @@
-import type { JsonPrimitive, JsonValue } from "@tooldeck/shared";
+import type { JsonPrimitive, JsonValue } from "@tooldeck/protocol";
 
 export type CommandInputValue = string | number | boolean | null | JsonPrimitive[];
 export type CommandInputState = Record<string, CommandInputValue>;

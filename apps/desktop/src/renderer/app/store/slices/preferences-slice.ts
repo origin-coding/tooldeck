@@ -11,7 +11,7 @@ export interface PreferencesSlice {
 export const createPreferencesSlice: DesktopStoreSlice<PreferencesSlice> = (set) => ({
   async setPreference(scope, key, value) {
     try {
-      const preference = await window.tooldeck.setPreference({
+      const preference = await window.tooldeck.preferences.set({
         scope,
         key,
         value,
@@ -28,8 +28,8 @@ export const createPreferencesSlice: DesktopStoreSlice<PreferencesSlice> = (set)
         }));
 
         const [commands, plugins] = await Promise.all([
-          window.tooldeck.listCommands({ locale }),
-          window.tooldeck.listPlugins({ locale }),
+          window.tooldeck.commands.list({ locale }),
+          window.tooldeck.plugins.list({ locale }),
         ]);
 
         set((current) =>

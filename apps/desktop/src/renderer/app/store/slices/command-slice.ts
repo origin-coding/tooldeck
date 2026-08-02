@@ -46,15 +46,15 @@ export const createCommandSlice: DesktopStoreSlice<CommandSlice> = (set, get) =>
     try {
       const input = buildCommandInput(selectedCommand, current.input);
       const locale = getCurrentAppLocale();
-      const result = await window.tooldeck.runCommand({
+      const result = await window.tooldeck.commands.run({
         commandId: selectedCommand.id,
         input,
         locale,
       });
       const [commands, plugins, history] = await Promise.all([
-        window.tooldeck.listCommands({ locale }),
-        window.tooldeck.listPlugins({ locale }),
-        window.tooldeck.listCommandRuns({
+        window.tooldeck.commands.list({ locale }),
+        window.tooldeck.plugins.list({ locale }),
+        window.tooldeck.history.listRuns({
           limit: get().view === "history" ? 50 : 25,
           commandId: get().view === "history" ? get().historyCommandId : undefined,
         }),
@@ -80,9 +80,9 @@ export const createCommandSlice: DesktopStoreSlice<CommandSlice> = (set, get) =>
       try {
         const locale = getCurrentAppLocale();
         [commands, plugins, history] = await Promise.all([
-          window.tooldeck.listCommands({ locale }),
-          window.tooldeck.listPlugins({ locale }),
-          window.tooldeck.listCommandRuns({
+          window.tooldeck.commands.list({ locale }),
+          window.tooldeck.plugins.list({ locale }),
+          window.tooldeck.history.listRuns({
             limit: state.view === "history" ? 50 : 25,
             commandId: state.view === "history" ? state.historyCommandId : undefined,
           }),

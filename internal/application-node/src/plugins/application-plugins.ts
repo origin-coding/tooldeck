@@ -4,14 +4,18 @@ import type { LocalizedString } from "@tooldeck/protocol";
 
 import type { TooldeckApplicationContext } from "@/application/context";
 import { runApplicationOperation } from "@/application/edge";
+import { localizeApplicationPlugin } from "@/application/localization";
 import type { ApplicationCommands } from "@/commands/application-commands";
 import { ApplicationError } from "@/errors/application-error";
 import type {
+  ApplicationInstalledPlugin,
   ApplicationPlugin,
   ApplicationPluginCatalog,
   ApplicationPluginDataResidue,
   ApplicationPluginFacade,
+  ApplicationPluginInstall,
   ApplicationPluginInstallResult,
+  ApplicationPluginLocaleRequest,
   ApplicationPluginPurgeResult,
   ApplicationPluginUninstallResult,
 } from "@/plugins/facade-types";
@@ -22,24 +26,28 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
     private readonly commands: ApplicationCommands,
   ) {}
 
-  list(): Promise<ApplicationPlugin[]> {
-    return runApplicationOperation(() => this.listUnsafe());
+  list(request: ApplicationPluginLocaleRequest = {}): Promise<ApplicationPlugin[]> {
+    return runApplicationOperation(() => this.listUnsafe(request.locale));
   }
 
-  rescan(): Promise<ApplicationPluginCatalog> {
+  rescan(request: ApplicationPluginLocaleRequest = {}): Promise<ApplicationPluginCatalog> {
     return runApplicationOperation(async () => {
       await this.context.rebuildRuntime();
-      return this.createCatalog();
+      return this.createCatalog(request.locale);
     });
   }
 
-  setEnabled(pluginId: string, enabled: boolean): Promise<ApplicationPlugin> {
+  setEnabled(
+    pluginId: string,
+    enabled: boolean,
+    request: ApplicationPluginLocaleRequest = {},
+  ): Promise<ApplicationPlugin> {
     return runApplicationOperation(async () => {
       assertPluginId(pluginId, "enable or disable");
       await this.context.requirePluginManagement().setEnabled(pluginId, enabled);
       await this.context.rebuildRuntime();
 
-      const plugin = this.listUnsafe().find((candidate) => candidate.id === pluginId);
+      const plugin = this.listUnsafe(request.locale).find((candidate) => candidate.id === pluginId);
 
       if (!plugin) {
         throw new ApplicationError({
@@ -54,7 +62,10 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
     });
   }
 
-  installPackage(packagePath: string): Promise<ApplicationPluginInstallResult> {
+  installPackage(
+    packagePath: string,
+    request: ApplicationPluginLocaleRequest = {},
+  ): Promise<ApplicationPluginInstallResult> {
     return runApplicationOperation(async () => {
       if (typeof packagePath !== "string" || !path.isAbsolute(packagePath)) {
         throw new ApplicationError({
@@ -73,6 +84,8 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
           status: "installed-refresh-failed",
           installedPluginId: installed.plugin.id,
           packageName: installed.install.packageName,
+          install: formatPluginInstall(installed.install),
+          plugin: formatInstalledPlugin(installed.plugin),
           refreshError: getErrorMessage(error),
         };
       }
@@ -81,12 +94,17 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
         status: "installed",
         installedPluginId: installed.plugin.id,
         packageName: installed.install.packageName,
-        catalog: await this.createCatalog(),
+        install: formatPluginInstall(installed.install),
+        plugin: formatInstalledPlugin(installed.plugin),
+        catalog: await this.createCatalog(request.locale),
       };
     });
   }
 
-  uninstall(pluginId: string): Promise<ApplicationPluginUninstallResult> {
+  uninstall(
+    pluginId: string,
+    request: ApplicationPluginLocaleRequest = {},
+  ): Promise<ApplicationPluginUninstallResult> {
     return runApplicationOperation(async () => {
       assertPluginId(pluginId, "uninstall");
       await this.context.disposeRuntime();
@@ -116,7 +134,8 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
         cleanupPending: uninstalled.cleanupPending,
         filesMissing: uninstalled.filesMissing,
         pluginId: uninstalled.pluginId,
-        catalog: await this.createCatalog(),
+        install: formatPluginInstall(uninstalled.install),
+        catalog: await this.createCatalog(request.locale),
         residues: this.listDataResiduesUnsafe(),
       };
     });
@@ -138,7 +157,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
     });
   }
 
-  private listUnsafe(): ApplicationPlugin[] {
+  private listUnsafe(locale?: string): ApplicationPlugin[] {
     const runtime = this.context.requireRuntime();
     const commandCounts = new Map<string, number>();
 
@@ -153,33 +172,72 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
       .map((plugin) => {
         const indexedPlugin = runtime.manifestIndex.getPlugin(plugin.id)!;
 
-        return {
-          id: plugin.id,
-          name: parseLocalizedString(plugin.nameJson),
-          ...(indexedPlugin.manifest.description
-            ? { description: indexedPlugin.manifest.description }
-            : {}),
-          version: plugin.version,
-          manifestPath: plugin.manifestPath,
-          sourceKind: assertPluginSourceKind(plugin.sourceKind),
-          enabled: plugin.enabled,
-          runtimeState: runtime.pluginManager.getPluginRuntimeState(plugin.id),
-          commandCount: commandCounts.get(plugin.id) ?? 0,
-          updatedAt: plugin.updatedAt,
-        };
+        return localizeApplicationPlugin(
+          {
+            id: plugin.id,
+            name: parseLocalizedString(plugin.nameJson),
+            ...(indexedPlugin.manifest.description
+              ? { description: indexedPlugin.manifest.description }
+              : {}),
+            manifest: indexedPlugin.manifest,
+            version: plugin.version,
+            manifestPath: plugin.manifestPath,
+            sourceKind: assertPluginSourceKind(plugin.sourceKind),
+            enabled: plugin.enabled,
+            runtimeState: runtime.pluginManager.getPluginRuntimeState(plugin.id),
+            commandCount: commandCounts.get(plugin.id) ?? 0,
+            updatedAt: plugin.updatedAt,
+          },
+          indexedPlugin,
+          locale,
+        );
       });
   }
 
-  private async createCatalog(): Promise<ApplicationPluginCatalog> {
+  private async createCatalog(locale?: string): Promise<ApplicationPluginCatalog> {
     return {
-      commands: await this.commands.list(),
-      plugins: this.listUnsafe(),
+      commands: await this.commands.list({ locale }),
+      plugins: this.listUnsafe(locale),
     };
   }
 
   private listDataResiduesUnsafe(): ApplicationPluginDataResidue[] {
     return this.context.requirePluginManagement().listPurgeablePluginData();
   }
+}
+
+function formatPluginInstall(install: ApplicationPluginInstall): ApplicationPluginInstall {
+  return {
+    pluginId: install.pluginId,
+    version: install.version,
+    installDir: install.installDir,
+    manifestPath: install.manifestPath,
+    packageName: install.packageName,
+    packageDigest: install.packageDigest,
+    packageSizeBytes: install.packageSizeBytes,
+    installedAt: install.installedAt,
+    updatedAt: install.updatedAt,
+  };
+}
+
+function formatInstalledPlugin(plugin: {
+  id: string;
+  nameJson: string;
+  version: string;
+  manifestPath: string;
+  sourceKind: string;
+  enabled: boolean;
+  updatedAt: number;
+}): ApplicationInstalledPlugin {
+  return {
+    id: plugin.id,
+    name: parseLocalizedString(plugin.nameJson),
+    version: plugin.version,
+    manifestPath: plugin.manifestPath,
+    sourceKind: assertPluginSourceKind(plugin.sourceKind),
+    enabled: plugin.enabled,
+    updatedAt: plugin.updatedAt,
+  };
 }
 
 function parseLocalizedString(value: string): LocalizedString {

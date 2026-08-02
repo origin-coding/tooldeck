@@ -9,7 +9,7 @@ import { CommandOutput } from "@/renderer/components/commands/command-output";
 import { EmptyCard } from "@/renderer/components/common/empty-card";
 import { ErrorNotice } from "@/renderer/components/common/error-notice";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
-import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import type { DesktopCommand, DesktopPlugin } from "@/shared/api";
 
 export function CommandWorkbench({
   command,

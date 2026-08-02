@@ -1,6 +1,6 @@
 import type { TooldeckInputJsonSchema } from "@tooldeck/protocol";
 
-import type { DesktopCommand } from "@/shared/desktop-api";
+import type { DesktopCommand } from "@/shared/api";
 
 import { createInputField } from "./field-factory";
 import { getFieldOptions } from "./field-options";

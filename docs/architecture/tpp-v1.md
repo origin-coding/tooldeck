@@ -67,7 +67,7 @@ TPP 本身是语言无关的协议层。它定义 Manifest、Contribution、Comm
 生命周期、权限声明和 JSON Schema 约束等数据契约与行为语义，不绑定 TypeScript、Node、
 Electron、React 或 SQLite。
 
-Tooldeck 产品偏好设置属于应用实现层，由 private `@tooldeck/preferences` 包维护；它们不属于
+Tooldeck 产品偏好设置属于应用实现层，由 private `@tooldeck/application-node` 维护；它们不属于
 TPP 协议，也不应放入 `@tooldeck/protocol`。
 
 当前仓库中的 `internal/runtime-node` 不是 TPP 协议本身，而是当前可信本地 Node 纵向切片的
@@ -88,21 +88,21 @@ packages/sdk-node        # 公开 Node plugin authoring contract
 internal/runtime-node    # runtime 协调、runtime-kind routing 和 Node host
 ```
 
-Tooldeck 1.3 在协议和运行时之外增加了本地分发产品层：
+Tooldeck 在协议和运行时之外增加了本地分发产品层：
 
 ```text
 packages/protocol
   -> packages/plugin-package          # 公开 .tdplugin 容器格式实现
   -> packages/plugin-tools            # 公开作者命令：pack / dist 等
 
-plugin-package + runtime-node + storage + shared
-  -> packages/plugin-management-node  # 私有安装和状态 application service
-  -> CLI / Desktop
+plugin-package + runtime-node
+  -> internal/application-node        # 私有 database、preferences 与 product facade
+  -> CLI / Desktop main
 ```
 
 `.tdplugin` container、installed plugin directory 和安装记录属于 Tooldeck 产品实现，
 不是新的 TPP contribution。`plugin-package` 不扫描或激活插件；
-`plugin-management-node` 不负责 CLI 输出、Electron IPC 或 renderer 交互。
+`application-node` 不负责 CLI 输出、Electron IPC 或 renderer 交互。
 
 如果未来以 PySide、Rust 或其他技术栈实现宿主，可以实现另一套 runtime，或通过 RPC 调用当前
 TypeScript runtime-node。这些实现应遵守同一份 TPP 协议，但不要求共享同一种实现语言。
@@ -998,11 +998,10 @@ SQLite 存：
 Plugin scoped KV
 ```
 
-`@tooldeck/storage` 的根入口只暴露稳定的 database lifecycle helper、repository class、repository input/options
-类型和 repository DTO。Drizzle table、SQLite schema、migration 列表以及 `Insert*Row` 等实现细节不属于根入口
-公共 API；storage 包内部通过相对路径使用这些实现，上层 Desktop / CLI 不应依赖 schema/table/migration internals。
+SQLite lifecycle、repository、schema 和 migration 都封装在 `@tooldeck/application-node` 内部，不从
+application facade 根入口暴露。Desktop / CLI 不应依赖 schema、table、migration 或 repository internals。
 
-当前 1.3 产品实现明确区分：
+当前产品实现明确区分：
 
 ```text
 plugins          当前扫描到的 catalog，包含 builtin / installed / external 来源
@@ -1072,7 +1071,7 @@ Electron + SQLite + Drizzle ORM + node:sqlite
 ```
 
 V1 的数据库 driver 固定为 `node:sqlite`。这样可以减少 native dependency 和安装脚本复杂度，
-同时让 CLI 与 Desktop 共享同一套 `packages/storage` 实现。
+同时让 CLI 与 Desktop 通过同一套 `application-node` facade 使用持久化能力。
 
 数据流：
 
@@ -1082,8 +1081,7 @@ Renderer
 Preload
   ↓ ipcRenderer.invoke("commands.run")
 Main IPC Handler
-  ↓ CommandService
-TPP Core
+  ↓ internal/application-node
   ↓ internal/runtime-node: 当前 Node runtime 的 TypeScript 实现
   ↓ PluginManager / CommandRegistry
 Storage
@@ -1097,7 +1095,7 @@ Renderer 不直接访问数据库
 Renderer 不直接 import 插件代码
 Renderer 不直接拿 Node 权限
 数据库只在 Main / Backend 层初始化
-CLI/API/Desktop 复用 packages/storage
+CLI/Desktop main 复用 internal/application-node
 ```
 
 开发时数据库路径：
@@ -1192,7 +1190,7 @@ tasks
 4. 创建 packages/protocol
 5. 创建 internal/runtime-node
 6. 创建 packages/sdk-node
-7. 创建 packages/storage
+7. 创建 internal/application-node
 8. 定义 Manifest 类型和 JSON Schema
 9. 实现 Manifest 扫描
 10. 实现 CommandRegistry
@@ -1261,16 +1259,13 @@ npm scope：
 
 ```text
 @tooldeck/protocol
-@tooldeck/preferences
 @tooldeck/runtime-node
+@tooldeck/application-node
 @tooldeck/sdk-node
 @tooldeck/plugin-package
-@tooldeck/plugin-management-node
 @tooldeck/plugin-tools
 @tooldeck/vite-plugin
 @tooldeck/create-plugin
-@tooldeck/storage
-@tooldeck/shared
 ```
 
 命令名：

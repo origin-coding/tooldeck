@@ -2,13 +2,14 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { isApplicationError } from "@tooldeck/application-node";
 import { expect, it, describe } from "vitest";
 
 import {
-  createPluginManager,
   listCliCommands,
   normalizeListCliResource,
   runCliCommandWithStorage,
+  withCliApplication,
 } from "../src/cli";
 import {
   createDatabasePath,
@@ -20,12 +21,16 @@ import {
 describe("CLI command catalog", () => {
   it("runs hello.world from the default plugin directory shape", async () => {
     const pluginsRoot = path.resolve("../..", "plugins");
-    const { pluginManager, dispose, pluginCount, commandCount } = await createPluginManager({
-      pluginsRoot,
-    });
+    const storagePath = createDatabasePath();
 
-    try {
-      await expect(pluginManager.runCommand({ commandId: "hello.world" })).resolves.toEqual({
+    await withCliApplication({ pluginsRoot, storagePath }, async (application) => {
+      await expect(
+        application.commands.run({
+          commandId: "hello.world",
+          source: "cli",
+          recordHistory: false,
+        }),
+      ).resolves.toEqual({
         status: "success",
         blocks: [
           {
@@ -35,28 +40,21 @@ describe("CLI command catalog", () => {
         ],
       });
 
-      expect(pluginCount).toBeGreaterThanOrEqual(1);
-      expect(commandCount).toBeGreaterThanOrEqual(1);
-    } finally {
-      await dispose();
-    }
+      await expect(application.plugins.list()).resolves.not.toHaveLength(0);
+      await expect(application.commands.list()).resolves.not.toHaveLength(0);
+    });
   });
 
   it("returns no plugins for an empty plugin directory", async ({ task }) => {
     const pluginsRoot = path.join(".tmp", "cli-tests", task.id, "plugins");
+    const storagePath = createDatabasePath();
 
     await mkdir(pluginsRoot, { recursive: true });
 
-    const { dispose, pluginCount, commandCount } = await createPluginManager({
-      pluginsRoot,
+    await withCliApplication({ pluginsRoot, storagePath }, async (application) => {
+      await expect(application.plugins.list()).resolves.toHaveLength(0);
+      await expect(application.commands.list()).resolves.toHaveLength(0);
     });
-
-    try {
-      expect(pluginCount).toBe(0);
-      expect(commandCount).toBe(0);
-    } finally {
-      await dispose();
-    }
   });
 
   it("lists no commands for an empty plugin directory", async () => {
@@ -247,24 +245,18 @@ describe("CLI command catalog", () => {
       storagePath,
     }).catch((caught: unknown) => caught);
 
-    expect(error).toBeInstanceOf(AggregateError);
+    expect(isApplicationError(error, "ERR_UNKNOWN")).toBe(true);
     expect(error).toMatchObject({
-      message: "CLI command failed and plugin cleanup did not complete.",
-      cause: expect.objectContaining({ message: "command failed at source" }),
-      errors: [
-        expect.objectContaining({ message: "command failed at source" }),
-        expect.objectContaining({
-          message: "Failed to dispose all registered plugin hosts",
-          details: {
-            errors: [
-              expect.objectContaining({
-                runtimeKind: "node",
-                message: "Failed to dispose all active plugins",
-              }),
-            ],
-          },
+      source: "application",
+      code: "ERR_UNKNOWN",
+      message: "command failed at source",
+      details: expect.objectContaining({
+        cleanupFailure: expect.objectContaining({
+          source: "runtime",
+          code: "ERR_PLUGIN_LOAD_FAILED",
         }),
-      ],
+      }),
+      cause: expect.any(AggregateError),
     });
     expect(readCommandRuns(storagePath)).toEqual([
       expect.objectContaining({

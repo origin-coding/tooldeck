@@ -1,9 +1,8 @@
-import type { PreferenceScope } from "@tooldeck/preferences";
 import type { StateCreator } from "zustand";
 
 import type { CommandInputValue } from "@/renderer/app/command-input";
 import type { AppState, AppView } from "@/renderer/app/types";
-import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import type { DesktopCommand, DesktopPlugin, DesktopPreferenceScope } from "@/shared/api";
 
 export interface DesktopStore extends AppState {
   view: AppView;
@@ -19,7 +18,7 @@ export interface DesktopStore extends AppState {
   selectPlugin(plugin: DesktopPlugin): void;
   updateInput(key: string, value: CommandInputValue): void;
   runSelectedCommand(): Promise<void>;
-  setPreference(scope: PreferenceScope, key: string, value: unknown): Promise<void>;
+  setPreference(scope: DesktopPreferenceScope, key: string, value: unknown): Promise<void>;
   setPluginEnabled(pluginId: string, enabled: boolean): Promise<void>;
 }
 

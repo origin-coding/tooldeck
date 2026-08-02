@@ -1,6 +1,6 @@
-import type { JsonObject, JsonPrimitive, JsonValue } from "@tooldeck/shared";
+import type { JsonObject, JsonPrimitive, JsonValue } from "@tooldeck/protocol";
 
-import type { DesktopCommand } from "@/shared/desktop-api";
+import type { DesktopCommand } from "@/shared/api";
 
 import { getInputFields } from "./schema-fields";
 import type { CommandInputState, CommandInputValue, InputField } from "./types";
