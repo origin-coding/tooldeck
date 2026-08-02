@@ -9,8 +9,6 @@ export const mainProcessExternal = [
   /^node:/,
   // "@tooldeck/runtime-node",
   // "@tooldeck/protocol",
-  // "@tooldeck/shared",
-  // "@tooldeck/storage",
 ];
 
 export const nodeTarget = "node22";

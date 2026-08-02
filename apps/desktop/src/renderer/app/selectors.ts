@@ -1,6 +1,12 @@
+import { isDesktopApiError } from "@/shared/ipc";
+
 import type { DesktopNavigationMode } from "./types";
 
 export function getErrorMessage(error: unknown): string {
+  if (isDesktopApiError(error)) {
+    return error.message;
+  }
+
   if (error instanceof Error) {
     return error.message;
   }

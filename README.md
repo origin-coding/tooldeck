@@ -142,8 +142,8 @@ Tooldeck implementation keeps these boundaries:
 - `internal/runtime-node` coordinates scanning, commands, validation, runtime-kind routing,
   lazy activation, and trusted local Node plugin loading.
 - `packages/plugin-package` owns the public `.tdplugin` container implementation.
-- `packages/plugin-management-node` shares install and state orchestration between CLI and
-  Desktop.
+- `internal/application-node` owns database, preferences, history, plugin management, and the
+  application facade shared by CLI and Desktop main.
 - Renderer code does not access SQLite or import and execute plugin code directly.
 - Manifest scanning, installation, uninstall, and purge do not activate plugin runtime code.
 
@@ -168,16 +168,13 @@ packages/
   protocol/                 TPP data contracts and schema.
   sdk-node/                 Public Node plugin authoring contract.
   plugin-package/           Public .tdplugin format utilities.
-  plugin-management-node/   Private install and state application service.
   plugin-tools/             Public plugin authoring CLI and test helpers.
   vite-plugin/              Public Vite integration for Node plugins.
   create-plugin/            Public external plugin project generator.
-  preferences/              Private product preference definitions.
-  storage/                  Private SQLite persistence implementation.
-  shared/                   Shared private implementation utilities.
 
 internal/
   runtime-node/             Private runtime coordination and Node plugin host.
+  application-node/         Private database and product application facade.
 
 plugins/
   json-tools/               Canonical JSON command and smoke-test plugin.

@@ -10,6 +10,7 @@ export type {
   ApplicationCommand,
   ApplicationCommandFacade,
   ApplicationPluginRuntimeState,
+  ListApplicationCommandsRequest,
   RunApplicationCommandRequest,
 } from "@/commands/types";
 export * from "@/errors/application-error";
@@ -34,6 +35,7 @@ export type {
   ApplicationPluginFacade,
   ApplicationPluginInstall,
   ApplicationPluginInstallResult,
+  ApplicationPluginLocaleRequest,
   ApplicationPluginPurgeResult,
   ApplicationPluginUninstallResult,
 } from "@/plugins/facade-types";

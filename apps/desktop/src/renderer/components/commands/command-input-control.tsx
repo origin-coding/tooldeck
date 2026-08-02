@@ -1,4 +1,4 @@
-import type { JsonPrimitive } from "@tooldeck/shared";
+import type { JsonPrimitive } from "@tooldeck/protocol";
 import { Checkbox, Input, InputNumber, Radio, Select } from "antd";
 
 import type {

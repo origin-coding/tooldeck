@@ -6,7 +6,7 @@ import type { PluginInstallState } from "@/renderer/app/types";
 import { EmptyCard } from "@/renderer/components/common/empty-card";
 import { EmptyState } from "@/renderer/components/common/empty-state";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
-import type { DesktopCommand, DesktopPlugin, DesktopPluginDataResidue } from "@/shared/desktop-api";
+import type { DesktopCommand, DesktopPlugin, DesktopPluginDataResidue } from "@/shared/api";
 
 import { PluginPackageDropZone } from "./plugin-package-drop-zone";
 

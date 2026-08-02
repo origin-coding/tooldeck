@@ -1,6 +1,5 @@
+import type { TooldeckApplication } from "@tooldeck/application-node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-import type { TooldeckDesktopService } from "@/main/tooldeck-service";
 
 const electron = vi.hoisted(() => ({
   handle: vi.fn(),
@@ -22,49 +21,67 @@ describe("registerTooldeckIpc", () => {
     electron.removeHandler.mockReset();
   });
 
-  it("forwards plugin package installation and removes the handler on dispose", async () => {
+  it("forwards domain operations and returns JSON-safe success envelopes", async () => {
     const handlers = new Map<string, (...args: unknown[]) => unknown>();
-    const installPluginPackage = vi.fn().mockResolvedValue({
-      status: "installed",
+    const installPackage = vi.fn().mockResolvedValue({
+      status: "installed-refresh-failed",
       installedPluginId: "dev.example.plugin",
+      packageName: "plugin.tdplugin",
+      refreshError: "refresh failed",
     });
-    const request = {
-      packagePath: "C:\\plugins\\plugin.tdplugin",
-      locale: "zh-CN",
-    };
-
-    electron.handle.mockImplementation((channel, handler) => handlers.set(channel, handler));
-
-    const dispose = registerTooldeckIpc({
-      installPluginPackage,
-    } as unknown as TooldeckDesktopService);
-    const handler = handlers.get("tooldeck:install-plugin-package");
-
-    await expect(handler?.({}, request)).resolves.toMatchObject({ status: "installed" });
-    expect(installPluginPackage).toHaveBeenCalledWith(request);
-
-    dispose();
-
-    expect(electron.removeHandler).toHaveBeenCalledWith("tooldeck:install-plugin-package");
-  });
-
-  it("forwards plugin uninstall and purge requests", async () => {
-    const handlers = new Map<string, (...args: unknown[]) => unknown>();
-    const uninstallPlugin = vi.fn().mockResolvedValue({ pluginId: "dev.example.plugin" });
-    const purgePluginData = vi.fn().mockReturnValue({ pluginId: "dev.example.plugin" });
 
     electron.handle.mockImplementation((channel, handler) => handlers.set(channel, handler));
 
     registerTooldeckIpc({
-      uninstallPlugin,
-      purgePluginData,
-    } as unknown as TooldeckDesktopService);
+      plugins: {
+        installPackage,
+      },
+    } as unknown as TooldeckApplication);
 
-    await handlers.get("tooldeck:uninstall-plugin")?.({}, { pluginId: "dev.example.plugin" });
-    await handlers.get("tooldeck:purge-plugin-data")?.({}, { pluginId: "dev.example.plugin" });
+    await expect(
+      handlers.get("tooldeck:install-plugin-package")?.(
+        {},
+        {
+          packagePath: "C:\\plugins\\plugin.tdplugin",
+          locale: "zh-CN",
+        },
+      ),
+    ).resolves.toEqual({
+      ok: true,
+      value: {
+        status: "installed-refresh-failed",
+        installedPluginId: "dev.example.plugin",
+        packageName: "plugin.tdplugin",
+        refreshError: "refresh failed",
+      },
+    });
+    expect(installPackage).toHaveBeenCalledWith("C:\\plugins\\plugin.tdplugin", {
+      locale: "zh-CN",
+    });
+  });
 
-    expect(uninstallPlugin).toHaveBeenCalledWith({ pluginId: "dev.example.plugin" });
-    expect(purgePluginData).toHaveBeenCalledWith({ pluginId: "dev.example.plugin" });
+  it("serializes application failures instead of throwing raw errors across IPC", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+
+    electron.handle.mockImplementation((channel, handler) => handlers.set(channel, handler));
+
+    registerTooldeckIpc({
+      commands: {
+        run: vi.fn().mockRejectedValue(new Error("command failed")),
+      },
+    } as unknown as TooldeckApplication);
+
+    await expect(
+      handlers.get("tooldeck:run-command")?.({}, { commandId: "fixture.fail" }),
+    ).resolves.toEqual({
+      ok: false,
+      error: {
+        tag: "ApplicationError",
+        source: "application",
+        code: "ERR_UNKNOWN",
+        message: "command failed",
+      },
+    });
   });
 
   it("removes handlers registered before a later registration fails", () => {
@@ -74,9 +91,7 @@ describe("registerTooldeckIpc", () => {
         throw new Error("duplicate IPC handler");
       });
 
-    expect(() => registerTooldeckIpc({} as TooldeckDesktopService)).toThrow(
-      "duplicate IPC handler",
-    );
+    expect(() => registerTooldeckIpc({} as TooldeckApplication)).toThrow("duplicate IPC handler");
     expect(electron.removeHandler).toHaveBeenCalledTimes(1);
     expect(electron.removeHandler).toHaveBeenCalledWith("tooldeck:list-commands");
   });

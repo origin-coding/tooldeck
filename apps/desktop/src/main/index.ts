@@ -3,19 +3,19 @@ import { fileURLToPath } from "node:url";
 
 import { app, BrowserWindow } from "electron";
 
+import { createDesktopApplication } from "./application";
 import { checkForDesktopUpdates } from "./auto-updates";
 import { DesktopLifecycle } from "./desktop-lifecycle";
 import { registerTooldeckIpc } from "./ipc";
 import { resolveDesktopPluginDirs } from "./plugin-dirs";
 import { focusExistingWindow } from "./single-instance";
-import { TooldeckDesktopService } from "./tooldeck-service";
 
 const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
 
 let isShuttingDown = false;
 
 const desktopLifecycle = new DesktopLifecycle({
-  createBackend: () => new TooldeckDesktopService(createServiceOptions()),
+  createBackend: () => createDesktopApplication(createApplicationOptions()),
   registerIpc: registerTooldeckIpc,
   createWindow: () =>
     new BrowserWindow({
@@ -42,27 +42,26 @@ const desktopLifecycle = new DesktopLifecycle({
   },
 });
 
-function createServiceOptions(): ConstructorParameters<typeof TooldeckDesktopService>[0] {
+function createApplicationOptions(): Parameters<typeof createDesktopApplication>[0] {
   const pluginsRoot = process.env.TOOLDECK_PLUGINS_ROOT;
-  const pluginDirs = resolveDesktopPluginDirs();
-
-  if (pluginsRoot) {
-    return {
-      pluginDirs,
-      pluginsRoot,
-    };
-  }
+  const externalPluginDirs = resolveDesktopPluginDirs();
 
   if (!app.isPackaged) {
     return {
-      pluginDirs,
+      mode: "development",
+      builtinPluginsDir: pluginsRoot,
+      externalPluginDirs,
     };
   }
 
+  const userDataDir = app.getPath("userData");
+
   return {
-    pluginDirs,
-    pluginsRoot: path.join(process.resourcesPath, "plugins"),
-    storagePath: path.join(app.getPath("userData"), "tooldeck.sqlite"),
+    mode: "production",
+    appInstallDir: process.resourcesPath,
+    builtinPluginsDir: pluginsRoot ?? path.join(process.resourcesPath, "plugins"),
+    externalPluginDirs,
+    userDataDir,
   };
 }
 

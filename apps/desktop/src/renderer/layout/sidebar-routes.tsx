@@ -3,7 +3,7 @@ import { Boxes, Search, Wrench } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { DesktopNavigationMode } from "@/renderer/app/types";
-import type { DesktopCommand, DesktopPlugin } from "@/shared/desktop-api";
+import type { DesktopCommand, DesktopPlugin } from "@/shared/api";
 
 export type SidebarRoute = MenuDataItem & {
   path: string;

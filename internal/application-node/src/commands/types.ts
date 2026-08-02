@@ -16,14 +16,19 @@ export interface ApplicationCommand {
   definition: CommandDefinition;
 }
 
+export interface ListApplicationCommandsRequest {
+  locale?: string;
+}
+
 export interface RunApplicationCommandRequest {
   commandId: string;
   input?: JsonObject;
+  locale?: string;
   source?: string;
   recordHistory?: boolean;
 }
 
 export interface ApplicationCommandFacade {
-  list(): Promise<ApplicationCommand[]>;
+  list(request?: ListApplicationCommandsRequest): Promise<ApplicationCommand[]>;
   run(request: RunApplicationCommandRequest): Promise<CommandResult>;
 }

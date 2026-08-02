@@ -5,26 +5,26 @@ import { fileURLToPath } from "node:url";
 const desktopRoot = fileURLToPath(new URL("../", import.meta.url));
 
 const rendererAndPreload = ["src/renderer", "src/preload"];
-const allowedDesktopApiMethods = [
-  "listCommands",
-  "listPlugins",
-  "listPluginDataResidues",
-  "listPreferences",
-  "getPreference",
-  "setPreference",
-  "setPluginEnabled",
-  "installDroppedPluginPackage",
-  "uninstallPlugin",
-  "purgePluginData",
-  "rescanPlugins",
-  "runCommand",
-  "listCommandRuns",
+const allowedRendererApiMethods = [
+  "commands.list",
+  "commands.run",
+  "plugins.list",
+  "plugins.listDataResidues",
+  "plugins.setEnabled",
+  "plugins.installDroppedPackage",
+  "plugins.uninstall",
+  "plugins.purgeData",
+  "plugins.rescan",
+  "preferences.list",
+  "preferences.get",
+  "preferences.set",
+  "history.listRuns",
 ];
 
 const checks = [
   {
-    name: "renderer/preload must not import storage or runtime-node",
-    pattern: String.raw`@tooldeck/(storage|runtime-node)`,
+    name: "renderer/preload must not import internal application or runtime packages",
+    pattern: String.raw`@tooldeck/(application-node|runtime-node|storage|plugin-management-node)`,
     paths: rendererAndPreload,
     expect: "no-match",
   },
@@ -47,8 +47,14 @@ const checks = [
     expect: "no-match",
   },
   {
-    name: "main service composes runtime-node and storage",
-    pattern: String.raw`@tooldeck/(runtime-node|storage)`,
+    name: "main must not compose runtime, storage, or legacy application packages",
+    pattern: String.raw`@tooldeck/(runtime-node|storage|preferences|plugin-management-node|shared)`,
+    paths: ["src/main"],
+    expect: "no-match",
+  },
+  {
+    name: "main consumes the application-node facade",
+    pattern: String.raw`@tooldeck/application-node`,
     paths: ["src/main"],
     expect: "match",
   },
@@ -72,20 +78,46 @@ for (const check of checks) {
 
 assertRequiredMatch({
   name: "preload exposes the Tooldeck API through contextBridge",
-  pattern: String.raw`contextBridge\.exposeInMainWorld\("tooldeck", api\)`,
+  pattern: String.raw`contextBridge\.exposeInMainWorld\("tooldeck", desktopApi\)`,
   paths: ["src/preload"],
 });
 assertOnlyAllowedMethods({
-  name: "preload only defines the V1 Desktop API surface",
+  name: "preload commands domain only defines its contract",
   pattern: String.raw`^  ([a-zA-Z][a-zA-Z0-9]+)\(`,
-  paths: ["src/preload/index.ts"],
-  allowed: allowedDesktopApiMethods,
+  paths: ["src/preload/api/commands.ts"],
+  allowed: ["list", "run"],
 });
 assertOnlyAllowedMethods({
+  name: "preload plugins domain only defines its contract",
+  pattern: String.raw`^  ([a-zA-Z][a-zA-Z0-9]+)\(`,
+  paths: ["src/preload/api/plugins.ts"],
+  allowed: [
+    "list",
+    "listDataResidues",
+    "setEnabled",
+    "installDroppedPackage",
+    "uninstall",
+    "purgeData",
+    "rescan",
+  ],
+});
+assertOnlyAllowedMethods({
+  name: "preload preferences domain only defines its contract",
+  pattern: String.raw`^  ([a-zA-Z][a-zA-Z0-9]+)\(`,
+  paths: ["src/preload/api/preferences.ts"],
+  allowed: ["list", "get", "set"],
+});
+assertOnlyAllowedMethods({
+  name: "preload history domain only defines its contract",
+  pattern: String.raw`^  ([a-zA-Z][a-zA-Z0-9]+)\(`,
+  paths: ["src/preload/api/history.ts"],
+  allowed: ["listRuns"],
+});
+assertOnlyAllowedDomainMethods({
   name: "renderer only calls the V1 Desktop API surface",
-  pattern: String.raw`window\.tooldeck\.([a-zA-Z][a-zA-Z0-9]+)\(`,
+  pattern: String.raw`window\.tooldeck\.([a-zA-Z][a-zA-Z0-9]+)\.([a-zA-Z][a-zA-Z0-9]+)\(`,
   paths: ["src/renderer"],
-  allowed: allowedDesktopApiMethods,
+  allowed: allowedRendererApiMethods,
   requireAll: false,
 });
 
@@ -120,6 +152,35 @@ function assertOnlyAllowedMethods({ name, pattern, paths, allowed, requireAll = 
 
     if (match) {
       found.add(match[1]);
+    }
+  }
+
+  const extra = [...found].filter((method) => !allowed.includes(method));
+  const missing = requireAll ? allowed.filter((method) => !found.has(method)) : [];
+
+  if (extra.length > 0 || missing.length > 0) {
+    failures.push(
+      `${name}\nAllowed: ${allowed.join(", ")}\nFound: ${[...found].join(", ") || "(none)"}`,
+    );
+  }
+}
+
+function assertOnlyAllowedDomainMethods({ name, pattern, paths, allowed, requireAll = true }) {
+  const matches = findMatches(pattern, paths);
+  const expression = new RegExp(pattern);
+
+  if (matches.length === 0) {
+    failures.push(`${name}\nExpected at least one API method match for: ${pattern}`);
+    return;
+  }
+
+  const found = new Set();
+
+  for (const result of matches) {
+    const match = result.text.match(expression);
+
+    if (match) {
+      found.add(`${match[1]}.${match[2]}`);
     }
   }
 

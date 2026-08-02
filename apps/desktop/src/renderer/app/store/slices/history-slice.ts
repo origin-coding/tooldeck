@@ -17,7 +17,7 @@ export const createHistorySlice: DesktopStoreSlice<HistorySlice> = (set, get) =>
     }));
 
     try {
-      const history = await window.tooldeck.listCommandRuns({
+      const history = await window.tooldeck.history.listRuns({
         limit: 50,
         commandId,
       });

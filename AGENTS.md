@@ -64,7 +64,7 @@ Manifest can be scanned without activating plugin code.
 Plugin activates only when a matching command/document/table is used.
 Command execution writes a record to SQLite.
 An external plugin can build, pack, install, run, disable, enable, uninstall, and purge.
-CLI and Desktop use the same Node plugin-management service.
+CLI and Desktop main use the same Node application service.
 ```
 
 ## Repository Structure
@@ -78,16 +78,13 @@ packages/
   protocol/                 TPP data contracts and schema.
   sdk-node/                 Public Node plugin authoring contract.
   plugin-package/           Public .tdplugin format utilities.
-  plugin-management-node/   Private install and state application service.
   plugin-tools/              Public plugin authoring CLI and test helpers.
   vite-plugin/              Public Vite integration for Node plugins.
   create-plugin/            Public external plugin project generator.
-  preferences/              Private product preference definitions.
-  storage/                  Private SQLite persistence implementation.
-  shared/                   Shared private implementation utilities.
 
 internal/
   runtime-node/             Private runtime coordination and Node plugin host.
+  application-node/         Private database and product application facade.
 
 plugins/
   json-tools/               Canonical JSON command and smoke-test plugin.
@@ -123,10 +120,10 @@ Keep package dependencies layered by public contract and private implementation:
   Public .tdplugin container implementation: package metadata, ZIP adapter,
   validation, safe unpacking, digest calculation, and package limits.
 
-@tooldeck/plugin-management-node
-  Private Tooldeck Node application service: catalog synchronization, install,
-  uninstall, enable/disable coordination, retained-data purge, rollback, and cleanup
-  reporting shared by CLI and Desktop.
+@tooldeck/application-node
+  Private Tooldeck Node application service: database lifecycle, preferences,
+  command history, catalog synchronization, install, uninstall, enable/disable,
+  retained-data purge, rollback, and cleanup shared by CLI and Desktop main.
 
 @tooldeck/plugin-tools
   Public plugin-author workflow: generate, check, build, inspect, pack, dist, and
@@ -136,23 +133,20 @@ Keep package dependencies layered by public contract and private implementation:
 Dependency direction should stay one-way:
 
 ```text
-protocol <- sdk-node <- runtime-node <- CLI/Desktop
+protocol <- sdk-node <- runtime-node <- application-node <- CLI/Desktop main
 protocol <- plugin-package <- plugin-tools
-protocol <- preferences <- storage
-plugin-package + runtime-node + shared + storage
-  -> plugin-management-node
-  -> CLI/Desktop
+plugin-package + runtime-node -> application-node
 ```
 
 Rules for dependency changes:
 
 1. Public plugin author types belong in `@tooldeck/sdk-node`, not in private runtime packages.
-2. `@tooldeck/sdk-node` must not depend on `@tooldeck/runtime-node`, Electron, React, SQLite, or storage.
+2. `@tooldeck/sdk-node` must not depend on `@tooldeck/runtime-node`, Electron, React, SQLite, or application-node.
 3. `@tooldeck/runtime-node` may depend on `@tooldeck/sdk-node` for the shared Node plugin contract, but it must not depend on Electron UI or React.
 4. `@tooldeck/protocol` must remain data-only and standards-facing. Do not add function-based Node SDK APIs such as `CommandHandler`, `PluginContext`, or `Disposable` there.
-5. `@tooldeck/storage` and `@tooldeck/preferences` are product implementation packages, not TPP protocol packages.
+5. Database, preferences, history, and plugin management belong inside private `@tooldeck/application-node`.
 6. `@tooldeck/plugin-package` owns the package format but does not scan, activate, install, persist, or render plugins.
-7. `@tooldeck/plugin-management-node` may coordinate package, runtime scan, storage, and filesystem services, but apps retain CLI formatting, Electron IPC, and renderer interaction.
+7. `@tooldeck/application-node` may coordinate package, runtime scan, storage, and filesystem services, but apps retain CLI formatting, Electron IPC, and renderer interaction.
 8. `@tooldeck/plugin-tools` may depend on public authoring packages, but it must not expose private product packages through its published API.
 9. Published public packages must not leak private package dependencies through `dependencies` or generated `.d.ts` files.
 10. Before publishing SDK or authoring packages, inspect packed tarballs if dependency boundaries changed.

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DesktopApi } from "@/shared/desktop-api";
+import type { DesktopApi } from "@/shared/api";
 
 const electron = vi.hoisted(() => ({
   exposeInMainWorld: vi.fn(),
@@ -24,20 +24,41 @@ await import("@/preload/index");
 
 const api = electron.exposeInMainWorld.mock.calls[0]?.[1] as DesktopApi;
 
-describe("desktop preload plugin installation", () => {
+describe("desktop preload API", () => {
   beforeEach(() => {
     electron.getPathForFile.mockReset();
     electron.invoke.mockReset();
   });
 
-  it("resolves the original dropped File path inside preload and invokes installation", async () => {
+  it("exposes a single API grouped by domain", () => {
+    expect(api).toEqual({
+      commands: expect.objectContaining({
+        list: expect.any(Function),
+        run: expect.any(Function),
+      }),
+      plugins: expect.objectContaining({
+        list: expect.any(Function),
+        installDroppedPackage: expect.any(Function),
+      }),
+      preferences: expect.objectContaining({
+        list: expect.any(Function),
+        get: expect.any(Function),
+        set: expect.any(Function),
+      }),
+      history: expect.objectContaining({
+        listRuns: expect.any(Function),
+      }),
+    });
+  });
+
+  it("resolves dropped file paths inside preload and invokes installation", async () => {
     const file = { name: "plugin.tdplugin" } as File;
     const expected = { status: "installed", installedPluginId: "dev.example.plugin" };
 
     electron.getPathForFile.mockReturnValue("C:\\plugins\\plugin.tdplugin");
-    electron.invoke.mockResolvedValue(expected);
+    electron.invoke.mockResolvedValue({ ok: true, value: expected });
 
-    await expect(api.installDroppedPluginPackage(file, { locale: "zh-CN" })).resolves.toBe(
+    await expect(api.plugins.installDroppedPackage(file, { locale: "zh-CN" })).resolves.toBe(
       expected,
     );
     expect(electron.getPathForFile).toHaveBeenCalledWith(file);
@@ -47,29 +68,25 @@ describe("desktop preload plugin installation", () => {
     });
   });
 
-  it("rejects Files that are not backed by a local path", () => {
+  it("rejects files that are not backed by a local path", () => {
     electron.getPathForFile.mockReturnValue("");
 
-    expect(() => api.installDroppedPluginPackage({ name: "plugin.tdplugin" } as File)).toThrow(
+    expect(() => api.plugins.installDroppedPackage({ name: "plugin.tdplugin" } as File)).toThrow(
       "Dropped plugin package is not backed by a local file.",
     );
     expect(electron.invoke).not.toHaveBeenCalled();
   });
 
-  it("invokes plugin residue, uninstall, and purge channels", async () => {
-    electron.invoke.mockResolvedValue([]);
+  it("rejects serialized application failures without exposing raw main errors", async () => {
+    const error = {
+      tag: "ApplicationError" as const,
+      source: "application" as const,
+      code: "ERR_NOT_FOUND",
+      message: "Plugin was not found.",
+    };
 
-    await api.listPluginDataResidues();
-    await api.uninstallPlugin({ pluginId: "dev.example.plugin", locale: "zh-CN" });
-    await api.purgePluginData({ pluginId: "dev.example.plugin" });
+    electron.invoke.mockResolvedValue({ ok: false, error });
 
-    expect(electron.invoke).toHaveBeenNthCalledWith(1, "tooldeck:list-plugin-data-residues");
-    expect(electron.invoke).toHaveBeenNthCalledWith(2, "tooldeck:uninstall-plugin", {
-      pluginId: "dev.example.plugin",
-      locale: "zh-CN",
-    });
-    expect(electron.invoke).toHaveBeenNthCalledWith(3, "tooldeck:purge-plugin-data", {
-      pluginId: "dev.example.plugin",
-    });
+    await expect(api.plugins.uninstall({ pluginId: "dev.example.missing" })).rejects.toBe(error);
   });
 });

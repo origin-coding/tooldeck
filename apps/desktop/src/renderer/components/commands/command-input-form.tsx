@@ -1,4 +1,4 @@
-import type { JsonPrimitive } from "@tooldeck/shared";
+import type { JsonPrimitive } from "@tooldeck/protocol";
 import { Form, Tag } from "antd";
 import { useTranslation } from "react-i18next";
 
@@ -10,7 +10,7 @@ import type {
 } from "@/renderer/app/command-input";
 import { CommandInputControl } from "@/renderer/components/commands/command-input-control";
 import { EmptyState } from "@/renderer/components/common/empty-state";
-import type { DesktopCommand } from "@/shared/desktop-api";
+import type { DesktopCommand } from "@/shared/api";
 
 export function CommandInputForm({
   command,

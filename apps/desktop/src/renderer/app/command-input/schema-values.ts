@@ -1,5 +1,5 @@
 import type { LocalizedString, TooldeckInputJsonSchema } from "@tooldeck/protocol";
-import type { JsonPrimitive, JsonValue } from "@tooldeck/shared";
+import type { JsonPrimitive, JsonValue } from "@tooldeck/protocol";
 
 import type { InputArrayItemType, InputFieldKind, InputSchemaType } from "./types";
 

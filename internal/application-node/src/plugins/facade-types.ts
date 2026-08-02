@@ -78,12 +78,26 @@ export interface ApplicationPluginPurgeResult {
   residues: ApplicationPluginDataResidue[];
 }
 
+export interface ApplicationPluginLocaleRequest {
+  locale?: string;
+}
+
 export interface ApplicationPluginFacade {
-  list(): Promise<ApplicationPlugin[]>;
-  rescan(): Promise<ApplicationPluginCatalog>;
-  setEnabled(pluginId: string, enabled: boolean): Promise<ApplicationPlugin>;
-  installPackage(packagePath: string): Promise<ApplicationPluginInstallResult>;
-  uninstall(pluginId: string): Promise<ApplicationPluginUninstallResult>;
+  list(request?: ApplicationPluginLocaleRequest): Promise<ApplicationPlugin[]>;
+  rescan(request?: ApplicationPluginLocaleRequest): Promise<ApplicationPluginCatalog>;
+  setEnabled(
+    pluginId: string,
+    enabled: boolean,
+    request?: ApplicationPluginLocaleRequest,
+  ): Promise<ApplicationPlugin>;
+  installPackage(
+    packagePath: string,
+    request?: ApplicationPluginLocaleRequest,
+  ): Promise<ApplicationPluginInstallResult>;
+  uninstall(
+    pluginId: string,
+    request?: ApplicationPluginLocaleRequest,
+  ): Promise<ApplicationPluginUninstallResult>;
   listDataResidues(): Promise<ApplicationPluginDataResidue[]>;
   purgeData(pluginId: string): Promise<ApplicationPluginPurgeResult>;
 }
