@@ -221,6 +221,87 @@ Do not delete temporary or staging content that predates the task or whose owner
 unclear. Product-managed `.staging` entries reported through `cleanupPending` are
 diagnostic state, not agent-owned temporary files.
 
+## GitHub Issue Governance
+
+Read `.github/ISSUE_CONVENTIONS.md` before creating, splitting, labeling, or
+changing the lifecycle of a GitHub Issue. It is the source of truth for label
+semantics, decision states, milestone assignment, hierarchy, dependencies, and
+closing rules.
+
+Use GitHub Issues for new and active internal planning, RFCs, ADRs, behavior
+baselines, and implementation tracking. Keep public user, protocol, and plugin
+authoring documentation in the repository. Existing internal planning and ADR
+documents remain historical sources until an explicit migration removes or
+replaces them; do not create duplicate new records in both locations.
+
+Run `gh` commands that access or modify GitHub with elevated privileges from the
+first attempt.
+
+Every Issue must have exactly one of these type labels:
+
+```text
+type:planning
+type:decision
+type:baseline
+type:bug
+type:feature
+type:task
+type:docs
+```
+
+A `type:decision` Issue must have exactly one decision lifecycle label:
+
+```text
+decision:draft
+decision:review
+decision:accepted
+decision:rejected
+decision:withdrawn
+decision:superseded
+```
+
+Use only the established scope labels:
+
+```text
+scope:protocol
+scope:sdk-node
+scope:plugin-package
+scope:plugin-tools
+scope:vite-plugin
+scope:create-plugin
+scope:runtime
+scope:application
+scope:cli
+scope:desktop
+scope:apps
+scope:plugins
+scope:workspace
+scope:release
+```
+
+Do not create unnamespaced labels or recreate GitHub default labels such as
+`bug`, `enhancement`, or `documentation`. Do not add new label namespaces or
+values without first updating the Issue conventions.
+
+Every scheduled Issue must use its target release milestone. Active Tooldeck 1.4
+architecture and migration work uses the `1.4.0` milestone. Leave unaccepted
+feature requests without a milestone until scheduled. Use Milestones rather than
+version labels.
+
+Use native GitHub parent/sub-issue relationships for hierarchy and native
+blocked-by/blocking relationships for execution dependencies. Body links and
+checklists may explain relationships but must not be their only representation.
+
+An RFC remains the same `type:decision` Issue when accepted as an ADR. Update its
+decision state, final outcome, decision date, effective PR or commit, and title;
+then close it. Semantic changes to an accepted ADR require a new decision Issue,
+and the old ADR must become `decision:superseded`.
+
+When splitting an Issue, preserve the existing Issue for the dominant original
+scope, create sibling sub-issues for extracted work, add reciprocal links, retain
+the correct milestone, update native dependencies, and update the parent planning
+index.
+
 ## Git Branch Names
 
 When creating a branch, use:
