@@ -19,10 +19,10 @@
   "dependencies": {
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/sdk-node": "workspace:*",
-    "ajv": "^8.20.0"
+    "ajv": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "catalog:",
     "tsc-alias": "^1.9.1"
   }
 }

@@ -4,6 +4,13 @@ packages:
   - "packages/*"
   - "plugins/*"
   - "tests/*"
+catalog:
+  "@types/node": ^25.9.1
+  ajv: ^8.20.0
+  citty: ^0.2.2
+  consola: ^3.4.2
+  typescript: ^6.0.3
+  vite: ^8.0.16
 allowBuilds:
   electron: true
   electron-winstaller: true

@@ -13,6 +13,6 @@
     "@tooldeck/runtime-node": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1"
+    "@types/node": "catalog:"
   }
 }

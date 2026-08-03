@@ -40,13 +40,13 @@
     "@tooldeck/plugin-package": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/sdk-node": "workspace:*",
-    "ajv": "^8.20.0",
-    "citty": "^0.2.2",
-    "consola": "^3.4.2",
+    "ajv": "catalog:",
+    "citty": "catalog:",
+    "consola": "catalog:",
     "json-schema-to-typescript": "^15.0.4",
     "scule": "^1.3.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1"
+    "@types/node": "catalog:"
   }
 }

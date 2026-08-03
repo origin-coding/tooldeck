@@ -23,7 +23,7 @@
     "drizzle-orm": "1.0.0-rc.3"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "catalog:",
     "tsc-alias": "^1.9.1"
   }
 }

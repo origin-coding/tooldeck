@@ -34,13 +34,13 @@
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",
-    "citty": "^0.2.2",
-    "consola": "^3.4.2",
+    "citty": "catalog:",
+    "consola": "catalog:",
     "eta": "^3.5.0",
     "nypm": "^0.6.2"
   },
   "devDependencies": {
     "@tooldeck/plugin-tools": "workspace:*",
-    "@types/node": "^25.9.1"
+    "@types/node": "catalog:"
   }
 }
