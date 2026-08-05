@@ -88,6 +88,10 @@
     "purge": "清除数据",
     "uninstallConfirmTitle": "卸载此插件？",
     "uninstallConfirmDescription": "从托管插件目录移除 {{pluginId}}。本地状态、插件专属 KV 和命令历史将保留。",
+    "cleanupPending": {
+      "title": "插件清理仍待完成",
+      "description": "插件已完成逻辑卸载，但仍有 {{count}} 个清理失败。{{step}}：{{message}}"
+    },
     "version": "版本",
     "source": "来源",
     "sourceKind": {

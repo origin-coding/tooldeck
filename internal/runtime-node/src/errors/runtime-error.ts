@@ -1,5 +1,7 @@
 import type { JsonObject } from "@tooldeck/protocol";
 
+import type { RuntimeCleanupFailureDiagnostic } from "@/errors/runtime-cleanup";
+
 export type RuntimeErrorCode =
   | "ERR_UNKNOWN"
   | "ERR_INVALID_ARGUMENT"
@@ -15,8 +17,12 @@ export interface RuntimeErrorOptions {
   code: RuntimeErrorCode;
   message: string;
   cause?: unknown;
-  details?: JsonObject;
+  details?: RuntimeErrorDetails;
 }
+
+export type RuntimeErrorDetails = JsonObject & {
+  cleanupFailures?: RuntimeCleanupFailureDiagnostic[];
+};
 
 const runtimeErrorCodes = new Set<RuntimeErrorCode>([
   "ERR_UNKNOWN",
@@ -33,7 +39,7 @@ const runtimeErrorCodes = new Set<RuntimeErrorCode>([
 export class RuntimeError extends Error {
   readonly _tag = "RuntimeError";
   readonly code: RuntimeErrorCode;
-  readonly details?: JsonObject;
+  readonly details?: RuntimeErrorDetails;
 
   constructor(options: RuntimeErrorOptions) {
     super(options.message, { cause: options.cause });

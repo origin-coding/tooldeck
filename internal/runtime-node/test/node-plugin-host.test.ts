@@ -171,7 +171,31 @@ describe("NodePluginHost", () => {
     await expect(host.deactivatePlugin("dev.example.subscription-cleanup")).rejects.toMatchObject({
       code: "ERR_PLUGIN_LOAD_FAILED",
       details: {
-        errors: ["Failed to dispose 1 plugin subscription(s): dev.example.subscription-cleanup"],
+        cleanupFailures: [
+          {
+            phase: "cleanup",
+            step: "subscriptions.dispose",
+            context: { pluginId: "dev.example.subscription-cleanup" },
+            error: {
+              source: "runtime",
+              code: "ERR_PLUGIN_LOAD_FAILED",
+              details: {
+                cleanupFailures: [
+                  {
+                    phase: "cleanup",
+                    step: "subscription.dispose",
+                    context: { pluginId: "dev.example.subscription-cleanup" },
+                    error: {
+                      source: "runtime",
+                      code: "ERR_UNKNOWN",
+                      message: "subscription cleanup failed",
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
       },
     });
     expect(module.calls).toEqual(["dispose:last", "dispose:failing", "dispose:first"]);
@@ -189,12 +213,70 @@ describe("NodePluginHost", () => {
     ).rejects.toMatchObject({
       code: "ERR_PLUGIN_LOAD_FAILED",
       message: "Failed to activate plugin: dev.example.activation-cleanup-fails",
-      cause: expect.objectContaining({ message: "activation failed at source" }),
+      cause: expect.objectContaining({
+        cause: expect.objectContaining({
+          message: "Failed to activate plugin: dev.example.activation-cleanup-fails",
+          cause: expect.objectContaining({ message: "activation failed at source" }),
+        }),
+      }),
       details: {
-        cleanupError:
-          "Failed to dispose 1 plugin subscription(s): dev.example.activation-cleanup-fails",
+        cleanupFailures: [
+          {
+            phase: "cleanup",
+            step: "subscriptions.dispose",
+            context: { pluginId: "dev.example.activation-cleanup-fails" },
+            error: {
+              source: "runtime",
+              code: "ERR_PLUGIN_LOAD_FAILED",
+              details: {
+                cleanupFailures: [
+                  {
+                    phase: "cleanup",
+                    step: "subscription.dispose",
+                    context: { pluginId: "dev.example.activation-cleanup-fails" },
+                  },
+                ],
+              },
+            },
+          },
+        ],
       },
     });
+  });
+
+  it("records multiple activation cleanup failures in reverse attempt order", async () => {
+    const host = createHost();
+    const module = await import(
+      new URL("./fixtures/activation-and-multiple-dispose-fail-plugin.mjs", import.meta.url).href
+    );
+
+    module.calls.length = 0;
+
+    await expect(
+      host.activatePlugin({
+        pluginId: "dev.example.activation-multiple-cleanup-fails",
+        entryPath: fixturePath("activation-and-multiple-dispose-fail-plugin.mjs"),
+      }),
+    ).rejects.toMatchObject({
+      code: "ERR_PLUGIN_LOAD_FAILED",
+      message: "Failed to activate plugin: dev.example.activation-multiple-cleanup-fails",
+      details: {
+        cleanupFailures: [
+          {
+            step: "subscriptions.dispose",
+            error: {
+              details: {
+                cleanupFailures: [
+                  { step: "subscription.dispose", error: { message: "second disposal failed" } },
+                  { step: "subscription.dispose", error: { message: "first disposal failed" } },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    });
+    expect(module.calls).toEqual(["dispose:second", "dispose:first"]);
   });
 
   it("disposes all plugins in reverse activation order", async () => {
@@ -252,11 +334,24 @@ describe("NodePluginHost", () => {
       code: "ERR_PLUGIN_LOAD_FAILED",
       message: "Failed to dispose all active plugins",
       details: {
-        errors: [
+        cleanupFailures: [
           {
-            pluginId: "dev.example.failing",
-            code: "ERR_PLUGIN_LOAD_FAILED",
-            message: "Failed to deactivate plugin: dev.example.failing",
+            phase: "cleanup",
+            step: "plugin.dispose",
+            context: { pluginId: "dev.example.failing" },
+            error: {
+              source: "runtime",
+              code: "ERR_PLUGIN_LOAD_FAILED",
+              message: "Failed to deactivate plugin: dev.example.failing",
+              details: {
+                cleanupFailures: [
+                  {
+                    step: "plugin.deactivate",
+                    context: { pluginId: "dev.example.failing" },
+                  },
+                ],
+              },
+            },
           },
         ],
       },

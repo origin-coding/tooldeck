@@ -1,16 +1,20 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rename, rm } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { unpackTooldeckPackage } from "@tooldeck/plugin-package";
 import { scanPluginDirectory } from "@tooldeck/runtime-node";
 
+import {
+  captureApplicationCleanupFailure,
+  type CapturedApplicationCleanupFailure,
+} from "@/errors/application-cleanup";
 import { ApplicationError } from "@/errors/application-error";
 import { scanAndSyncPluginCatalog } from "@/plugins/management/catalog";
-import { pathExists } from "@/plugins/management/filesystem";
+import { movePath, pathExists, removePath } from "@/plugins/management/filesystem";
 import type { PluginManagementContext } from "@/plugins/management/internal";
 import {
-  captureRollbackError,
+  captureOperationFailure,
   throwOperationFailure,
 } from "@/plugins/management/operation-rollback";
 import {
@@ -33,6 +37,8 @@ export async function installPluginPackage(
     context.installedPluginsDir,
     `install-${randomUUID()}`,
   );
+  const stagingEntry = path.basename(stagingDir);
+  let pluginId: string | undefined;
   let finalInstallDir: string | undefined;
   let createdInstall: PluginInstallRow | undefined;
   let movedToFinal = false;
@@ -42,7 +48,7 @@ export async function installPluginPackage(
       packagePath,
       destinationDir: stagingDir,
     });
-    const pluginId = packageSummary.pluginManifest.id;
+    pluginId = packageSummary.pluginManifest.id;
 
     if (packageSummary.pluginManifest.runtime.kind !== "node") {
       throw new ApplicationError({
@@ -94,7 +100,7 @@ export async function installPluginPackage(
       manifestIndex: currentCatalog.manifestIndex,
     });
 
-    await rename(stagingDir, finalInstallDir);
+    await movePath(stagingDir, finalInstallDir);
     movedToFinal = true;
 
     createdInstall = context.installs.create({
@@ -127,42 +133,72 @@ export async function installPluginPackage(
       plugin,
     };
   } catch (error) {
-    const rollbackErrors: string[] = [];
+    const cleanupFailures: CapturedApplicationCleanupFailure[] = [];
 
     if (createdInstall) {
       const createdPluginId = createdInstall.pluginId;
 
-      await captureRollbackError(
+      await captureOperationFailure(
         () => context.installs.delete(createdPluginId),
-        "delete plugin install record",
-        rollbackErrors,
+        cleanupFailures,
+        (rollbackError) =>
+          captureApplicationCleanupFailure({
+            phase: "rollback",
+            step: "pluginInstall.delete",
+            context: { pluginId: createdPluginId },
+            error: rollbackError,
+          }),
       );
     }
 
-    if (movedToFinal && finalInstallDir) {
+    if (movedToFinal && finalInstallDir && pluginId) {
       const rollbackInstallDir = finalInstallDir;
+      const rollbackPluginId = pluginId;
 
-      await captureRollbackError(
-        () => rm(rollbackInstallDir, { recursive: true, force: true }),
-        "remove installed plugin directory",
-        rollbackErrors,
+      await captureOperationFailure(
+        () => removePath(rollbackInstallDir),
+        cleanupFailures,
+        (rollbackError) =>
+          captureApplicationCleanupFailure({
+            phase: "rollback",
+            step: "pluginDirectory.remove",
+            context: { pluginId: rollbackPluginId },
+            error: rollbackError,
+          }),
       );
     } else {
-      await captureRollbackError(
-        () => rm(stagingDir, { recursive: true, force: true }),
-        "remove plugin staging directory",
-        rollbackErrors,
+      await captureOperationFailure(
+        () => removePath(stagingDir),
+        cleanupFailures,
+        (cleanupError) =>
+          captureApplicationCleanupFailure({
+            phase: "cleanup",
+            step: "pluginStaging.remove",
+            context: {
+              stagingEntry,
+              ...(pluginId ? { pluginId } : {}),
+            },
+            error: cleanupError,
+          }),
       );
     }
 
-    if (movedToFinal || createdInstall) {
-      await captureRollbackError(
+    const rollbackPluginId = createdInstall?.pluginId ?? pluginId;
+
+    if ((movedToFinal || createdInstall) && rollbackPluginId) {
+      await captureOperationFailure(
         () => scanAndSyncPluginCatalog(context),
-        "restore plugin catalog",
-        rollbackErrors,
+        cleanupFailures,
+        (rollbackError) =>
+          captureApplicationCleanupFailure({
+            phase: "rollback",
+            step: "pluginCatalog.restore",
+            context: { pluginId: rollbackPluginId },
+            error: rollbackError,
+          }),
       );
     }
 
-    throwOperationFailure("Plugin installation", error, rollbackErrors);
+    throwOperationFailure("Plugin installation", error, cleanupFailures);
   }
 }

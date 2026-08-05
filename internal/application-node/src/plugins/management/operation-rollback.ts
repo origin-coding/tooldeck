@@ -1,37 +1,32 @@
-import { ApplicationError } from "@/errors/application-error";
+import {
+  combinePrimaryAndCleanupFailures,
+  type CapturedApplicationCleanupFailure,
+} from "@/errors/application-cleanup";
 
-export async function captureRollbackError(
+export async function captureOperationFailure(
   operation: () => unknown | Promise<unknown>,
-  label: string,
-  rollbackErrors: string[],
+  cleanupFailures: CapturedApplicationCleanupFailure[],
+  capture: (error: unknown) => CapturedApplicationCleanupFailure,
 ): Promise<void> {
   try {
     await operation();
   } catch (error) {
-    rollbackErrors.push(`${label}: ${formatUnknownError(error)}`);
+    cleanupFailures.push(capture(error));
   }
 }
 
 export function throwOperationFailure(
   operation: string,
   error: unknown,
-  rollbackErrors: string[],
+  cleanupFailures: CapturedApplicationCleanupFailure[],
 ): never {
-  if (rollbackErrors.length === 0) {
+  if (cleanupFailures.length === 0) {
     throw error;
   }
 
-  throw new ApplicationError({
-    source: "application",
-    code: "ERR_UNKNOWN",
-    message: `${operation} failed and rollback did not complete: ${formatUnknownError(error)}`,
-    cause: error,
-    details: {
-      rollbackErrors,
-    },
-  });
-}
-
-function formatUnknownError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  throw combinePrimaryAndCleanupFailures(
+    error,
+    cleanupFailures,
+    `${operation} failed and cleanup or rollback did not complete.`,
+  );
 }

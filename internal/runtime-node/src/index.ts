@@ -5,6 +5,7 @@ export * from "@/composition/create-runtime";
 export * from "@/composition/host-registry";
 export * from "@/core/plugin-host";
 export * from "@/errors/runtime-error";
+export * from "@/errors/runtime-cleanup";
 export * from "@/hosts/node";
 export * from "@/i18n/locale-resolution";
 export * from "@/lifecycle/capability-invocation-lifecycle";

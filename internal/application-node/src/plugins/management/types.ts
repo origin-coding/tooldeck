@@ -1,5 +1,6 @@
 import type { ManifestIndex, PluginScanSource } from "@tooldeck/runtime-node";
 
+import type { ApplicationCleanupFailureDiagnostic } from "@/errors/application-cleanup";
 import type { PluginInstallRow, PluginRow, TooldeckDatabase } from "@/storage";
 
 export interface PluginManagementServiceOptions {
@@ -19,7 +20,7 @@ export interface InstalledPluginSummary {
 }
 
 export interface UninstalledPluginSummary {
-  cleanupError?: string;
+  cleanupFailures: ApplicationCleanupFailureDiagnostic[];
   cleanupPending: boolean;
   filesMissing: boolean;
   install: PluginInstallRow;

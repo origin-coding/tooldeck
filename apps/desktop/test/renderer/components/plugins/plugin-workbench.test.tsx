@@ -26,6 +26,11 @@ describe("PluginWorkbench lifecycle actions", () => {
         }}
         commands={[]}
         installState={{ status: "idle" }}
+        cleanupWarning={{
+          count: 1,
+          step: "pluginQuarantine.remove",
+          message: "file is locked",
+        }}
         isLoading={false}
         pluginDataResidues={[
           {
@@ -47,6 +52,9 @@ describe("PluginWorkbench lifecycle actions", () => {
     expect(html).toContain("dev.example.uninstalled");
     expect(html).toContain("Purge");
     expect(html).toContain("Uninstall");
+    expect(html).toContain("Plugin cleanup is pending");
+    expect(html).toContain("pluginQuarantine.remove");
+    expect(html).toContain("file is locked");
   });
 
   it("does not render uninstall for built-in plugins", () => {

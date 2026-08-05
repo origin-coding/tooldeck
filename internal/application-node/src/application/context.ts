@@ -1,20 +1,25 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-import { createRuntime, type CreatedRuntime, type PluginScanSource } from "@tooldeck/runtime-node";
+import { type CreatedRuntime, createRuntime, type PluginScanSource } from "@tooldeck/runtime-node";
 
 import {
-  identityCommandInputPreprocessor,
   type CommandInputPreprocessor,
+  identityCommandInputPreprocessor,
   type TooldeckApplicationAdapters,
 } from "@/application/adapters";
 import type {
-  ApplicationPluginSource,
   ApplicationCommandInputCoercion,
+  ApplicationPluginSource,
   CreateTooldeckApplicationOptions,
 } from "@/application/types";
+import {
+  captureApplicationCleanupFailure,
+  type CapturedApplicationCleanupFailure,
+  combinePrimaryAndCleanupFailures,
+  createApplicationCleanupError,
+} from "@/errors/application-cleanup";
 import { ApplicationError } from "@/errors/application-error";
-import { combinePrimaryAndCleanupErrors } from "@/errors/application-error-composition";
 import { resolveTooldeckPaths, type TooldeckPaths } from "@/paths";
 import { PluginManagementService } from "@/plugins/management";
 import {
@@ -104,9 +109,16 @@ export class TooldeckApplicationContext {
         await this.disposeResources();
       } catch (cleanupError) {
         this.state = "created";
-        throw combinePrimaryAndCleanupErrors(
+        throw combinePrimaryAndCleanupFailures(
           error,
-          [cleanupError],
+          [
+            captureApplicationCleanupFailure({
+              phase: "cleanup",
+              step: "applicationResources.dispose",
+              context: {},
+              error: cleanupError,
+            }),
+          ],
           "Application startup failed and partial resources could not be fully released.",
         );
       }
@@ -139,7 +151,7 @@ export class TooldeckApplicationContext {
 
     const pluginKv = this.requirePluginKv();
     const pluginManagement = this.requirePluginManagement();
-    const runtime = await createRuntime({
+    this.runtime = await createRuntime({
       pluginSources: this.pluginSources,
       coercion: this.commandInputCoercion,
       createPluginStorage(pluginId) {
@@ -159,8 +171,6 @@ export class TooldeckApplicationContext {
         pluginManagement.syncCatalog(manifestIndex);
       },
     });
-
-    this.runtime = runtime;
   }
 
   async disposeRuntime(): Promise<void> {
@@ -210,12 +220,19 @@ export class TooldeckApplicationContext {
   }
 
   private async disposeResources(): Promise<void> {
-    const failures: unknown[] = [];
+    const cleanupFailures: CapturedApplicationCleanupFailure[] = [];
 
     try {
       await this.disposeRuntime();
     } catch (error) {
-      failures.push(error);
+      cleanupFailures.push(
+        captureApplicationCleanupFailure({
+          phase: "cleanup",
+          step: "runtime.dispose",
+          context: {},
+          error,
+        }),
+      );
     }
 
     const database = this.database;
@@ -229,19 +246,18 @@ export class TooldeckApplicationContext {
     try {
       database?.close();
     } catch (error) {
-      failures.push(error);
-    }
-
-    if (failures.length === 1) {
-      throw failures[0];
-    }
-
-    if (failures.length > 1) {
-      throw combinePrimaryAndCleanupErrors(
-        failures[0],
-        failures.slice(1),
-        "Application resource cleanup failed.",
+      cleanupFailures.push(
+        captureApplicationCleanupFailure({
+          phase: "cleanup",
+          step: "database.close",
+          context: {},
+          error,
+        }),
       );
+    }
+
+    if (cleanupFailures.length > 0) {
+      throw createApplicationCleanupError("Application resource cleanup failed.", cleanupFailures);
     }
   }
 }

@@ -2,8 +2,11 @@ import { existsSync } from "node:fs";
 import { readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { RuntimeError } from "@tooldeck/runtime-node";
 import { describe, expect, it, vi } from "vitest";
 
+import { ApplicationError } from "@/errors/application-error";
+import * as filesystem from "@/plugins/management/filesystem";
 import { PluginInstallRepository, PluginRepository, PluginStateRepository } from "@/storage";
 
 import {
@@ -172,6 +175,40 @@ describe("PluginManagementService catalog and install", () => {
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
 
+  it("preserves an unpack failure when removing its unidentified staging entry fails", async () => {
+    const harness = await createHarness();
+    const packagePath = path.join(harness.rootDir, "damaged-cleanup.tdplugin");
+
+    await writeFile(packagePath, new Uint8Array([0xde, 0xad, 0xbe, 0xef]));
+    vi.spyOn(filesystem, "removePath").mockRejectedValueOnce(
+      new Error("forced staging cleanup failure"),
+    );
+
+    const error = await harness.service.installPackage(packagePath).catch((caught) => caught);
+
+    expect(error).toMatchObject({
+      source: "application",
+      code: "ERR_UNKNOWN",
+      details: {
+        cleanupFailures: [
+          {
+            phase: "cleanup",
+            step: "pluginStaging.remove",
+            context: {
+              stagingEntry: expect.stringMatching(/^install-/),
+            },
+            error: {
+              source: "application",
+              code: "ERR_UNKNOWN",
+              message: "forced staging cleanup failure",
+            },
+          },
+        ],
+      },
+    });
+    expect(error.details.cleanupFailures[0].context).not.toHaveProperty("pluginId");
+  });
+
   it("rolls back installed files when the install record cannot be written", async () => {
     const harness = await createHarness();
     const packagePath = await createPluginPackage({
@@ -230,5 +267,74 @@ describe("PluginManagementService catalog and install", () => {
     expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
     await expect(harness.service.scanAndSyncCatalog()).resolves.toMatchObject({ plugins: [] });
+  });
+
+  it("attempts later rollback steps after an earlier compensation fails", async () => {
+    const harness = await createHarness();
+    const pluginId = "dev.example.rollback-attempt-all";
+    const packagePath = await createPluginPackage({
+      rootDir: harness.rootDir,
+      pluginId,
+      commandId: "rollback-attempt-all.run",
+    });
+    const originalSync = PluginRepository.prototype.syncScannedPlugins;
+    let syncCallCount = 0;
+
+    vi.spyOn(PluginRepository.prototype, "syncScannedPlugins").mockImplementation(
+      function (this: PluginRepository, options) {
+        syncCallCount += 1;
+
+        if (syncCallCount === 2) {
+          throw new RuntimeError({
+            code: "ERR_NOT_FOUND",
+            message: "forced known final rescan failure",
+          });
+        }
+
+        return originalSync.call(this, options);
+      },
+    );
+    vi.spyOn(PluginInstallRepository.prototype, "delete").mockImplementationOnce(() => {
+      throw new ApplicationError({
+        source: "application",
+        code: "ERR_INVALID_ARGUMENT",
+        message: "forced install-record rollback failure",
+      });
+    });
+    vi.spyOn(filesystem, "removePath").mockRejectedValueOnce(
+      new Error("forced plugin-directory rollback failure"),
+    );
+
+    await expect(harness.service.installPackage(packagePath)).rejects.toMatchObject({
+      source: "runtime",
+      code: "ERR_NOT_FOUND",
+      message: "forced known final rescan failure",
+      details: {
+        cleanupFailures: [
+          {
+            phase: "rollback",
+            step: "pluginInstall.delete",
+            context: { pluginId },
+            error: {
+              source: "application",
+              code: "ERR_INVALID_ARGUMENT",
+              message: "forced install-record rollback failure",
+            },
+          },
+          {
+            phase: "rollback",
+            step: "pluginDirectory.remove",
+            context: { pluginId },
+            error: {
+              source: "application",
+              code: "ERR_UNKNOWN",
+              message: "forced plugin-directory rollback failure",
+            },
+          },
+        ],
+      },
+    });
+    expect(syncCallCount).toBe(3);
+    expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(true);
   });
 });

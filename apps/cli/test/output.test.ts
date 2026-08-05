@@ -84,7 +84,21 @@ describe("CLI list output", () => {
       installDir: path.join("installed-plugins", "dev.example.echo"),
       filesMissing: false,
       cleanupPending: true,
-      cleanupError: "file is locked",
+      cleanupFailures: [
+        {
+          phase: "cleanup",
+          step: "pluginQuarantine.remove",
+          context: {
+            pluginId: "dev.example.echo",
+            stagingEntry: "uninstall-example",
+          },
+          error: {
+            source: "application",
+            code: "ERR_UNKNOWN",
+            message: "file is locked",
+          },
+        },
+      ],
     });
     const purged = formatPluginPurge({
       id: "dev.example.echo",
@@ -110,6 +124,55 @@ describe("CLI list output", () => {
 });
 
 describe("CLI command output", () => {
+  it("keeps a success exit status and structured diagnostics for retained cleanup", () => {
+    const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
+    const previousExitCode = process.exitCode;
+
+    process.exitCode = undefined;
+
+    try {
+      printPluginUninstall(
+        {
+          id: "dev.example.echo",
+          version: "0.1.0",
+          installDir: "C:/tooldeck/installed-plugins/dev.example.echo",
+          filesMissing: false,
+          cleanupPending: true,
+          cleanupFailures: [
+            {
+              phase: "cleanup",
+              step: "pluginQuarantine.remove",
+              context: {
+                pluginId: "dev.example.echo",
+                stagingEntry: "uninstall-example",
+              },
+              error: {
+                source: "application",
+                code: "ERR_UNKNOWN",
+                message: "file is locked",
+              },
+            },
+          ],
+        },
+        "json",
+      );
+
+      expect(process.exitCode).toBeUndefined();
+      expect(JSON.parse(String(log.mock.calls[0]?.[0]))).toMatchObject({
+        cleanupPending: true,
+        cleanupFailures: [
+          {
+            step: "pluginQuarantine.remove",
+            error: { message: "file is locked" },
+          },
+        ],
+      });
+    } finally {
+      process.exitCode = previousExitCode;
+      log.mockRestore();
+    }
+  });
+
   it("prints install, uninstall, and purge summaries as JSON", () => {
     const log = vi.spyOn(consola, "log").mockImplementation(() => undefined);
 
@@ -135,6 +198,7 @@ describe("CLI command output", () => {
           version: "0.1.0",
           installDir: "C:/tooldeck/installed-plugins/dev.example.echo",
           filesMissing: false,
+          cleanupFailures: [],
           cleanupPending: false,
         },
         "json",

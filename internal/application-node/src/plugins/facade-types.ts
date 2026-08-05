@@ -3,6 +3,7 @@ import type { LocalizedString, PluginManifest } from "@tooldeck/protocol";
 import type { ApplicationPluginSourceKind } from "@/application/types";
 import type { ApplicationCommand } from "@/commands/types";
 import type { ApplicationPluginRuntimeState } from "@/commands/types";
+import type { ApplicationCleanupFailureDiagnostic } from "@/errors/application-cleanup";
 
 export interface ApplicationPlugin {
   id: string;
@@ -62,7 +63,7 @@ export interface ApplicationPluginInstallResult {
 }
 
 export interface ApplicationPluginUninstallResult {
-  cleanupError?: string;
+  cleanupFailures: ApplicationCleanupFailureDiagnostic[];
   cleanupPending: boolean;
   filesMissing: boolean;
   pluginId: string;

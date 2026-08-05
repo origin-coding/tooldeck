@@ -9,6 +9,7 @@ export interface CommandRunRecord {
   input?: JsonValue;
   output?: CommandResult;
   error?: JsonValue;
+  errorFormat?: "canonical" | "legacy";
   durationMs?: number;
   createdAt: number;
 }

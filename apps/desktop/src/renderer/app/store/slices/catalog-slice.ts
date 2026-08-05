@@ -19,6 +19,7 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
       ...current,
       isLoadingData: true,
       loadError: undefined,
+      pluginCleanupWarning: undefined,
     }));
 
     try {
@@ -168,6 +169,7 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
       ...current,
       isLoadingData: true,
       loadError: undefined,
+      pluginCleanupWarning: undefined,
     }));
 
     try {
@@ -185,6 +187,14 @@ export const createCatalogSlice: DesktopStoreSlice<CatalogSlice> = (set, get) =>
           preferences: current.preferences,
         }),
         pluginDataResidues: result.residues,
+        pluginCleanupWarning:
+          result.cleanupPending && result.cleanupFailures[0]
+            ? {
+                count: result.cleanupFailures.length,
+                step: result.cleanupFailures[0].step,
+                message: result.cleanupFailures[0].error.message,
+              }
+            : undefined,
       }));
     } catch (error) {
       set((current) => ({

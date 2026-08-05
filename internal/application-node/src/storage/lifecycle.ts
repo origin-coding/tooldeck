@@ -2,6 +2,11 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import {
+  captureApplicationCleanupFailure,
+  combinePrimaryAndCleanupFailures,
+  createApplicationCleanupError,
+} from "@/errors/application-cleanup";
+import {
   openTooldeckDatabase,
   type TooldeckDatabase,
   type TooldeckDatabaseOptions,
@@ -36,10 +41,17 @@ export async function withTooldeckDatabase<TResult>(
 
   if (!callbackOutcome.success) {
     if (!closeOutcome.success) {
-      throw new AggregateError(
-        [callbackOutcome.error, closeOutcome.error],
+      throw combinePrimaryAndCleanupFailures(
+        callbackOutcome.error,
+        [
+          captureApplicationCleanupFailure({
+            phase: "cleanup",
+            step: "database.close",
+            context: {},
+            error: closeOutcome.error,
+          }),
+        ],
         "Tooldeck database callback failed and the connection did not close cleanly.",
-        { cause: callbackOutcome.error },
       );
     }
 
@@ -47,7 +59,14 @@ export async function withTooldeckDatabase<TResult>(
   }
 
   if (!closeOutcome.success) {
-    throw closeOutcome.error;
+    throw createApplicationCleanupError("Tooldeck database connection did not close cleanly.", [
+      captureApplicationCleanupFailure({
+        phase: "cleanup",
+        step: "database.close",
+        context: {},
+        error: closeOutcome.error,
+      }),
+    ]);
   }
 
   return callbackOutcome.value;

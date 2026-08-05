@@ -1,3 +1,5 @@
+import type { ApplicationCleanupFailureDiagnostic } from "@tooldeck/application-node";
+
 import type { CatalogLocaleRequest, DesktopCommand } from "./commands";
 
 export type DesktopPluginSourceKind = "builtin" | "installed" | "external";
@@ -64,7 +66,7 @@ export type DesktopPluginInstallResult =
   | InstalledDesktopPluginRefreshFailedResult;
 
 export interface DesktopPluginUninstallResult {
-  cleanupError?: string;
+  cleanupFailures: ApplicationCleanupFailureDiagnostic[];
   cleanupPending: boolean;
   commands: DesktopCommand[];
   filesMissing: boolean;
