@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import type { ApplicationCleanupFailureDiagnostic } from "@tooldeck/application-node";
 import Table from "cli-table3";
 import pc from "picocolors";
 
@@ -27,7 +28,7 @@ export interface PluginInstallOutputRow extends PluginListOutputRow {
 }
 
 export interface PluginUninstallOutputRow {
-  cleanupError?: string;
+  cleanupFailures: ApplicationCleanupFailureDiagnostic[];
   cleanupPending: boolean;
   filesMissing: boolean;
   id: string;
@@ -106,10 +107,27 @@ export function formatPluginUninstall(plugin: PluginUninstallOutputRow): string 
   const details = plugin.filesMissing
     ? "Managed files were already missing; the stale install record was removed."
     : plugin.cleanupPending
-      ? `Plugin was logically uninstalled, but file cleanup is pending: ${plugin.cleanupError ?? "unknown cleanup error"}`
+      ? formatRetainedCleanupWarning(plugin.cleanupFailures)
       : "Managed files and the install record were removed.";
 
   return joinOutput(pc.green(`Uninstalled ${plugin.id}.`), details);
+}
+
+function formatRetainedCleanupWarning(
+  cleanupFailures: ApplicationCleanupFailureDiagnostic[],
+): string {
+  const firstFailure = cleanupFailures[0];
+
+  if (!firstFailure) {
+    return pc.yellow("Warning: plugin cleanup is pending, but no diagnostic was provided.");
+  }
+
+  const count = cleanupFailures.length;
+  const failureLabel = count === 1 ? "failure" : "failures";
+
+  return pc.yellow(
+    `Warning: plugin cleanup is pending (${count} ${failureLabel}); ${firstFailure.step}: ${firstFailure.error.message}`,
+  );
 }
 
 export function formatPluginPurge(plugin: PluginPurgeOutputRow): string {

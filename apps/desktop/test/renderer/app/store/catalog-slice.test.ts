@@ -147,6 +147,7 @@ describe("catalog slice plugin installation", () => {
 
     useDesktopStore.setState({ plugins: [plugin], selectedPluginId: plugin.id });
     vi.mocked(tooldeck.plugins.uninstall).mockResolvedValue({
+      cleanupFailures: [],
       cleanupPending: false,
       commands: [],
       filesMissing: false,
@@ -165,6 +166,43 @@ describe("catalog slice plugin installation", () => {
       plugins: [],
       pluginDataResidues: [{ pluginId: plugin.id, statePresent: true, kvEntries: 2 }],
       selectedPluginId: undefined,
+    });
+  });
+
+  it("surfaces a warning after logically successful uninstall retains cleanup", async () => {
+    const plugin = createPlugin("dev.example.retained-cleanup");
+
+    useDesktopStore.setState({ plugins: [plugin], selectedPluginId: plugin.id });
+    vi.mocked(tooldeck.plugins.uninstall).mockResolvedValue({
+      cleanupPending: true,
+      cleanupFailures: [
+        {
+          phase: "cleanup",
+          step: "pluginQuarantine.remove",
+          context: { pluginId: plugin.id, stagingEntry: "uninstall-example" },
+          error: {
+            source: "application",
+            code: "ERR_UNKNOWN",
+            message: "file is locked",
+          },
+        },
+      ],
+      commands: [],
+      filesMissing: false,
+      pluginId: plugin.id,
+      plugins: [],
+      residues: [],
+    });
+
+    await useDesktopStore.getState().uninstallPlugin(plugin.id);
+
+    expect(useDesktopStore.getState()).toMatchObject({
+      loadError: undefined,
+      pluginCleanupWarning: {
+        count: 1,
+        step: "pluginQuarantine.remove",
+        message: "file is locked",
+      },
     });
   });
 

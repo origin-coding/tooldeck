@@ -29,7 +29,21 @@ describe("PluginManagementService recovery and safety", () => {
     const stagingEntries = await readdir(path.join(harness.installedPluginsDir, ".staging"));
 
     expect(result).toMatchObject({
-      cleanupError: "forced quarantine cleanup failure",
+      cleanupFailures: [
+        {
+          phase: "cleanup",
+          step: "pluginQuarantine.remove",
+          context: {
+            pluginId,
+            stagingEntry: expect.stringMatching(/^uninstall-/),
+          },
+          error: {
+            source: "application",
+            code: "ERR_UNKNOWN",
+            message: "forced quarantine cleanup failure",
+          },
+        },
+      ],
       cleanupPending: true,
       filesMissing: false,
       pluginId,
@@ -39,6 +53,11 @@ describe("PluginManagementService recovery and safety", () => {
     expect((await harness.service.scanAndSyncCatalog()).plugins).toEqual([]);
     expect(stagingEntries).toHaveLength(1);
     expect(stagingEntries[0]).toMatch(/^uninstall-/);
+
+    harness.service.purge(pluginId);
+    expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual(
+      stagingEntries,
+    );
   });
 
   it("repairs an install record when the managed directory is already missing", async () => {
@@ -100,13 +119,107 @@ describe("PluginManagementService recovery and safety", () => {
 
     await rm(externalDir, { recursive: true, force: true });
 
-    await expect(harness.service.uninstall(pluginId)).rejects.toThrow(
-      "Plugin uninstall failed and rollback did not complete",
-    );
+    await expect(harness.service.uninstall(pluginId)).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_UNKNOWN",
+      message: expect.stringContaining("External plugin directory does not exist"),
+      details: {
+        cleanupFailures: [
+          {
+            phase: "rollback",
+            step: "pluginCatalog.restore",
+            context: { pluginId },
+            error: {
+              source: "application",
+              code: "ERR_UNKNOWN",
+              message: expect.stringContaining("External plugin directory does not exist"),
+            },
+          },
+        ],
+      },
+    });
     expect(existsSync(installed.install.installDir)).toBe(true);
     expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toEqual(
       installed.install,
     );
+  });
+
+  it("records failed directory and install restoration before catalog reconciliation", async () => {
+    const rootDir = createTempDir();
+    const externalDir = path.join(rootDir, "external-plugins");
+
+    await mkdir(externalDir, { recursive: true });
+    const harness = await createHarness({ rootDir, externalDir });
+    const pluginId = "dev.example.rollback-attempt-all";
+    const packagePath = await createPluginPackage({
+      rootDir,
+      pluginId,
+      commandId: "rollback-attempt-all.run",
+    });
+
+    await harness.service.installPackage(packagePath);
+    await rm(externalDir, { recursive: true, force: true });
+
+    const originalMovePath = filesystem.movePath;
+    let moveCallCount = 0;
+
+    vi.spyOn(filesystem, "movePath").mockImplementation(async (sourcePath, destinationPath) => {
+      moveCallCount += 1;
+
+      if (moveCallCount === 2) {
+        throw new Error("forced directory restore failure");
+      }
+
+      await originalMovePath(sourcePath, destinationPath);
+    });
+    vi.spyOn(PluginInstallRepository.prototype, "create").mockImplementationOnce(() => {
+      throw new Error("forced install restore failure");
+    });
+
+    await expect(harness.service.uninstall(pluginId)).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_UNKNOWN",
+      message: expect.stringContaining("External plugin directory does not exist"),
+      details: {
+        cleanupFailures: [
+          {
+            phase: "rollback",
+            step: "pluginDirectory.restore",
+            context: {
+              pluginId,
+              stagingEntry: expect.stringMatching(/^uninstall-/),
+            },
+            error: {
+              source: "application",
+              code: "ERR_UNKNOWN",
+              message: "forced directory restore failure",
+            },
+          },
+          {
+            phase: "rollback",
+            step: "pluginInstall.restore",
+            context: { pluginId },
+            error: {
+              source: "application",
+              code: "ERR_UNKNOWN",
+              message: "forced install restore failure",
+            },
+          },
+          {
+            phase: "rollback",
+            step: "pluginCatalog.restore",
+            context: { pluginId },
+            error: {
+              source: "application",
+              code: "ERR_UNKNOWN",
+              message: expect.stringContaining("External plugin directory does not exist"),
+            },
+          },
+        ],
+      },
+    });
+    expect(moveCallCount).toBe(2);
+    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
   });
 
   it("rejects uninstall for plugins without managed install records", async () => {

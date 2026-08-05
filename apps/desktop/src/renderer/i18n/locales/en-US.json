@@ -88,6 +88,10 @@
     "purge": "Purge",
     "uninstallConfirmTitle": "Uninstall this plugin?",
     "uninstallConfirmDescription": "Remove {{pluginId}} from the managed plugin directory. Local state, plugin-scoped KV, and command history will be retained.",
+    "cleanupPending": {
+      "title": "Plugin cleanup is pending",
+      "description": "The plugin was logically uninstalled, but {{count}} cleanup failure(s) remain. {{step}}: {{message}}"
+    },
     "version": "Version",
     "source": "Source",
     "sourceKind": {

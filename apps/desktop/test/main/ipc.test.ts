@@ -60,6 +60,68 @@ describe("registerTooldeckIpc", () => {
     });
   });
 
+  it("returns retained cleanup as a successful IPC result with canonical diagnostics", async () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const uninstall = vi.fn().mockResolvedValue({
+      cleanupPending: true,
+      cleanupFailures: [
+        {
+          phase: "cleanup",
+          step: "pluginQuarantine.remove",
+          context: {
+            pluginId: "dev.example.plugin",
+            stagingEntry: "uninstall-example",
+          },
+          error: {
+            source: "application",
+            code: "ERR_UNKNOWN",
+            message: "file is locked",
+          },
+        },
+      ],
+      filesMissing: false,
+      pluginId: "dev.example.plugin",
+      install: {},
+      catalog: { commands: [], plugins: [] },
+      residues: [],
+    });
+
+    electron.handle.mockImplementation((channel, handler) => handlers.set(channel, handler));
+    registerTooldeckIpc({ plugins: { uninstall } } as unknown as TooldeckApplication);
+
+    await expect(
+      handlers.get("tooldeck:uninstall-plugin")?.(
+        {},
+        { pluginId: "dev.example.plugin", locale: "en-US" },
+      ),
+    ).resolves.toEqual({
+      ok: true,
+      value: {
+        cleanupPending: true,
+        cleanupFailures: [
+          {
+            phase: "cleanup",
+            step: "pluginQuarantine.remove",
+            context: {
+              pluginId: "dev.example.plugin",
+              stagingEntry: "uninstall-example",
+            },
+            error: {
+              source: "application",
+              code: "ERR_UNKNOWN",
+              message: "file is locked",
+            },
+          },
+        ],
+        commands: [],
+        filesMissing: false,
+        pluginId: "dev.example.plugin",
+        plugins: [],
+        residues: [],
+      },
+    });
+  });
+
   it("serializes application failures instead of throwing raw errors across IPC", async () => {
     const handlers = new Map<string, (...args: unknown[]) => unknown>();
 

@@ -40,6 +40,7 @@ describe("PluginManagementService uninstall and purge", () => {
 
     expect(result.filesMissing).toBe(false);
     expect(result.cleanupPending).toBe(false);
+    expect(result.cleanupFailures).toEqual([]);
     expect(existsSync(installed.install.installDir)).toBe(false);
     expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
     expect(catalog.plugins.find((plugin) => plugin.id === pluginId)).toBeUndefined();

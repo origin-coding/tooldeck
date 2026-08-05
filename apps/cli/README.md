@@ -90,6 +90,9 @@ and plugin-scoped KV while preserving command history.
 If uninstall reports that cleanup is pending, the plugin is already logically
 uninstalled but a quarantined directory could not be removed. The diagnostic includes
 the cleanup failure instead of restoring a partially removed plugin as active.
+Text output presents this outcome as a warning while retaining a success exit status. JSON output
+always includes `cleanupPending` and a `cleanupFailures` array; each diagnostic records its
+`phase`, closed `step`, JSON-safe `context`, and nested error snapshot.
 
 ## Plugin Sources
 

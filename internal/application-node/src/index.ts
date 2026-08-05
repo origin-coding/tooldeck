@@ -14,7 +14,14 @@ export type {
   RunApplicationCommandRequest,
 } from "@/commands/types";
 export * from "@/errors/application-error";
+export type {
+  ApplicationCleanupFailureDiagnostic,
+  ApplicationCleanupFailureErrorDiagnostic,
+  ApplicationCleanupStep,
+  ApplicationMappedRuntimeCleanupStep,
+} from "@/errors/application-cleanup";
 export * from "@/errors/application-error-transport";
+export * from "@/history/error-evidence";
 export type {
   ApplicationCommandRun,
   ApplicationHistoryFacade,

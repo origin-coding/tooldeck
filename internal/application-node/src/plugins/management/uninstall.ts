@@ -1,13 +1,17 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, rename } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
+import {
+  captureApplicationCleanupFailure,
+  type CapturedApplicationCleanupFailure,
+} from "@/errors/application-cleanup";
 import { ApplicationError } from "@/errors/application-error";
 import { scanAndSyncPluginCatalog } from "@/plugins/management/catalog";
-import { pathExists, removePath, tryLstat } from "@/plugins/management/filesystem";
+import { movePath, pathExists, removePath, tryLstat } from "@/plugins/management/filesystem";
 import type { PluginManagementContext } from "@/plugins/management/internal";
 import {
-  captureRollbackError,
+  captureOperationFailure,
   throwOperationFailure,
 } from "@/plugins/management/operation-rollback";
 import {
@@ -60,13 +64,14 @@ export async function uninstallPlugin(
     context.installedPluginsDir,
     `uninstall-${randomUUID()}`,
   );
+  const stagingEntry = path.basename(quarantineDir);
   const filesMissing = !installStat;
   let movedToQuarantine = false;
   let deletedInstall = false;
 
   try {
     if (!filesMissing) {
-      await rename(installDir, quarantineDir);
+      await movePath(installDir, quarantineDir);
       movedToQuarantine = true;
     }
 
@@ -84,48 +89,73 @@ export async function uninstallPlugin(
     deletedInstall = true;
     await scanAndSyncPluginCatalog(context);
   } catch (error) {
-    const rollbackErrors: string[] = [];
+    const cleanupFailures: CapturedApplicationCleanupFailure[] = [];
 
     if (movedToQuarantine && (await pathExists(quarantineDir))) {
-      await captureRollbackError(
-        () => rename(quarantineDir, installDir),
-        "restore installed plugin directory",
-        rollbackErrors,
+      await captureOperationFailure(
+        () => movePath(quarantineDir, installDir),
+        cleanupFailures,
+        (rollbackError) =>
+          captureApplicationCleanupFailure({
+            phase: "rollback",
+            step: "pluginDirectory.restore",
+            context: { pluginId, stagingEntry },
+            error: rollbackError,
+          }),
       );
     }
 
     if (deletedInstall && !context.installs.getById(pluginId)) {
-      await captureRollbackError(
+      await captureOperationFailure(
         () => context.installs.create(toCreatePluginInstallInput(install)),
-        "restore plugin install record",
-        rollbackErrors,
+        cleanupFailures,
+        (rollbackError) =>
+          captureApplicationCleanupFailure({
+            phase: "rollback",
+            step: "pluginInstall.restore",
+            context: { pluginId },
+            error: rollbackError,
+          }),
       );
     }
 
     if (movedToQuarantine || deletedInstall) {
-      await captureRollbackError(
+      await captureOperationFailure(
         () => scanAndSyncPluginCatalog(context),
-        "restore plugin catalog",
-        rollbackErrors,
+        cleanupFailures,
+        (rollbackError) =>
+          captureApplicationCleanupFailure({
+            phase: "rollback",
+            step: "pluginCatalog.restore",
+            context: { pluginId },
+            error: rollbackError,
+          }),
       );
     }
 
-    throwOperationFailure("Plugin uninstall", error, rollbackErrors);
+    throwOperationFailure("Plugin uninstall", error, cleanupFailures);
   }
 
-  let cleanupError: string | undefined;
+  const cleanupFailures: CapturedApplicationCleanupFailure[] = [];
 
   if (movedToQuarantine) {
     try {
       await removePath(quarantineDir);
     } catch (error) {
-      cleanupError = formatUnknownError(error);
+      cleanupFailures.push(
+        captureApplicationCleanupFailure({
+          phase: "cleanup",
+          step: "pluginQuarantine.remove",
+          context: { pluginId, stagingEntry },
+          error,
+        }),
+      );
     }
   }
 
   return {
-    ...(cleanupError ? { cleanupError } : {}),
-    cleanupPending: cleanupError !== undefined,
+    cleanupFailures: cleanupFailures.map((failure) => failure.diagnostic),
+    cleanupPending: cleanupFailures.length > 0,
     filesMissing,
     install,
     pluginId,
@@ -144,8 +174,4 @@ function toCreatePluginInstallInput(install: PluginInstallRow): CreatePluginInst
     installedAt: install.installedAt,
     updatedAt: install.updatedAt,
   };
-}
-
-function formatUnknownError(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

@@ -1,5 +1,14 @@
 import type { JsonObject } from "@tooldeck/protocol";
-import { isRuntimeError } from "@tooldeck/runtime-node";
+import {
+  isRuntimeError,
+  type RuntimeCleanupFailureDiagnostic,
+  type RuntimeErrorDetails,
+} from "@tooldeck/runtime-node";
+
+import type {
+  ApplicationCleanupFailureDiagnostic,
+  ApplicationCleanupFailureErrorDiagnostic,
+} from "@/errors/application-cleanup";
 
 export type ApplicationErrorSource = "application" | "runtime";
 
@@ -22,8 +31,12 @@ export interface ApplicationErrorOptions {
   code: ApplicationErrorCode;
   message: string;
   cause?: unknown;
-  details?: JsonObject;
+  details?: ApplicationErrorDetails;
 }
+
+export type ApplicationErrorDetails = JsonObject & {
+  cleanupFailures?: ApplicationCleanupFailureDiagnostic[];
+};
 
 const applicationErrorCodes = new Set<ApplicationErrorCode>([
   "ERR_UNKNOWN",
@@ -46,7 +59,7 @@ export class ApplicationError extends Error {
   readonly _tag = "ApplicationError";
   readonly source: ApplicationErrorSource;
   readonly code: ApplicationErrorCode;
-  readonly details?: JsonObject;
+  readonly details?: ApplicationErrorDetails;
 
   constructor(options: ApplicationErrorOptions) {
     super(options.message, { cause: options.cause });
@@ -118,6 +131,62 @@ export function fromRuntimeError(error: unknown): ApplicationError {
     code: error.code,
     message: error.message,
     cause: error,
-    details: error.details,
+    details: mapRuntimeErrorDetails(error.details),
   });
+}
+
+function mapRuntimeErrorDetails(
+  details: RuntimeErrorDetails | undefined,
+): ApplicationErrorDetails | undefined {
+  if (!details) {
+    return undefined;
+  }
+
+  return {
+    ...details,
+    ...(details.cleanupFailures
+      ? { cleanupFailures: details.cleanupFailures.map(mapRuntimeCleanupFailureDiagnostic) }
+      : {}),
+  };
+}
+
+function mapRuntimeCleanupFailureDiagnostic(
+  diagnostic: RuntimeCleanupFailureDiagnostic,
+): ApplicationCleanupFailureDiagnostic {
+  const error = mapRuntimeCleanupFailureErrorDiagnostic(diagnostic.error);
+
+  switch (diagnostic.step) {
+    case "subscription.dispose":
+      return { ...diagnostic, context: { pluginId: diagnostic.context.pluginId }, error };
+    case "subscriptions.dispose":
+      return { ...diagnostic, context: { pluginId: diagnostic.context.pluginId }, error };
+    case "plugin.deactivate":
+      return { ...diagnostic, context: { pluginId: diagnostic.context.pluginId }, error };
+    case "plugin.dispose":
+      return { ...diagnostic, context: { pluginId: diagnostic.context.pluginId }, error };
+    case "host.dispose":
+      return { ...diagnostic, context: { runtimeKind: diagnostic.context.runtimeKind }, error };
+  }
+}
+
+function mapRuntimeCleanupFailureErrorDiagnostic(
+  diagnostic: RuntimeCleanupFailureDiagnostic["error"],
+): ApplicationCleanupFailureErrorDiagnostic {
+  return {
+    source: "runtime",
+    code: diagnostic.code,
+    message: diagnostic.message,
+    ...(diagnostic.details ? { details: mapNestedRuntimeCleanupDetails(diagnostic.details) } : {}),
+  };
+}
+
+function mapNestedRuntimeCleanupDetails(details: JsonObject): JsonObject {
+  const runtimeDetails = details as RuntimeErrorDetails;
+
+  return {
+    ...details,
+    ...(runtimeDetails.cleanupFailures
+      ? { cleanupFailures: runtimeDetails.cleanupFailures.map(mapRuntimeCleanupFailureDiagnostic) }
+      : {}),
+  };
 }

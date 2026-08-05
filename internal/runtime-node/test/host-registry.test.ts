@@ -151,16 +151,26 @@ describe("PluginHostRegistry", () => {
       code: "ERR_PLUGIN_LOAD_FAILED",
       message: "Failed to dispose all registered plugin hosts",
       details: {
-        errors: [
+        cleanupFailures: [
           {
-            runtimeKind: "test",
-            code: "ERR_UNKNOWN",
-            message: "test cleanup failed",
+            phase: "cleanup",
+            step: "host.dispose",
+            context: { runtimeKind: "test" },
+            error: {
+              source: "runtime",
+              code: "ERR_UNKNOWN",
+              message: "test cleanup failed",
+            },
           },
           {
-            runtimeKind: "node",
-            code: "ERR_INVALID_ARGUMENT",
-            message: "node cleanup failed",
+            phase: "cleanup",
+            step: "host.dispose",
+            context: { runtimeKind: "node" },
+            error: {
+              source: "runtime",
+              code: "ERR_INVALID_ARGUMENT",
+              message: "node cleanup failed",
+            },
           },
         ],
       },

@@ -251,10 +251,16 @@ describe("CLI command catalog", () => {
       code: "ERR_UNKNOWN",
       message: "command failed at source",
       details: expect.objectContaining({
-        cleanupFailure: expect.objectContaining({
-          source: "runtime",
-          code: "ERR_PLUGIN_LOAD_FAILED",
-        }),
+        cleanupFailures: [
+          expect.objectContaining({
+            phase: "cleanup",
+            step: "application.dispose",
+            error: expect.objectContaining({
+              source: "application",
+              code: "ERR_UNKNOWN",
+            }),
+          }),
+        ],
       }),
       cause: expect.any(AggregateError),
     });
@@ -265,5 +271,96 @@ describe("CLI command catalog", () => {
         errorJson: expect.stringContaining("command failed at source"),
       }),
     ]);
+    expect(readCommandRuns(storagePath)[0]?.errorJson).not.toContain("cleanupFailures");
+  });
+
+  it("persists canonical activation cleanup diagnostics observed at the command boundary", async () => {
+    const pluginRoot = path.join(createTempDir(), "activation-cleanup-failure");
+    const storagePath = createDatabasePath();
+
+    await mkdir(pluginRoot, { recursive: true });
+    await writeFile(
+      path.join(pluginRoot, "manifest.json"),
+      JSON.stringify({
+        schemaVersion: "1.0",
+        id: "dev.tooldeck.activation-cleanup-failure",
+        name: "Activation Cleanup Failure",
+        version: "0.0.0",
+        runtime: { kind: "node", entry: "./index.mjs" },
+        contributes: {
+          commands: [{ id: "activation-cleanup.fail", title: "Fail during activation" }],
+        },
+      }),
+      "utf8",
+    );
+    await writeFile(
+      path.join(pluginRoot, "index.mjs"),
+      `
+        export default {
+          activate(ctx) {
+            ctx.subscriptions.push({
+              dispose() {
+                throw new Error("activation subscription cleanup failed");
+              },
+            });
+            throw new Error("activation failed at source");
+          },
+        };
+      `,
+      "utf8",
+    );
+
+    await expect(
+      runCliCommandWithStorage({
+        commandId: "activation-cleanup.fail",
+        pluginSources: [{ kind: "external", path: pluginRoot }],
+        storagePath,
+      }),
+    ).rejects.toMatchObject({
+      source: "runtime",
+      code: "ERR_PLUGIN_LOAD_FAILED",
+      details: {
+        cleanupFailures: [
+          {
+            step: "subscriptions.dispose",
+            error: {
+              details: {
+                cleanupFailures: [{ step: "subscription.dispose" }],
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    const [run] = readCommandRuns(storagePath);
+    const historyError = JSON.parse(run?.errorJson ?? "null");
+
+    expect(historyError).toMatchObject({
+      tag: "ApplicationError",
+      source: "runtime",
+      code: "ERR_PLUGIN_LOAD_FAILED",
+      details: {
+        cleanupFailures: [
+          {
+            phase: "cleanup",
+            step: "subscriptions.dispose",
+            context: { pluginId: "dev.tooldeck.activation-cleanup-failure" },
+            error: {
+              source: "runtime",
+              details: {
+                cleanupFailures: [
+                  {
+                    step: "subscription.dispose",
+                    error: { message: "activation subscription cleanup failed" },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+    });
+    expect(run?.errorJson).not.toMatch(/"(?:stack|cause|errors)"/);
   });
 });

@@ -92,6 +92,7 @@ function PluginWorkbenchContainer() {
     selectedPluginId,
     isLoadingData,
     pluginInstall,
+    pluginCleanupWarning,
     pluginDataResidues,
     installDroppedPluginPackage,
     rescanPlugins,
@@ -107,6 +108,7 @@ function PluginWorkbenchContainer() {
       selectedPluginId: state.selectedPluginId,
       isLoadingData: state.isLoadingData,
       pluginInstall: state.pluginInstall,
+      pluginCleanupWarning: state.pluginCleanupWarning,
       pluginDataResidues: state.pluginDataResidues,
       installDroppedPluginPackage: state.installDroppedPluginPackage,
       rescanPlugins: state.rescanPlugins,
@@ -136,6 +138,7 @@ function PluginWorkbenchContainer() {
       plugin={selectedPlugin}
       commands={selectedPluginCommands}
       installState={pluginInstall}
+      cleanupWarning={pluginCleanupWarning}
       pluginDataResidues={pluginDataResidues}
       isLoading={isLoadingData}
       onInstall={installDroppedPluginPackage}

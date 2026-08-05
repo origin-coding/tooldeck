@@ -130,7 +130,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
       await this.context.rebuildRuntime();
 
       return {
-        ...(uninstalled.cleanupError ? { cleanupError: uninstalled.cleanupError } : {}),
+        cleanupFailures: uninstalled.cleanupFailures,
         cleanupPending: uninstalled.cleanupPending,
         filesMissing: uninstalled.filesMissing,
         pluginId: uninstalled.pluginId,

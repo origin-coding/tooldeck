@@ -245,6 +245,47 @@ describe("storage migrations and lifecycle", () => {
     }
   });
 
+  it("preserves database initialization and partial-close failures", () => {
+    const databasePath = createDatabasePath();
+    const malformed = new DatabaseSync(databasePath);
+
+    malformed.exec("create table schema_migrations (unexpected text not null);");
+    malformed.close();
+
+    const originalClose = DatabaseSync.prototype.close;
+    const close = vi
+      .spyOn(DatabaseSync.prototype, "close")
+      .mockImplementation(function (this: DatabaseSync) {
+        originalClose.call(this);
+        throw new Error("forced partial connection close failure");
+      });
+
+    try {
+      expect(() => openTooldeckDatabase({ path: databasePath })).toThrowError(
+        expect.objectContaining({
+          source: "application",
+          code: "ERR_UNKNOWN",
+          details: {
+            cleanupFailures: [
+              {
+                phase: "cleanup",
+                step: "database.close",
+                context: {},
+                error: {
+                  source: "application",
+                  code: "ERR_UNKNOWN",
+                  message: "forced partial connection close failure",
+                },
+              },
+            ],
+          },
+        }),
+      );
+    } finally {
+      close.mockRestore();
+    }
+  });
+
   it("preserves callback and close failures", async () => {
     const callbackError = new Error("callback failed");
     const closeError = new Error("close failed");
@@ -260,9 +301,27 @@ describe("storage migrations and lifecycle", () => {
         throw callbackError;
       }),
     ).rejects.toMatchObject({
-      message: "Tooldeck database callback failed and the connection did not close cleanly.",
-      cause: callbackError,
-      errors: [callbackError, closeError],
+      source: "application",
+      code: "ERR_UNKNOWN",
+      message: "callback failed",
+      details: {
+        cleanupFailures: [
+          {
+            phase: "cleanup",
+            step: "database.close",
+            context: {},
+            error: {
+              source: "application",
+              code: "ERR_UNKNOWN",
+              message: "close failed",
+            },
+          },
+        ],
+      },
+      cause: {
+        message: "Tooldeck database callback failed and the connection did not close cleanly.",
+        cause: expect.objectContaining({ message: "callback failed", cause: callbackError }),
+      },
     });
   });
 

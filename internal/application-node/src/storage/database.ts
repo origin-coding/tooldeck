@@ -2,6 +2,10 @@ import { DatabaseSync } from "node:sqlite";
 
 import { drizzle } from "drizzle-orm/node-sqlite";
 
+import {
+  captureApplicationCleanupFailure,
+  combinePrimaryAndCleanupFailures,
+} from "@/errors/application-cleanup";
 import { runMigrations } from "@/storage/migrations";
 import * as schema from "@/storage/schema";
 
@@ -45,10 +49,17 @@ export function openTooldeckDatabase(options: TooldeckDatabaseOptions): Tooldeck
     try {
       sqlite.close();
     } catch (closeError) {
-      throw new AggregateError(
-        [error, closeError],
+      throw combinePrimaryAndCleanupFailures(
+        error,
+        [
+          captureApplicationCleanupFailure({
+            phase: "cleanup",
+            step: "database.close",
+            context: {},
+            error: closeError,
+          }),
+        ],
         "Failed to open Tooldeck database and close the partial connection.",
-        { cause: error },
       );
     }
 

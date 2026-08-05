@@ -1,4 +1,4 @@
-import { lstat, rm } from "node:fs/promises";
+import { lstat, rename, rm } from "node:fs/promises";
 
 export async function tryLstat(filePath: string) {
   try {
@@ -18,6 +18,10 @@ export async function pathExists(filePath: string): Promise<boolean> {
 
 export async function removePath(filePath: string): Promise<void> {
   await rm(filePath, { recursive: true, force: true });
+}
+
+export async function movePath(sourcePath: string, destinationPath: string): Promise<void> {
+  await rename(sourcePath, destinationPath);
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

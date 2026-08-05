@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import type {
+  ApplicationCleanupFailureDiagnostic,
   ApplicationInstalledPlugin,
   ApplicationPlugin,
   ApplicationPluginSource,
@@ -56,7 +57,7 @@ export interface InstalledCliPlugin extends ListedCliPlugin {
 }
 
 export interface UninstalledCliPlugin {
-  cleanupError?: string;
+  cleanupFailures: ApplicationCleanupFailureDiagnostic[];
   cleanupPending: boolean;
   filesMissing: boolean;
   id: string;
@@ -103,7 +104,7 @@ export function uninstallCliPlugin(
     const uninstalled = await application.plugins.uninstall(options.pluginId);
 
     return {
-      ...(uninstalled.cleanupError ? { cleanupError: uninstalled.cleanupError } : {}),
+      cleanupFailures: uninstalled.cleanupFailures,
       cleanupPending: uninstalled.cleanupPending,
       filesMissing: uninstalled.filesMissing,
       id: uninstalled.pluginId,

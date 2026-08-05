@@ -1,8 +1,8 @@
-import { Button, Card, Divider, List, Popconfirm, Typography } from "antd";
+import { Alert, Button, Card, Divider, List, Popconfirm, Typography } from "antd";
 import { Power, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
-import type { PluginInstallState } from "@/renderer/app/types";
+import type { PluginCleanupWarning, PluginInstallState } from "@/renderer/app/types";
 import { EmptyCard } from "@/renderer/components/common/empty-card";
 import { EmptyState } from "@/renderer/components/common/empty-state";
 import { StatusBadge } from "@/renderer/components/common/status-badge";
@@ -14,6 +14,7 @@ export function PluginWorkbench({
   plugin,
   commands,
   installState,
+  cleanupWarning,
   pluginDataResidues,
   isLoading,
   onInstall,
@@ -26,6 +27,7 @@ export function PluginWorkbench({
   plugin?: DesktopPlugin;
   commands: DesktopCommand[];
   installState: PluginInstallState;
+  cleanupWarning?: PluginCleanupWarning;
   pluginDataResidues: DesktopPluginDataResidue[];
   isLoading: boolean;
   onInstall(file: File): void;
@@ -48,6 +50,19 @@ export function PluginWorkbench({
         onInstall={onInstall}
         onRescan={onRescan}
       />
+
+      {cleanupWarning ? (
+        <Alert
+          showIcon
+          type="warning"
+          title={t("plugin.cleanupPending.title")}
+          description={t("plugin.cleanupPending.description", {
+            count: cleanupWarning.count,
+            step: cleanupWarning.step,
+            message: cleanupWarning.message,
+          })}
+        />
+      ) : null}
 
       {pluginDataResidues.length > 0 ? (
         <Card title={t("plugin.retainedData.title")}>

@@ -25,6 +25,12 @@ export type PluginInstallState =
       message: string;
     };
 
+export interface PluginCleanupWarning {
+  count: number;
+  step: string;
+  message: string;
+}
+
 export interface AppState {
   commands: DesktopCommand[];
   plugins: DesktopPlugin[];
@@ -37,6 +43,7 @@ export interface AppState {
   result?: CommandResult;
   history: CommandRunRecord[];
   pluginInstall: PluginInstallState;
+  pluginCleanupWarning?: PluginCleanupWarning;
   isLoadingData: boolean;
   isRunning: boolean;
   loadError?: string;

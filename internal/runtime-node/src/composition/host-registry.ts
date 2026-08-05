@@ -1,7 +1,10 @@
-import type { JsonObject } from "@tooldeck/protocol";
-
 import type { PluginHost, PluginRuntimeKind } from "@/core/plugin-host";
-import { RuntimeError, toRuntimeError } from "@/errors/runtime-error";
+import {
+  captureRuntimeCleanupFailure,
+  createRuntimeCleanupError,
+  type CapturedRuntimeCleanupFailure,
+} from "@/errors/runtime-cleanup";
+import { RuntimeError } from "@/errors/runtime-error";
 
 export interface RequirePluginHostOptions {
   pluginId: string;
@@ -51,35 +54,27 @@ export class PluginHostRegistry<RuntimeKind extends string = PluginRuntimeKind> 
 
     this.hosts.clear();
 
-    const errors: JsonObject[] = [];
-    const causes: unknown[] = [];
+    const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
 
     for (const [runtimeKind, host] of registeredHosts) {
       try {
         await host.dispose();
       } catch (error) {
-        const runtimeError = toRuntimeError(error);
-
-        causes.push(error);
-        errors.push({
-          runtimeKind,
-          code: runtimeError.code,
-          message: runtimeError.message,
-        });
+        cleanupFailures.push(
+          captureRuntimeCleanupFailure({
+            step: "host.dispose",
+            context: { runtimeKind },
+            error,
+          }),
+        );
       }
     }
 
-    if (errors.length > 0) {
-      const message = "Failed to dispose all registered plugin hosts";
-
-      throw new RuntimeError({
-        code: "ERR_PLUGIN_LOAD_FAILED",
-        message,
-        cause: new AggregateError(causes, message),
-        details: {
-          errors,
-        },
-      });
+    if (cleanupFailures.length > 0) {
+      throw createRuntimeCleanupError(
+        "Failed to dispose all registered plugin hosts",
+        cleanupFailures,
+      );
     }
   }
 

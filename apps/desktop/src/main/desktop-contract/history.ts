@@ -12,6 +12,7 @@ export function toDesktopCommandRun(run: ApplicationCommandRun): CommandRunRecor
     ...(run.input === undefined ? {} : { input: run.input }),
     ...(run.output === undefined ? {} : { output: run.output }),
     ...(run.error === undefined ? {} : { error: run.error }),
+    ...(run.errorFormat === undefined ? {} : { errorFormat: run.errorFormat }),
     ...(run.durationMs === undefined ? {} : { durationMs: run.durationMs }),
     createdAt: run.createdAt,
   };

@@ -9,7 +9,13 @@ import type {
 } from "@tooldeck/sdk-node";
 
 import type { PluginHost, PluginHostActivateOptions } from "@/core/plugin-host";
-import { RuntimeError, toRuntimeError } from "@/errors/runtime-error";
+import {
+  captureRuntimeCleanupFailure,
+  combineRuntimePrimaryAndCleanupFailures,
+  createRuntimeCleanupError,
+  type CapturedRuntimeCleanupFailure,
+} from "@/errors/runtime-cleanup";
+import { RuntimeError } from "@/errors/runtime-error";
 
 export interface NodePluginHostOptions {
   commandRegistry: CommandRegistry;
@@ -76,28 +82,30 @@ export class NodePluginHost implements PluginHost {
     try {
       await plugin.activate(context);
     } catch (error) {
-      let cleanupFailed = false;
-      let cleanupError: unknown;
-
-      try {
-        await this.disposeSubscriptions(context);
-      } catch (subscriptionError) {
-        cleanupFailed = true;
-        cleanupError = subscriptionError;
-      }
-
-      throw new RuntimeError({
+      const primaryError = new RuntimeError({
         code: "ERR_PLUGIN_LOAD_FAILED",
         message: `Failed to activate plugin: ${options.pluginId}`,
         cause: error,
-        ...(!cleanupFailed
-          ? {}
-          : {
-              details: {
-                cleanupError: toRuntimeError(cleanupError).message,
-              },
-            }),
       });
+      const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
+
+      try {
+        await this.disposeSubscriptions(context);
+      } catch (cleanupError) {
+        cleanupFailures.push(
+          captureRuntimeCleanupFailure({
+            step: "subscriptions.dispose",
+            context: { pluginId: options.pluginId },
+            error: cleanupError,
+          }),
+        );
+      }
+
+      throw combineRuntimePrimaryAndCleanupFailures(
+        primaryError,
+        cleanupFailures,
+        `Plugin activation and cleanup failed: ${options.pluginId}`,
+      );
     }
 
     this.activePlugins.set(options.pluginId, {
@@ -117,30 +125,36 @@ export class NodePluginHost implements PluginHost {
 
     this.activePlugins.delete(pluginId);
 
-    const errors: unknown[] = [];
+    const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
 
     try {
       await activePlugin.plugin.deactivate?.(activePlugin.context);
     } catch (error) {
-      errors.push(error);
+      cleanupFailures.push(
+        captureRuntimeCleanupFailure({
+          step: "plugin.deactivate",
+          context: { pluginId },
+          error,
+        }),
+      );
     }
 
     try {
       await this.disposeSubscriptions(activePlugin.context);
     } catch (error) {
-      errors.push(error);
+      cleanupFailures.push(
+        captureRuntimeCleanupFailure({
+          step: "subscriptions.dispose",
+          context: { pluginId },
+          error,
+        }),
+      );
     }
 
     activePlugin.context.subscriptions.length = 0;
 
-    if (errors.length > 0) {
-      throw new RuntimeError({
-        code: "ERR_PLUGIN_LOAD_FAILED",
-        message: `Failed to deactivate plugin: ${pluginId}`,
-        details: {
-          errors: errors.map((error) => toRuntimeError(error).message),
-        },
-      });
+    if (cleanupFailures.length > 0) {
+      throw createRuntimeCleanupError(`Failed to deactivate plugin: ${pluginId}`, cleanupFailures);
     }
   }
 
@@ -150,30 +164,24 @@ export class NodePluginHost implements PluginHost {
 
   async disposeAll(): Promise<void> {
     const pluginIds = [...this.activePlugins.keys()].toReversed();
-    const errors: { pluginId: string; code: string; message: string }[] = [];
+    const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
 
     for (const pluginId of pluginIds) {
       try {
         await this.deactivatePlugin(pluginId);
       } catch (error) {
-        const runtimeError = toRuntimeError(error);
-
-        errors.push({
-          pluginId,
-          code: runtimeError.code,
-          message: runtimeError.message,
-        });
+        cleanupFailures.push(
+          captureRuntimeCleanupFailure({
+            step: "plugin.dispose",
+            context: { pluginId },
+            error,
+          }),
+        );
       }
     }
 
-    if (errors.length > 0) {
-      throw new RuntimeError({
-        code: "ERR_PLUGIN_LOAD_FAILED",
-        message: "Failed to dispose all active plugins",
-        details: {
-          errors,
-        },
-      });
+    if (cleanupFailures.length > 0) {
+      throw createRuntimeCleanupError("Failed to dispose all active plugins", cleanupFailures);
     }
   }
 
@@ -221,24 +229,27 @@ export class NodePluginHost implements PluginHost {
 
   private async disposeSubscriptions(context: PluginContextV1): Promise<void> {
     const subscriptions = context.subscriptions.splice(0).toReversed();
-    const errors: unknown[] = [];
+    const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
 
     for (const subscription of subscriptions) {
       try {
         await subscription.dispose();
       } catch (error) {
-        errors.push(error);
+        cleanupFailures.push(
+          captureRuntimeCleanupFailure({
+            step: "subscription.dispose",
+            context: { pluginId: context.pluginId },
+            error,
+          }),
+        );
       }
     }
 
-    if (errors.length > 0) {
-      throw new RuntimeError({
-        code: "ERR_PLUGIN_LOAD_FAILED",
-        message: `Failed to dispose ${errors.length} plugin subscription(s): ${context.pluginId}`,
-        details: {
-          errors: errors.map((error) => toRuntimeError(error).message),
-        },
-      });
+    if (cleanupFailures.length > 0) {
+      throw createRuntimeCleanupError(
+        `Failed to dispose ${cleanupFailures.length} plugin subscription(s): ${context.pluginId}`,
+        cleanupFailures,
+      );
     }
   }
 }

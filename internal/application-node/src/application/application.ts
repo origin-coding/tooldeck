@@ -4,8 +4,11 @@ import { runApplicationOperation } from "@/application/edge";
 import type { CreateTooldeckApplicationOptions } from "@/application/types";
 import { ApplicationCommands } from "@/commands/application-commands";
 import type { ApplicationCommandFacade } from "@/commands/types";
+import {
+  captureApplicationCleanupFailure,
+  combinePrimaryAndCleanupFailures,
+} from "@/errors/application-cleanup";
 import { toApplicationError } from "@/errors/application-error";
-import { combinePrimaryAndCleanupErrors } from "@/errors/application-error-composition";
 import { ApplicationHistory } from "@/history/application-history";
 import type { ApplicationHistoryFacade } from "@/history/types";
 import type { TooldeckPaths } from "@/paths";
@@ -90,9 +93,16 @@ export async function withTooldeckApplication<TResult>(
 
   if (!callbackOutcome.success) {
     if (!disposeOutcome.success) {
-      throw combinePrimaryAndCleanupErrors(
+      throw combinePrimaryAndCleanupFailures(
         callbackOutcome.error,
-        [disposeOutcome.error],
+        [
+          captureApplicationCleanupFailure({
+            phase: "cleanup",
+            step: "application.dispose",
+            context: {},
+            error: disposeOutcome.error,
+          }),
+        ],
         "Tooldeck application operation failed and resources did not dispose cleanly.",
       );
     }

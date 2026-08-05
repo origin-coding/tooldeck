@@ -2,9 +2,10 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 import { packTooldeckPlugin } from "@tooldeck/plugin-package";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   ApplicationError,
@@ -233,13 +234,87 @@ describe("Tooldeck application facade", () => {
       message: "Primary operation failed.",
       details: {
         operation: "test",
-        cleanupFailure: {
-          tag: "ApplicationError",
-          source: "runtime",
-          code: "ERR_PLUGIN_LOAD_FAILED",
-        },
+        cleanupFailures: [
+          {
+            phase: "cleanup",
+            step: "application.dispose",
+            context: {},
+            error: {
+              source: "application",
+              code: "ERR_UNKNOWN",
+              details: {
+                cleanupFailures: [
+                  {
+                    phase: "cleanup",
+                    step: "runtime.dispose",
+                    error: {
+                      source: "runtime",
+                      code: "ERR_PLUGIN_LOAD_FAILED",
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
       },
     });
+  });
+
+  it("preserves startup failure and nests partial-resource cleanup diagnostics", async () => {
+    const rootDir = createTempDir();
+    const paths = createPaths(rootDir);
+    const missingExternalDir = path.join(rootDir, "missing-external-plugins");
+    const originalClose = DatabaseSync.prototype.close;
+    const close = vi
+      .spyOn(DatabaseSync.prototype, "close")
+      .mockImplementation(function (this: DatabaseSync) {
+        originalClose.call(this);
+        throw new Error("forced startup database close failure");
+      });
+    const application = createTooldeckApplication({
+      paths,
+      pluginSources: [{ kind: "external", path: missingExternalDir }],
+    });
+
+    applications.push(application);
+
+    try {
+      await expect(application.start()).rejects.toMatchObject({
+        source: "application",
+        code: "ERR_UNKNOWN",
+        message: expect.stringContaining("External plugin directory does not exist"),
+        details: {
+          cleanupFailures: [
+            {
+              phase: "cleanup",
+              step: "applicationResources.dispose",
+              context: {},
+              error: {
+                source: "application",
+                code: "ERR_UNKNOWN",
+                details: {
+                  cleanupFailures: [
+                    {
+                      phase: "cleanup",
+                      step: "database.close",
+                      context: {},
+                      error: {
+                        source: "application",
+                        code: "ERR_UNKNOWN",
+                        message: "forced startup database close failure",
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+        },
+      });
+    } finally {
+      close.mockRestore();
+    }
   });
 });
 
