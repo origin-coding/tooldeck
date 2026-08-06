@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
 import { NodePluginHost, PluginHostRegistry, RuntimeCommandRegistry } from "@/index";
 
 import { fixturePath } from "./runtime-test-fixtures";
@@ -20,10 +21,12 @@ describe("Node host routing", () => {
       pluginId: "dev.example.runtime",
     });
 
-    await host.activatePlugin({
-      pluginId: "dev.example.runtime",
-      entryPath: fixturePath("runtime-plugin/index.mjs"),
-    });
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.runtime",
+        entryPath: fixturePath("runtime-plugin/index.mjs"),
+      }),
+    );
 
     await expect(
       commandRegistry.run({
@@ -43,7 +46,7 @@ describe("Node host routing", () => {
     });
     expect(module.calls).toEqual(["activate:dev.example.runtime"]);
 
-    await hostRegistry.disposeAll();
+    await runRuntimeEffectPromise(hostRegistry.disposeAll());
 
     expect(commandRegistry.has("factory.echo")).toBe(false);
     expect(module.calls).toEqual([

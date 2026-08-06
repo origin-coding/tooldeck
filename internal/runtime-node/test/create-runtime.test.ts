@@ -1,5 +1,7 @@
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
+import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
 import {
   createRuntime,
   NodePluginHost,
@@ -18,17 +20,19 @@ describe("createRuntime", () => {
     module.calls.length = 0;
 
     const afterScanCalls: Array<{ pluginCount: number; commandCount: number }> = [];
-    const runtime = await createRuntime({
-      pluginSources: [
-        {
-          kind: "builtin",
-          path: fixturePath("runtime-plugin"),
+    const runtime = await runRuntimeEffectPromise(
+      createRuntime({
+        pluginSources: [
+          {
+            kind: "builtin",
+            path: fixturePath("runtime-plugin"),
+          },
+        ],
+        afterScan({ pluginCount, commandCount }) {
+          afterScanCalls.push({ pluginCount, commandCount });
         },
-      ],
-      afterScan({ pluginCount, commandCount }) {
-        afterScanCalls.push({ pluginCount, commandCount });
-      },
-    });
+      }),
+    );
 
     expect(runtime.pluginCount).toBe(1);
     expect(runtime.commandCount).toBe(1);
@@ -68,7 +72,7 @@ describe("createRuntime", () => {
     expect(nodeHost.hasPlugin("dev.example.runtime")).toBe(true);
     expect(module.calls).toEqual(["activate:dev.example.runtime"]);
 
-    await runtime.dispose();
+    await runRuntimeEffectPromise(runtime.dispose());
 
     expect(nodeHost.hasPlugin("dev.example.runtime")).toBe(false);
     expect(runtime.hostRegistry.get("node")).toBeUndefined();
@@ -78,7 +82,7 @@ describe("createRuntime", () => {
       "dispose:dev.example.runtime",
     ]);
 
-    await expect(runtime.dispose()).resolves.toBeUndefined();
+    await expect(runRuntimeEffectPromise(runtime.dispose())).resolves.toBeUndefined();
   });
 
   it("constructs configured hosts with the runtime command registry", async () => {
@@ -90,36 +94,44 @@ describe("createRuntime", () => {
       hasPlugin(pluginId) {
         return activePluginIds.has(pluginId);
       },
-      async activatePlugin({ pluginId }) {
-        activations.push(pluginId);
-        activePluginIds.add(pluginId);
-        factoryCommandRegistry?.register("factory.echo", (input) => ({
-          status: "success",
-          blocks: [{ type: "text", text: String(input.text) }],
-        }));
+      activatePlugin({ pluginId }) {
+        return Effect.sync(() => {
+          activations.push(pluginId);
+          activePluginIds.add(pluginId);
+          factoryCommandRegistry?.register("factory.echo", (input) => ({
+            status: "success",
+            blocks: [{ type: "text", text: String(input.text) }],
+          }));
+        });
       },
-      async deactivatePlugin(pluginId) {
-        activePluginIds.delete(pluginId);
+      deactivatePlugin(pluginId) {
+        return Effect.sync(() => {
+          activePluginIds.delete(pluginId);
+        });
       },
-      async dispose() {
-        activePluginIds.clear();
+      dispose() {
+        return Effect.sync(() => {
+          activePluginIds.clear();
+        });
       },
     };
 
-    const runtime = await createRuntime({
-      pluginSources: [
-        {
-          kind: "builtin",
-          path: fixturePath("runtime-plugin"),
-        },
-      ],
-      hostFactories: [
-        ({ commandRegistry }) => {
-          factoryCommandRegistry = commandRegistry;
-          return customHost;
-        },
-      ],
-    });
+    const runtime = await runRuntimeEffectPromise(
+      createRuntime({
+        pluginSources: [
+          {
+            kind: "builtin",
+            path: fixturePath("runtime-plugin"),
+          },
+        ],
+        hostFactories: [
+          ({ commandRegistry }) => {
+            factoryCommandRegistry = commandRegistry;
+            return customHost;
+          },
+        ],
+      }),
+    );
 
     expect(factoryCommandRegistry).toBe(runtime.commandRegistry);
     expect(runtime.hostRegistry.get("node")).toBe(customHost);
@@ -141,6 +153,6 @@ describe("createRuntime", () => {
 
     expect(activations).toEqual(["dev.example.runtime"]);
 
-    await runtime.dispose();
+    await runRuntimeEffectPromise(runtime.dispose());
   });
 });

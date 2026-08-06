@@ -20,7 +20,8 @@
     "@tooldeck/plugin-package": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/runtime-node": "workspace:*",
-    "drizzle-orm": "1.0.0-rc.3"
+    "drizzle-orm": "1.0.0-rc.3",
+    "effect": "3.22.1"
   },
   "devDependencies": {
     "@types/node": "catalog:",

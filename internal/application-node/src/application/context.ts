@@ -8,6 +8,7 @@ import {
   identityCommandInputPreprocessor,
   type TooldeckApplicationAdapters,
 } from "@/application/adapters";
+import { runRuntimeEffect } from "@/application/edge";
 import type {
   ApplicationCommandInputCoercion,
   ApplicationPluginSource,
@@ -151,32 +152,36 @@ export class TooldeckApplicationContext {
 
     const pluginKv = this.requirePluginKv();
     const pluginManagement = this.requirePluginManagement();
-    this.runtime = await createRuntime({
-      pluginSources: this.pluginSources,
-      coercion: this.commandInputCoercion,
-      createPluginStorage(pluginId) {
-        return {
-          async get(key) {
-            return pluginKv.get(pluginId, key);
-          },
-          async set(key, value) {
-            pluginKv.set({ pluginId, key, value });
-          },
-          async delete(key) {
-            pluginKv.delete(pluginId, key);
-          },
-        };
-      },
-      afterScan({ manifestIndex }) {
-        pluginManagement.syncCatalog(manifestIndex);
-      },
-    });
+    this.runtime = await runRuntimeEffect(
+      createRuntime({
+        pluginSources: this.pluginSources,
+        coercion: this.commandInputCoercion,
+        createPluginStorage(pluginId) {
+          return {
+            async get(key) {
+              return pluginKv.get(pluginId, key);
+            },
+            async set(key, value) {
+              pluginKv.set({ pluginId, key, value });
+            },
+            async delete(key) {
+              pluginKv.delete(pluginId, key);
+            },
+          };
+        },
+        afterScan({ manifestIndex }) {
+          pluginManagement.syncCatalog(manifestIndex);
+        },
+      }),
+    );
   }
 
   async disposeRuntime(): Promise<void> {
     const runtime = this.runtime;
     this.runtime = undefined;
-    await runtime?.dispose();
+    if (runtime) {
+      await runRuntimeEffect(runtime.dispose());
+    }
   }
 
   requireRuntime(): CreatedRuntime {

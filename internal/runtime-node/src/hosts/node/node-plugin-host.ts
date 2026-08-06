@@ -7,15 +7,21 @@ import type {
   PluginStorage,
   ToolboxPluginV1,
 } from "@tooldeck/sdk-node";
+import { Cause, Effect, Exit, Option, Scope } from "effect";
 
 import type { PluginHost, PluginHostActivateOptions } from "@/core/plugin-host";
+import {
+  runtimeErrorFromCause,
+  tryRuntimePromise,
+  type RuntimeEffect,
+} from "@/effects/runtime-effect";
 import {
   captureRuntimeCleanupFailure,
   combineRuntimePrimaryAndCleanupFailures,
   createRuntimeCleanupError,
   type CapturedRuntimeCleanupFailure,
 } from "@/errors/runtime-cleanup";
-import { RuntimeError } from "@/errors/runtime-error";
+import { RuntimeError, toRuntimeError } from "@/errors/runtime-error";
 
 export interface NodePluginHostOptions {
   commandRegistry: CommandRegistry;
@@ -31,12 +37,17 @@ export interface ActiveNodePlugin {
   context: PluginContextV1;
 }
 
+interface ManagedActiveNodePlugin extends ActiveNodePlugin {
+  subscriptionScope: Scope.CloseableScope;
+  subscriptionCleanupFailures: CapturedRuntimeCleanupFailure[];
+}
+
 export class NodePluginHost implements PluginHost {
   readonly kind = "node";
 
   private readonly commandRegistry: CommandRegistry;
   private readonly createPluginStorage: (pluginId: string) => PluginStorage;
-  private readonly activePlugins = new Map<string, ActiveNodePlugin>();
+  private readonly activePlugins = new Map<string, ManagedActiveNodePlugin>();
 
   constructor(options: NodePluginHostOptions) {
     this.commandRegistry = options.commandRegistry;
@@ -55,159 +66,214 @@ export class NodePluginHost implements PluginHost {
     return [...this.activePlugins.values()];
   }
 
-  async activatePlugin(options: ActivateNodePluginOptions): Promise<void> {
-    if (this.activePlugins.has(options.pluginId)) {
-      throw new RuntimeError({
-        code: "ERR_ALREADY_EXISTS",
-        message: `Plugin is already active: ${options.pluginId}`,
-      });
-    }
+  activatePlugin(options: ActivateNodePluginOptions): RuntimeEffect<void> {
+    const activePlugins = this.activePlugins;
+    const commandRegistry = this.commandRegistry;
+    const createPluginStorage = this.createPluginStorage;
+    const loadPlugin = (entryPath: string) => this.loadPlugin(entryPath);
+    const disposeSubscriptions = (context: PluginContextV1) => this.disposeSubscriptions(context);
 
-    if (!path.isAbsolute(options.entryPath)) {
-      throw new RuntimeError({
-        code: "ERR_INVALID_ARGUMENT",
-        message: `Node plugin entryPath must be absolute: ${options.entryPath}`,
-      });
-    }
-
-    const plugin = await this.loadPlugin(options.entryPath);
-
-    const context: PluginContextV1 = {
-      pluginId: options.pluginId,
-      subscriptions: [],
-      commands: this.commandRegistry,
-      storage: this.createPluginStorage(options.pluginId),
-    };
-
-    try {
-      await plugin.activate(context);
-    } catch (error) {
-      const primaryError = new RuntimeError({
-        code: "ERR_PLUGIN_LOAD_FAILED",
-        message: `Failed to activate plugin: ${options.pluginId}`,
-        cause: error,
-      });
-      const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
-
-      try {
-        await this.disposeSubscriptions(context);
-      } catch (cleanupError) {
-        cleanupFailures.push(
-          captureRuntimeCleanupFailure({
-            step: "subscriptions.dispose",
-            context: { pluginId: options.pluginId },
-            error: cleanupError,
+    return Effect.gen(function* () {
+      if (activePlugins.has(options.pluginId)) {
+        return yield* Effect.fail(
+          new RuntimeError({
+            code: "ERR_ALREADY_EXISTS",
+            message: `Plugin is already active: ${options.pluginId}`,
           }),
         );
       }
 
-      throw combineRuntimePrimaryAndCleanupFailures(
-        primaryError,
-        cleanupFailures,
-        `Plugin activation and cleanup failed: ${options.pluginId}`,
-      );
-    }
+      if (!path.isAbsolute(options.entryPath)) {
+        return yield* Effect.fail(
+          new RuntimeError({
+            code: "ERR_INVALID_ARGUMENT",
+            message: `Node plugin entryPath must be absolute: ${options.entryPath}`,
+          }),
+        );
+      }
 
-    this.activePlugins.set(options.pluginId, {
-      pluginId: options.pluginId,
-      entryPath: options.entryPath,
-      plugin,
-      context,
+      const plugin = yield* loadPlugin(options.entryPath);
+      const context: PluginContextV1 = {
+        pluginId: options.pluginId,
+        subscriptions: [],
+        commands: commandRegistry,
+        storage: createPluginStorage(options.pluginId),
+      };
+      const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
+      const subscriptionScope = yield* Scope.make();
+
+      yield* Scope.addFinalizer(
+        subscriptionScope,
+        disposeSubscriptions(context).pipe(
+          Effect.catchAll((error) =>
+            Effect.sync(() => {
+              cleanupFailures.push(
+                captureRuntimeCleanupFailure({
+                  step: "subscriptions.dispose",
+                  context: { pluginId: options.pluginId },
+                  error,
+                }),
+              );
+            }),
+          ),
+        ),
+      );
+
+      const activationExit = yield* Effect.exit(
+        tryRuntimePromise({
+          try: async () => plugin.activate(context),
+          catch: (error) =>
+            new RuntimeError({
+              code: "ERR_PLUGIN_LOAD_FAILED",
+              message: `Failed to activate plugin: ${options.pluginId}`,
+              cause: error,
+            }),
+        }).pipe(
+          Effect.onExit((exit) =>
+            Exit.isFailure(exit) ? Scope.close(subscriptionScope, exit) : Effect.void,
+          ),
+        ),
+      );
+
+      if (Exit.isFailure(activationExit)) {
+        const typedFailure = Cause.failureOption(activationExit.cause);
+
+        if (Option.isSome(typedFailure) || cleanupFailures.length > 0) {
+          return yield* Effect.fail(
+            combineRuntimePrimaryAndCleanupFailures(
+              Option.isSome(typedFailure)
+                ? typedFailure.value
+                : runtimeErrorFromCause(activationExit.cause),
+              cleanupFailures,
+              `Plugin activation and cleanup failed: ${options.pluginId}`,
+            ),
+          );
+        }
+
+        return yield* Effect.failCause(activationExit.cause);
+      }
+
+      activePlugins.set(options.pluginId, {
+        pluginId: options.pluginId,
+        entryPath: options.entryPath,
+        plugin,
+        context,
+        subscriptionScope,
+        subscriptionCleanupFailures: cleanupFailures,
+      });
     });
   }
 
-  async deactivatePlugin(pluginId: string): Promise<void> {
-    const activePlugin = this.activePlugins.get(pluginId);
+  deactivatePlugin(pluginId: string): RuntimeEffect<void> {
+    const activePlugins = this.activePlugins;
 
-    if (!activePlugin) {
-      return;
-    }
+    return Effect.uninterruptible(
+      Effect.gen(function* () {
+        const activePlugin = activePlugins.get(pluginId);
 
-    this.activePlugins.delete(pluginId);
+        if (!activePlugin) {
+          return;
+        }
 
-    const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
+        activePlugins.delete(pluginId);
 
-    try {
-      await activePlugin.plugin.deactivate?.(activePlugin.context);
-    } catch (error) {
-      cleanupFailures.push(
-        captureRuntimeCleanupFailure({
-          step: "plugin.deactivate",
-          context: { pluginId },
-          error,
-        }),
-      );
-    }
+        const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
 
-    try {
-      await this.disposeSubscriptions(activePlugin.context);
-    } catch (error) {
-      cleanupFailures.push(
-        captureRuntimeCleanupFailure({
-          step: "subscriptions.dispose",
-          context: { pluginId },
-          error,
-        }),
-      );
-    }
+        if (activePlugin.plugin.deactivate) {
+          const deactivationExit = yield* Effect.exit(
+            tryRuntimePromise({
+              try: async () => activePlugin.plugin.deactivate?.(activePlugin.context),
+              catch: toRuntimeError,
+            }),
+          );
 
-    activePlugin.context.subscriptions.length = 0;
+          if (Exit.isFailure(deactivationExit)) {
+            cleanupFailures.push(
+              captureRuntimeCleanupFailure({
+                step: "plugin.deactivate",
+                context: { pluginId },
+                error: runtimeErrorFromCause(deactivationExit.cause),
+              }),
+            );
+          }
+        }
 
-    if (cleanupFailures.length > 0) {
-      throw createRuntimeCleanupError(`Failed to deactivate plugin: ${pluginId}`, cleanupFailures);
-    }
+        yield* Scope.close(activePlugin.subscriptionScope, Exit.succeed(undefined));
+
+        cleanupFailures.push(...activePlugin.subscriptionCleanupFailures);
+
+        if (cleanupFailures.length > 0) {
+          return yield* Effect.fail(
+            createRuntimeCleanupError(`Failed to deactivate plugin: ${pluginId}`, cleanupFailures),
+          );
+        }
+      }),
+    );
   }
 
-  async dispose(): Promise<void> {
-    await this.disposeAll();
+  dispose(): RuntimeEffect<void> {
+    return this.disposeAll();
   }
 
-  async disposeAll(): Promise<void> {
-    const pluginIds = [...this.activePlugins.keys()].toReversed();
-    const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
+  disposeAll(): RuntimeEffect<void> {
+    const activePlugins = this.activePlugins;
+    const deactivatePlugin = (pluginId: string) => this.deactivatePlugin(pluginId);
 
-    for (const pluginId of pluginIds) {
-      try {
-        await this.deactivatePlugin(pluginId);
-      } catch (error) {
-        cleanupFailures.push(
-          captureRuntimeCleanupFailure({
-            step: "plugin.dispose",
-            context: { pluginId },
-            error,
+    return Effect.uninterruptible(
+      Effect.gen(function* () {
+        const pluginIds = [...activePlugins.keys()].toReversed();
+        const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
+
+        for (const pluginId of pluginIds) {
+          const exit = yield* Effect.exit(deactivatePlugin(pluginId));
+
+          if (Exit.isFailure(exit)) {
+            cleanupFailures.push(
+              captureRuntimeCleanupFailure({
+                step: "plugin.dispose",
+                context: { pluginId },
+                error: runtimeErrorFromCause(exit.cause),
+              }),
+            );
+          }
+        }
+
+        if (cleanupFailures.length > 0) {
+          return yield* Effect.fail(
+            createRuntimeCleanupError("Failed to dispose all active plugins", cleanupFailures),
+          );
+        }
+      }),
+    );
+  }
+
+  private loadPlugin(entryPath: string): RuntimeEffect<ToolboxPluginV1> {
+    const getDefaultExport = (module: unknown) => this.getDefaultExport(module);
+    const isToolboxPluginV1 = (plugin: unknown) => this.isToolboxPluginV1(plugin);
+
+    return Effect.gen(function* () {
+      const module = yield* tryRuntimePromise({
+        try: async () => import(pathToFileURL(entryPath).href),
+        catch: (error) =>
+          new RuntimeError({
+            code: "ERR_PLUGIN_LOAD_FAILED",
+            message: `Failed to load plugin entry: ${entryPath}`,
+            cause: error,
+          }),
+      });
+      const plugin = getDefaultExport(module);
+
+      if (!isToolboxPluginV1(plugin)) {
+        return yield* Effect.fail(
+          new RuntimeError({
+            code: "ERR_PLUGIN_LOAD_FAILED",
+            message: `Plugin entry does not export a valid default plugin: ${entryPath}`,
           }),
         );
       }
-    }
 
-    if (cleanupFailures.length > 0) {
-      throw createRuntimeCleanupError("Failed to dispose all active plugins", cleanupFailures);
-    }
-  }
-
-  private async loadPlugin(entryPath: string): Promise<ToolboxPluginV1> {
-    let module: unknown;
-
-    try {
-      module = await import(pathToFileURL(entryPath).href);
-    } catch (error) {
-      throw new RuntimeError({
-        code: "ERR_PLUGIN_LOAD_FAILED",
-        message: `Failed to load plugin entry: ${entryPath}`,
-        cause: error,
-      });
-    }
-
-    const plugin = this.getDefaultExport(module);
-
-    if (!this.isToolboxPluginV1(plugin)) {
-      throw new RuntimeError({
-        code: "ERR_PLUGIN_LOAD_FAILED",
-        message: `Plugin entry does not export a valid default plugin: ${entryPath}`,
-      });
-    }
-
-    return plugin;
+      return plugin;
+    });
   }
 
   private getDefaultExport(module: unknown): unknown {
@@ -227,30 +293,39 @@ export class NodePluginHost implements PluginHost {
     );
   }
 
-  private async disposeSubscriptions(context: PluginContextV1): Promise<void> {
-    const subscriptions = context.subscriptions.splice(0).toReversed();
-    const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
+  private disposeSubscriptions(context: PluginContextV1): RuntimeEffect<void> {
+    return Effect.gen(function* () {
+      const subscriptions = context.subscriptions.splice(0).toReversed();
+      const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
 
-    for (const subscription of subscriptions) {
-      try {
-        await subscription.dispose();
-      } catch (error) {
-        cleanupFailures.push(
-          captureRuntimeCleanupFailure({
-            step: "subscription.dispose",
-            context: { pluginId: context.pluginId },
-            error,
+      for (const subscription of subscriptions) {
+        const exit = yield* Effect.exit(
+          tryRuntimePromise({
+            try: async () => subscription.dispose(),
+            catch: toRuntimeError,
           }),
         );
-      }
-    }
 
-    if (cleanupFailures.length > 0) {
-      throw createRuntimeCleanupError(
-        `Failed to dispose ${cleanupFailures.length} plugin subscription(s): ${context.pluginId}`,
-        cleanupFailures,
-      );
-    }
+        if (Exit.isFailure(exit)) {
+          cleanupFailures.push(
+            captureRuntimeCleanupFailure({
+              step: "subscription.dispose",
+              context: { pluginId: context.pluginId },
+              error: runtimeErrorFromCause(exit.cause),
+            }),
+          );
+        }
+      }
+
+      if (cleanupFailures.length > 0) {
+        return yield* Effect.fail(
+          createRuntimeCleanupError(
+            `Failed to dispose ${cleanupFailures.length} plugin subscription(s): ${context.pluginId}`,
+            cleanupFailures,
+          ),
+        );
+      }
+    });
   }
 }
 

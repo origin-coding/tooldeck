@@ -1,6 +1,13 @@
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { ManifestIndex, type PluginHost, PluginManager, RuntimeCommandRegistry } from "@/index";
+import {
+  ManifestIndex,
+  type PluginHost,
+  PluginManager,
+  RuntimeCommandRegistry,
+  toRuntimeError,
+} from "@/index";
 
 import {
   addManifest,
@@ -126,21 +133,30 @@ describe("PluginManager activation", () => {
     const pluginHost: PluginHost = {
       kind: "node",
       hasPlugin: () => active,
-      async activatePlugin() {
+      activatePlugin() {
         activationCount += 1;
-        await activationGate;
-        commandRegistry.register("concurrent.first", () => ({
-          status: "success",
-          blocks: [{ type: "text", text: "first" }],
-        }));
-        commandRegistry.register("concurrent.second", () => ({
-          status: "success",
-          blocks: [{ type: "text", text: "second" }],
-        }));
-        active = true;
+        return Effect.promise(() => activationGate).pipe(
+          Effect.tap(() =>
+            Effect.sync(() => {
+              commandRegistry.register("concurrent.first", () => ({
+                status: "success",
+                blocks: [{ type: "text", text: "first" }],
+              }));
+              commandRegistry.register("concurrent.second", () => ({
+                status: "success",
+                blocks: [{ type: "text", text: "second" }],
+              }));
+              active = true;
+            }),
+          ),
+        );
       },
-      async deactivatePlugin() {},
-      async dispose() {},
+      deactivatePlugin() {
+        return Effect.void;
+      },
+      dispose() {
+        return Effect.void;
+      },
     };
 
     addManifest(manifestIndex, createManifest(pluginId, ["concurrent.first", "concurrent.second"]));
@@ -167,28 +183,35 @@ describe("PluginManager activation", () => {
     const commandRegistry = new RuntimeCommandRegistry();
     const pluginId = "dev.example.concurrent-retry";
     const activationError = new Error("concurrent activation failed");
+    const runtimeActivationError = toRuntimeError(activationError);
     let active = false;
     let activationCount = 0;
     let shouldFail = true;
     const pluginHost: PluginHost = {
       kind: "node",
       hasPlugin: () => active,
-      async activatePlugin() {
+      activatePlugin() {
         activationCount += 1;
-        await Promise.resolve();
+        return Effect.suspend(() => {
+          if (shouldFail) {
+            return Effect.fail(runtimeActivationError);
+          }
 
-        if (shouldFail) {
-          throw activationError;
-        }
-
-        commandRegistry.register("concurrent.retry", () => ({
-          status: "success",
-          blocks: [{ type: "text", text: "retried" }],
-        }));
-        active = true;
+          return Effect.sync(() => {
+            commandRegistry.register("concurrent.retry", () => ({
+              status: "success",
+              blocks: [{ type: "text", text: "retried" }],
+            }));
+            active = true;
+          });
+        });
       },
-      async deactivatePlugin() {},
-      async dispose() {},
+      deactivatePlugin() {
+        return Effect.void;
+      },
+      dispose() {
+        return Effect.void;
+      },
     };
 
     addManifest(manifestIndex, createManifest(pluginId, ["concurrent.retry"]));
@@ -205,8 +228,8 @@ describe("PluginManager activation", () => {
 
     expect(activationCount).toBe(1);
     expect(failures).toEqual([
-      { status: "rejected", reason: activationError },
-      { status: "rejected", reason: activationError },
+      { status: "rejected", reason: runtimeActivationError },
+      { status: "rejected", reason: runtimeActivationError },
     ]);
     expect(manager.getPluginRuntimeState(pluginId)).toBe("failed");
 

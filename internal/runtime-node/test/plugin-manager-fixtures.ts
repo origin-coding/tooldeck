@@ -1,4 +1,5 @@
 import type { PluginManifest } from "@tooldeck/protocol";
+import { Effect } from "effect";
 
 import { ManifestIndex, PluginHostRegistry } from "@/index";
 import type { PluginHost, PluginHostActivateOptions } from "@/index";
@@ -41,18 +42,24 @@ export class TestPluginHost implements PluginHost {
     return this.activePluginIds.has(pluginId);
   }
 
-  async activatePlugin(options: PluginHostActivateOptions): Promise<void> {
-    this.activations.push(options);
-    this.activePluginIds.add(options.pluginId);
-    this.onActivate(options);
+  activatePlugin(options: PluginHostActivateOptions) {
+    return Effect.sync(() => {
+      this.activations.push(options);
+      this.activePluginIds.add(options.pluginId);
+      this.onActivate(options);
+    });
   }
 
-  async deactivatePlugin(pluginId: string): Promise<void> {
-    this.activePluginIds.delete(pluginId);
+  deactivatePlugin(pluginId: string) {
+    return Effect.sync(() => {
+      this.activePluginIds.delete(pluginId);
+    });
   }
 
-  async dispose(): Promise<void> {
-    this.activePluginIds.clear();
+  dispose() {
+    return Effect.sync(() => {
+      this.activePluginIds.clear();
+    });
   }
 }
 
@@ -63,13 +70,17 @@ export class FailingPluginHost implements PluginHost {
     return false;
   }
 
-  async activatePlugin(): Promise<void> {
-    throw new Error("Activation failed");
+  activatePlugin() {
+    return Effect.die(new Error("Activation failed"));
   }
 
-  async deactivatePlugin(): Promise<void> {}
+  deactivatePlugin() {
+    return Effect.void;
+  }
 
-  async dispose(): Promise<void> {}
+  dispose() {
+    return Effect.void;
+  }
 }
 
 export function createHostRegistry(host: PluginHost): PluginHostRegistry {

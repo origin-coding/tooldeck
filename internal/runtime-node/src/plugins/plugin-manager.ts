@@ -6,6 +6,7 @@ import { validateCommandOutputSchema } from "@/commands/command-output-schema-va
 import type { CommandRunResult, RuntimeCommandRegistry } from "@/commands/command-registry";
 import { PluginHostRegistry } from "@/composition/host-registry";
 import type { PluginHost } from "@/core/plugin-host";
+import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
 import { RuntimeError, toRuntimeError } from "@/errors/runtime-error";
 import {
   initialPluginRuntimeState,
@@ -171,10 +172,12 @@ export class PluginManager {
     lifecycle.dispatch("activationRequested");
 
     try {
-      await host.activatePlugin({
-        pluginId: plugin.id,
-        entryPath: plugin.entryPath,
-      });
+      await runRuntimeEffectPromise(
+        host.activatePlugin({
+          pluginId: plugin.id,
+          entryPath: plugin.entryPath,
+        }),
+      );
       lifecycle.dispatch("activated");
     } catch (error) {
       lifecycle.dispatch("activationFailed");

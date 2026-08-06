@@ -1,10 +1,12 @@
 import type { PluginStorage } from "@tooldeck/sdk-node";
+import { Effect } from "effect";
 
 import type { CommandInputCoercion } from "@/commands/command-input";
 import { RuntimeCommandRegistry } from "@/commands/command-registry";
 import { CommandService } from "@/commands/command-service";
 import { PluginHostRegistry } from "@/composition/host-registry";
 import type { PluginHost } from "@/core/plugin-host";
+import { tryRuntimeBoundaryPromise, type RuntimeEffect } from "@/effects/runtime-effect";
 import { NodePluginHost } from "@/hosts/node";
 import { ManifestIndex } from "@/manifests/manifest-index";
 import { PluginManager } from "@/plugins/plugin-manager";
@@ -38,55 +40,63 @@ export interface CreatedRuntime {
   commandService: CommandService;
   pluginCount: number;
   commandCount: number;
-  dispose(): Promise<void>;
+  dispose(): RuntimeEffect<void>;
 }
 
-export async function createRuntime(options: CreateRuntimeOptions): Promise<CreatedRuntime> {
-  const commandRegistry = new RuntimeCommandRegistry();
-  const hostRegistry = new PluginHostRegistry();
-  const manifestIndex = new ManifestIndex();
-  const hostFactories = options.hostFactories ?? [
-    ({ commandRegistry: runtimeCommandRegistry }: PluginHostFactoryContext) =>
-      new NodePluginHost({
-        commandRegistry: runtimeCommandRegistry,
-        createPluginStorage: options.createPluginStorage,
+export function createRuntime(options: CreateRuntimeOptions): RuntimeEffect<CreatedRuntime> {
+  return Effect.gen(function* () {
+    const commandRegistry = new RuntimeCommandRegistry();
+    const hostRegistry = new PluginHostRegistry();
+    const manifestIndex = new ManifestIndex();
+    const hostFactories = options.hostFactories ?? [
+      ({ commandRegistry: runtimeCommandRegistry }: PluginHostFactoryContext) =>
+        new NodePluginHost({
+          commandRegistry: runtimeCommandRegistry,
+          createPluginStorage: options.createPluginStorage,
+        }),
+    ];
+
+    for (const createHost of hostFactories) {
+      hostRegistry.register(createHost({ commandRegistry }));
+    }
+
+    const scanResult = yield* tryRuntimeBoundaryPromise(async () =>
+      scanPluginSources({
+        sources: options.pluginSources,
+        manifestIndex,
       }),
-  ];
+    );
 
-  for (const createHost of hostFactories) {
-    hostRegistry.register(createHost({ commandRegistry }));
-  }
+    if (options.afterScan) {
+      yield* tryRuntimeBoundaryPromise(async () =>
+        options.afterScan?.({
+          manifestIndex,
+          pluginCount: scanResult.pluginCount,
+          commandCount: scanResult.commandCount,
+        }),
+      );
+    }
 
-  const scanResult = await scanPluginSources({
-    sources: options.pluginSources,
-    manifestIndex,
-  });
+    const pluginManager = new PluginManager({
+      manifestIndex,
+      commandRegistry,
+      hostRegistry,
+    });
 
-  await options.afterScan?.({
-    manifestIndex,
-    pluginCount: scanResult.pluginCount,
-    commandCount: scanResult.commandCount,
-  });
-
-  const pluginManager = new PluginManager({
-    manifestIndex,
-    commandRegistry,
-    hostRegistry,
-  });
-
-  return {
-    commandRegistry,
-    hostRegistry,
-    manifestIndex,
-    pluginManager,
-    commandService: new CommandService({
+    return {
+      commandRegistry,
+      hostRegistry,
+      manifestIndex,
       pluginManager,
-      coercion: options.coercion ?? "none",
-    }),
-    pluginCount: scanResult.pluginCount,
-    commandCount: scanResult.commandCount,
-    dispose() {
-      return hostRegistry.disposeAll();
-    },
-  };
+      commandService: new CommandService({
+        pluginManager,
+        coercion: options.coercion ?? "none",
+      }),
+      pluginCount: scanResult.pluginCount,
+      commandCount: scanResult.commandCount,
+      dispose() {
+        return hostRegistry.disposeAll();
+      },
+    };
+  });
 }

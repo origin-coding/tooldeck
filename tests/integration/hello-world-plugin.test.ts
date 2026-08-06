@@ -10,6 +10,7 @@ import {
   PluginManager,
   RuntimeCommandRegistry,
 } from "@tooldeck/runtime-node";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -58,7 +59,7 @@ describe("hello-world plugin integration", () => {
     expect(pluginHost.hasPlugin("dev.tooldeck.hello-world")).toBe(true);
     expect(commandRegistry.has("hello.world")).toBe(true);
 
-    await hostRegistry.disposeAll();
+    await Effect.runPromise(hostRegistry.disposeAll());
 
     expect(pluginHost.hasPlugin("dev.tooldeck.hello-world")).toBe(false);
     expect(commandRegistry.has("hello.world")).toBe(false);
