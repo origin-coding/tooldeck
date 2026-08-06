@@ -1,4 +1,7 @@
+import { Effect, Exit } from "effect";
+
 import type { PluginHost, PluginRuntimeKind } from "@/core/plugin-host";
+import { runtimeErrorFromCause } from "@/effects/runtime-effect";
 import {
   captureRuntimeCleanupFailure,
   createRuntimeCleanupError,
@@ -49,33 +52,41 @@ export class PluginHostRegistry<RuntimeKind extends string = PluginRuntimeKind> 
     return host;
   }
 
-  async disposeAll(): Promise<void> {
-    const registeredHosts = [...this.hosts.entries()].toReversed();
+  disposeAll(): Effect.Effect<void, RuntimeError> {
+    const hosts = this.hosts;
 
-    this.hosts.clear();
+    return Effect.uninterruptible(
+      Effect.gen(function* () {
+        const registeredHosts = [...hosts.entries()].toReversed();
 
-    const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
+        hosts.clear();
 
-    for (const [runtimeKind, host] of registeredHosts) {
-      try {
-        await host.dispose();
-      } catch (error) {
-        cleanupFailures.push(
-          captureRuntimeCleanupFailure({
-            step: "host.dispose",
-            context: { runtimeKind },
-            error,
-          }),
-        );
-      }
-    }
+        const cleanupFailures: CapturedRuntimeCleanupFailure[] = [];
 
-    if (cleanupFailures.length > 0) {
-      throw createRuntimeCleanupError(
-        "Failed to dispose all registered plugin hosts",
-        cleanupFailures,
-      );
-    }
+        for (const [runtimeKind, host] of registeredHosts) {
+          const exit = yield* Effect.exit(host.dispose());
+
+          if (Exit.isFailure(exit)) {
+            cleanupFailures.push(
+              captureRuntimeCleanupFailure({
+                step: "host.dispose",
+                context: { runtimeKind },
+                error: runtimeErrorFromCause(exit.cause),
+              }),
+            );
+          }
+        }
+
+        if (cleanupFailures.length > 0) {
+          return yield* Effect.fail(
+            createRuntimeCleanupError(
+              "Failed to dispose all registered plugin hosts",
+              cleanupFailures,
+            ),
+          );
+        }
+      }),
+    );
   }
 
   private registeredRuntimeKinds(): RuntimeKind[] {

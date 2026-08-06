@@ -24,7 +24,11 @@ export default defineConfig({
     ssr: "src/index.ts",
     target: "node22",
     rollupOptions: {
-      external: (id) => nodeBuiltins.has(id) || id.startsWith("node:"),
+      external: (id) =>
+        nodeBuiltins.has(id) ||
+        id.startsWith("node:") ||
+        id === "effect" ||
+        id.startsWith("effect/"),
       output: {
         codeSplitting: false,
         entryFileNames: "index.js",

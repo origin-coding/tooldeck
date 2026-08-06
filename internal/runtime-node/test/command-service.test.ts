@@ -1,4 +1,5 @@
 import type { PluginManifest } from "@tooldeck/protocol";
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -21,18 +22,24 @@ class TestPluginHost implements PluginHost {
     return this.activePluginIds.has(pluginId);
   }
 
-  async activatePlugin(options: PluginHostActivateOptions): Promise<void> {
-    this.activations.push(options);
-    this.activePluginIds.add(options.pluginId);
-    this.onActivate(options);
+  activatePlugin(options: PluginHostActivateOptions) {
+    return Effect.sync(() => {
+      this.activations.push(options);
+      this.activePluginIds.add(options.pluginId);
+      this.onActivate(options);
+    });
   }
 
-  async deactivatePlugin(pluginId: string): Promise<void> {
-    this.activePluginIds.delete(pluginId);
+  deactivatePlugin(pluginId: string) {
+    return Effect.sync(() => {
+      this.activePluginIds.delete(pluginId);
+    });
   }
 
-  async dispose(): Promise<void> {
-    this.activePluginIds.clear();
+  dispose() {
+    return Effect.sync(() => {
+      this.activePluginIds.clear();
+    });
   }
 }
 

@@ -1,12 +1,17 @@
 import { fileURLToPath } from "node:url";
 
+import { Cause, Effect, Exit, Fiber, Scope } from "effect";
 import { describe, expect, it } from "vitest";
 
+import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
 import { NodePluginHost, RuntimeCommandRegistry } from "@/index";
+
+import { createTestScope } from "./scope-test-fixtures";
 
 function createHost(): NodePluginHost {
   return new NodePluginHost({
     commandRegistry: new RuntimeCommandRegistry(),
+    scope: createTestScope(),
   });
 }
 
@@ -22,10 +27,12 @@ describe("NodePluginHost", () => {
 
     module.calls.length = 0;
 
-    await host.activatePlugin({
-      pluginId: "dev.example.valid",
-      entryPath,
-    });
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.valid",
+        entryPath,
+      }),
+    );
 
     const activePlugin = host.getPlugin("dev.example.valid")!;
 
@@ -42,6 +49,7 @@ describe("NodePluginHost", () => {
     const values = new Map<string, unknown>();
     const host = new NodePluginHost({
       commandRegistry: new RuntimeCommandRegistry(),
+      scope: createTestScope(),
       createPluginStorage(pluginId) {
         return {
           async get(key) {
@@ -60,14 +68,18 @@ describe("NodePluginHost", () => {
 
     module.calls.length = 0;
 
-    await host.activatePlugin({
-      pluginId: "dev.example.storage-a",
-      entryPath: fixturePath("storage-plugin.mjs"),
-    });
-    await host.activatePlugin({
-      pluginId: "dev.example.storage-b",
-      entryPath: fixturePath("storage-plugin.mjs"),
-    });
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.storage-a",
+        entryPath: fixturePath("storage-plugin.mjs"),
+      }),
+    );
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.storage-b",
+        entryPath: fixturePath("storage-plugin.mjs"),
+      }),
+    );
 
     expect(values.get("dev.example.storage-a:activated")).toBe("dev.example.storage-a");
     expect(values.get("dev.example.storage-b:activated")).toBe("dev.example.storage-b");
@@ -81,16 +93,20 @@ describe("NodePluginHost", () => {
     const host = createHost();
     const entryPath = fixturePath("valid-plugin.mjs");
 
-    await host.activatePlugin({
-      pluginId: "dev.example.duplicate",
-      entryPath,
-    });
-
-    await expect(
+    await runRuntimeEffectPromise(
       host.activatePlugin({
         pluginId: "dev.example.duplicate",
         entryPath,
       }),
+    );
+
+    await expect(
+      runRuntimeEffectPromise(
+        host.activatePlugin({
+          pluginId: "dev.example.duplicate",
+          entryPath,
+        }),
+      ),
     ).rejects.toThrow("Plugin is already active: dev.example.duplicate");
   });
 
@@ -98,10 +114,12 @@ describe("NodePluginHost", () => {
     const host = createHost();
 
     await expect(
-      host.activatePlugin({
-        pluginId: "dev.example.relative",
-        entryPath: "./fixtures/valid-plugin.mjs",
-      }),
+      runRuntimeEffectPromise(
+        host.activatePlugin({
+          pluginId: "dev.example.relative",
+          entryPath: "./fixtures/valid-plugin.mjs",
+        }),
+      ),
     ).rejects.toThrow("Node plugin entryPath must be absolute: ./fixtures/valid-plugin.mjs");
   });
 
@@ -109,10 +127,12 @@ describe("NodePluginHost", () => {
     const host = createHost();
 
     await expect(
-      host.activatePlugin({
-        pluginId: "dev.example.invalid",
-        entryPath: fixturePath("invalid-plugin.mjs"),
-      }),
+      runRuntimeEffectPromise(
+        host.activatePlugin({
+          pluginId: "dev.example.invalid",
+          entryPath: fixturePath("invalid-plugin.mjs"),
+        }),
+      ),
     ).rejects.toThrow("Plugin entry does not export a valid default plugin");
   });
 
@@ -122,18 +142,55 @@ describe("NodePluginHost", () => {
 
     module.calls.length = 0;
 
-    await host.activatePlugin({
-      pluginId: "dev.example.lifecycle",
-      entryPath: fixturePath("valid-plugin.mjs"),
-    });
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.lifecycle",
+        entryPath: fixturePath("valid-plugin.mjs"),
+      }),
+    );
 
-    await host.deactivatePlugin("dev.example.lifecycle");
+    await runRuntimeEffectPromise(host.deactivatePlugin("dev.example.lifecycle"));
 
     expect(host.hasPlugin("dev.example.lifecycle")).toBe(false);
     expect(module.calls).toEqual([
       "activate:dev.example.lifecycle",
       "deactivate:dev.example.lifecycle",
       "dispose:dev.example.lifecycle",
+    ]);
+  });
+
+  it("closes a plugin Scope when its parent host Scope closes", async () => {
+    const hostScope = createTestScope();
+    const host = new NodePluginHost({
+      commandRegistry: new RuntimeCommandRegistry(),
+      scope: hostScope,
+    });
+    const module = await import(new URL("./fixtures/valid-plugin.mjs", import.meta.url).href);
+
+    module.calls.length = 0;
+
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.parent-scope",
+        entryPath: fixturePath("valid-plugin.mjs"),
+      }),
+    );
+
+    await runRuntimeEffectPromise(Scope.close(hostScope, Exit.succeed(undefined)));
+
+    expect(module.calls).toEqual([
+      "activate:dev.example.parent-scope",
+      "deactivate:dev.example.parent-scope",
+      "dispose:dev.example.parent-scope",
+    ]);
+
+    await runRuntimeEffectPromise(host.dispose());
+
+    expect(host.hasPlugin("dev.example.parent-scope")).toBe(false);
+    expect(module.calls).toEqual([
+      "activate:dev.example.parent-scope",
+      "deactivate:dev.example.parent-scope",
+      "dispose:dev.example.parent-scope",
     ]);
   });
 
@@ -146,14 +203,44 @@ describe("NodePluginHost", () => {
     module.calls.length = 0;
 
     await expect(
-      host.activatePlugin({
-        pluginId: "dev.example.activation-fails",
-        entryPath: fixturePath("activation-fails-plugin.mjs"),
-      }),
+      runRuntimeEffectPromise(
+        host.activatePlugin({
+          pluginId: "dev.example.activation-fails",
+          entryPath: fixturePath("activation-fails-plugin.mjs"),
+        }),
+      ),
     ).rejects.toThrow("Failed to activate plugin: dev.example.activation-fails");
 
     expect(host.hasPlugin("dev.example.activation-fails")).toBe(false);
     expect(module.calls).toEqual(["dispose:dev.example.activation-fails"]);
+  });
+
+  it("closes the plugin Scope when activation is interrupted", async () => {
+    const host = createHost();
+    const module = await import(
+      new URL("./fixtures/interruptible-activation-plugin.mjs", import.meta.url).href
+    );
+
+    module.reset();
+
+    const fiber = Effect.runFork(
+      host.activatePlugin({
+        pluginId: "dev.example.interrupted",
+        entryPath: fixturePath("interruptible-activation-plugin.mjs"),
+      }),
+    );
+
+    await module.activationStarted;
+
+    const exit = await Effect.runPromise(Fiber.interrupt(fiber));
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    expect(Exit.isFailure(exit) && Cause.isInterruptedOnly(exit.cause)).toBe(true);
+    expect(host.hasPlugin("dev.example.interrupted")).toBe(false);
+    expect(module.calls).toEqual([
+      "activate:dev.example.interrupted",
+      "dispose:dev.example.interrupted",
+    ]);
   });
 
   it("continues disposing subscriptions after one fails", async () => {
@@ -163,12 +250,16 @@ describe("NodePluginHost", () => {
     );
 
     module.calls.length = 0;
-    await host.activatePlugin({
-      pluginId: "dev.example.subscription-cleanup",
-      entryPath: fixturePath("dispose-subscriptions-fail-plugin.mjs"),
-    });
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.subscription-cleanup",
+        entryPath: fixturePath("dispose-subscriptions-fail-plugin.mjs"),
+      }),
+    );
 
-    await expect(host.deactivatePlugin("dev.example.subscription-cleanup")).rejects.toMatchObject({
+    await expect(
+      runRuntimeEffectPromise(host.deactivatePlugin("dev.example.subscription-cleanup")),
+    ).rejects.toMatchObject({
       code: "ERR_PLUGIN_LOAD_FAILED",
       details: {
         cleanupFailures: [
@@ -206,10 +297,12 @@ describe("NodePluginHost", () => {
     const host = createHost();
 
     await expect(
-      host.activatePlugin({
-        pluginId: "dev.example.activation-cleanup-fails",
-        entryPath: fixturePath("activation-and-dispose-fail-plugin.mjs"),
-      }),
+      runRuntimeEffectPromise(
+        host.activatePlugin({
+          pluginId: "dev.example.activation-cleanup-fails",
+          entryPath: fixturePath("activation-and-dispose-fail-plugin.mjs"),
+        }),
+      ),
     ).rejects.toMatchObject({
       code: "ERR_PLUGIN_LOAD_FAILED",
       message: "Failed to activate plugin: dev.example.activation-cleanup-fails",
@@ -253,10 +346,12 @@ describe("NodePluginHost", () => {
     module.calls.length = 0;
 
     await expect(
-      host.activatePlugin({
-        pluginId: "dev.example.activation-multiple-cleanup-fails",
-        entryPath: fixturePath("activation-and-multiple-dispose-fail-plugin.mjs"),
-      }),
+      runRuntimeEffectPromise(
+        host.activatePlugin({
+          pluginId: "dev.example.activation-multiple-cleanup-fails",
+          entryPath: fixturePath("activation-and-multiple-dispose-fail-plugin.mjs"),
+        }),
+      ),
     ).rejects.toMatchObject({
       code: "ERR_PLUGIN_LOAD_FAILED",
       message: "Failed to activate plugin: dev.example.activation-multiple-cleanup-fails",
@@ -287,16 +382,20 @@ describe("NodePluginHost", () => {
     pluginA.calls.length = 0;
     pluginB.calls.length = 0;
 
-    await host.activatePlugin({
-      pluginId: "dev.example.a",
-      entryPath: fixturePath("dispose-all-a.mjs"),
-    });
-    await host.activatePlugin({
-      pluginId: "dev.example.b",
-      entryPath: fixturePath("dispose-all-b.mjs"),
-    });
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.a",
+        entryPath: fixturePath("dispose-all-a.mjs"),
+      }),
+    );
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.b",
+        entryPath: fixturePath("dispose-all-b.mjs"),
+      }),
+    );
 
-    await host.dispose();
+    await runRuntimeEffectPromise(host.dispose());
 
     expect(host.listPlugins()).toHaveLength(0);
     expect(pluginA.calls).toEqual([
@@ -321,16 +420,20 @@ describe("NodePluginHost", () => {
     failingPlugin.calls.length = 0;
     pluginB.calls.length = 0;
 
-    await host.activatePlugin({
-      pluginId: "dev.example.failing",
-      entryPath: fixturePath("deactivate-fails-plugin.mjs"),
-    });
-    await host.activatePlugin({
-      pluginId: "dev.example.b-for-error",
-      entryPath: fixturePath("dispose-all-b.mjs"),
-    });
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.failing",
+        entryPath: fixturePath("deactivate-fails-plugin.mjs"),
+      }),
+    );
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.b-for-error",
+        entryPath: fixturePath("dispose-all-b.mjs"),
+      }),
+    );
 
-    await expect(host.disposeAll()).rejects.toMatchObject({
+    await expect(runRuntimeEffectPromise(host.disposeAll())).rejects.toMatchObject({
       code: "ERR_PLUGIN_LOAD_FAILED",
       message: "Failed to dispose all active plugins",
       details: {

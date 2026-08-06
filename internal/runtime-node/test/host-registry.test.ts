@@ -1,11 +1,14 @@
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
+import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
 import {
   type PluginHost,
   type PluginHostActivateOptions,
   PluginHostRegistry,
   type PluginRuntimeKind,
   RuntimeError,
+  toRuntimeError,
 } from "@/index";
 
 class FakePluginHost<RuntimeKind extends string> implements PluginHost<RuntimeKind> {
@@ -22,19 +25,39 @@ class FakePluginHost<RuntimeKind extends string> implements PluginHost<RuntimeKi
     return this.plugins.has(pluginId);
   }
 
-  async activatePlugin(options: PluginHostActivateOptions): Promise<void> {
-    this.activations.push(options);
-    this.plugins.add(options.pluginId);
+  activatePlugin(options: PluginHostActivateOptions) {
+    return Effect.sync(() => {
+      this.activations.push(options);
+      this.plugins.add(options.pluginId);
+    });
   }
 
-  async deactivatePlugin(pluginId: string): Promise<void> {
-    this.deactivations.push(pluginId);
-    this.plugins.delete(pluginId);
+  deactivatePlugin(pluginId: string) {
+    return Effect.sync(() => {
+      this.deactivations.push(pluginId);
+      this.plugins.delete(pluginId);
+    });
   }
 
-  async dispose(): Promise<void> {
-    await this.onDispose();
+  dispose() {
+    return Effect.tryPromise({
+      try: async () => this.onDispose(),
+      catch: toRuntimeError,
+    });
   }
+}
+
+function createEffectPluginHost<RuntimeKind extends string>(
+  kind: RuntimeKind,
+  dispose: () => Effect.Effect<void, RuntimeError>,
+): PluginHost<RuntimeKind> {
+  return {
+    kind,
+    hasPlugin: () => false,
+    activatePlugin: () => Effect.void,
+    deactivatePlugin: () => Effect.void,
+    dispose,
+  };
 }
 
 describe("PluginHostRegistry", () => {
@@ -118,7 +141,7 @@ describe("PluginHostRegistry", () => {
       }),
     );
 
-    await registry.disposeAll();
+    await runRuntimeEffectPromise(registry.disposeAll());
 
     expect(calls).toEqual(["test", "node"]);
     expect(registry.get("node")).toBeUndefined();
@@ -147,7 +170,7 @@ describe("PluginHostRegistry", () => {
       }),
     );
 
-    await expect(registry.disposeAll()).rejects.toMatchObject({
+    await expect(runRuntimeEffectPromise(registry.disposeAll())).rejects.toMatchObject({
       code: "ERR_PLUGIN_LOAD_FAILED",
       message: "Failed to dispose all registered plugin hosts",
       details: {
@@ -178,7 +201,61 @@ describe("PluginHostRegistry", () => {
 
     expect(calls).toEqual(["test", "node"]);
 
-    await expect(registry.disposeAll()).resolves.toBeUndefined();
+    await expect(runRuntimeEffectPromise(registry.disposeAll())).resolves.toBeUndefined();
     expect(calls).toEqual(["test", "node"]);
+  });
+
+  it("attempts every host when disposal defects or interrupts", async () => {
+    type TestRuntimeKind = "defect" | "interrupted" | "success";
+
+    const calls: string[] = [];
+    const registry = new PluginHostRegistry<TestRuntimeKind>();
+
+    registry.register(
+      createEffectPluginHost("success", () =>
+        Effect.sync(() => {
+          calls.push("success");
+        }),
+      ),
+    );
+    registry.register(
+      createEffectPluginHost("defect", () =>
+        Effect.sync(() => {
+          calls.push("defect");
+        }).pipe(Effect.andThen(Effect.die(new Error("host disposal defect")))),
+      ),
+    );
+    registry.register(
+      createEffectPluginHost("interrupted", () =>
+        Effect.sync(() => {
+          calls.push("interrupted");
+        }).pipe(Effect.andThen(Effect.interrupt)),
+      ),
+    );
+
+    await expect(runRuntimeEffectPromise(registry.disposeAll())).rejects.toMatchObject({
+      code: "ERR_PLUGIN_LOAD_FAILED",
+      details: {
+        cleanupFailures: [
+          {
+            step: "host.dispose",
+            context: { runtimeKind: "interrupted" },
+            error: {
+              code: "ERR_UNKNOWN",
+              message: "Runtime operation was interrupted.",
+            },
+          },
+          {
+            step: "host.dispose",
+            context: { runtimeKind: "defect" },
+            error: {
+              code: "ERR_UNKNOWN",
+              message: "host disposal defect",
+            },
+          },
+        ],
+      },
+    });
+    expect(calls).toEqual(["interrupted", "defect", "success"]);
   });
 });
