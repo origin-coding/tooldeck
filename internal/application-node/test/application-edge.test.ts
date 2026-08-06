@@ -2,7 +2,8 @@ import { RuntimeError } from "@tooldeck/runtime-node";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { runRuntimeEffect } from "@/application/edge";
+import { runApplicationEffect, runRuntimeEffect } from "@/application/edge";
+import { ApplicationError } from "@/errors/application-error";
 
 describe("runtime Effect application edge", () => {
   it("maps typed RuntimeError failures without exposing an Effect wrapper", async () => {
@@ -46,6 +47,38 @@ describe("runtime Effect application edge", () => {
       source: "application",
       code: "ERR_UNKNOWN",
       message: "Runtime operation was interrupted.",
+    });
+  });
+});
+
+describe("application Effect edge", () => {
+  it("preserves typed ApplicationError failures", async () => {
+    const error = new ApplicationError({
+      source: "application",
+      code: "ERR_APPLICATION_NOT_STARTED",
+      message: "Application is not started",
+    });
+
+    await expect(runApplicationEffect(Effect.fail(error))).rejects.toBe(error);
+  });
+
+  it("normalizes application Scope defects without exposing FiberFailure", async () => {
+    const defect = new Error("application scope defect");
+
+    await expect(runApplicationEffect(Effect.die(defect))).rejects.toMatchObject({
+      _tag: "ApplicationError",
+      source: "application",
+      code: "ERR_UNKNOWN",
+      message: "application scope defect",
+      cause: defect,
+    });
+  });
+
+  it("normalizes application Scope interruption", async () => {
+    await expect(runApplicationEffect(Effect.interrupt)).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_UNKNOWN",
+      message: "Application operation was interrupted.",
     });
   });
 });

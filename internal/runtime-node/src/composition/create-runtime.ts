@@ -1,5 +1,5 @@
 import type { PluginStorage } from "@tooldeck/sdk-node";
-import { Effect } from "effect";
+import { Effect, ExecutionStrategy, Exit, Scope } from "effect";
 
 import type { CommandInputCoercion } from "@/commands/command-input";
 import { RuntimeCommandRegistry } from "@/commands/command-registry";
@@ -7,6 +7,7 @@ import { CommandService } from "@/commands/command-service";
 import { PluginHostRegistry } from "@/composition/host-registry";
 import type { PluginHost } from "@/core/plugin-host";
 import { tryRuntimeBoundaryPromise, type RuntimeEffect } from "@/effects/runtime-effect";
+import type { RuntimeError } from "@/errors/runtime-error";
 import { NodePluginHost } from "@/hosts/node";
 import { ManifestIndex } from "@/manifests/manifest-index";
 import { PluginManager } from "@/plugins/plugin-manager";
@@ -20,12 +21,14 @@ export interface CreateRuntimeAfterScanContext {
 
 export interface PluginHostFactoryContext {
   commandRegistry: RuntimeCommandRegistry;
+  scope: Scope.CloseableScope;
 }
 
 export type PluginHostFactory = (context: PluginHostFactoryContext) => PluginHost;
 
 export interface CreateRuntimeOptions {
   pluginSources: PluginScanSource[];
+  parentScope?: Scope.CloseableScope;
   hostFactories?: readonly PluginHostFactory[];
   coercion?: CommandInputCoercion;
   createPluginStorage?: (pluginId: string) => PluginStorage;
@@ -45,21 +48,86 @@ export interface CreatedRuntime {
 
 export function createRuntime(options: CreateRuntimeOptions): RuntimeEffect<CreatedRuntime> {
   return Effect.gen(function* () {
+    const runtimeScope = yield* createRuntimeScope(options.parentScope);
+
+    return yield* createRuntimeResources(options, runtimeScope).pipe(
+      Effect.onExit((exit) => closeScopeOnFailure(runtimeScope, exit)),
+    );
+  });
+}
+
+function createRuntimeScope(
+  parentScope: Scope.CloseableScope | undefined,
+): Effect.Effect<Scope.CloseableScope> {
+  return parentScope
+    ? Scope.fork(parentScope, ExecutionStrategy.sequential)
+    : Scope.make(ExecutionStrategy.sequential);
+}
+
+function createRuntimeResources(
+  options: CreateRuntimeOptions,
+  runtimeScope: Scope.CloseableScope,
+): RuntimeEffect<CreatedRuntime> {
+  return Effect.gen(function* () {
     const commandRegistry = new RuntimeCommandRegistry();
     const hostRegistry = new PluginHostRegistry();
     const manifestIndex = new ManifestIndex();
-    const hostFactories = options.hostFactories ?? [
-      ({ commandRegistry: runtimeCommandRegistry }: PluginHostFactoryContext) =>
-        new NodePluginHost({
-          commandRegistry: runtimeCommandRegistry,
-          createPluginStorage: options.createPluginStorage,
-        }),
-    ];
 
+    yield* registerPluginHosts(options, runtimeScope, commandRegistry, hostRegistry);
+
+    const scanResult = yield* scanRuntimePlugins(options, manifestIndex);
+    const pluginManager = new PluginManager({ manifestIndex, commandRegistry, hostRegistry });
+
+    return {
+      commandRegistry,
+      hostRegistry,
+      manifestIndex,
+      pluginManager,
+      commandService: new CommandService({
+        pluginManager,
+        coercion: options.coercion ?? "none",
+      }),
+      pluginCount: scanResult.pluginCount,
+      commandCount: scanResult.commandCount,
+      dispose: () => disposeRuntimeResources(hostRegistry, runtimeScope),
+    };
+  });
+}
+
+function registerPluginHosts(
+  options: CreateRuntimeOptions,
+  runtimeScope: Scope.CloseableScope,
+  commandRegistry: RuntimeCommandRegistry,
+  hostRegistry: PluginHostRegistry,
+): RuntimeEffect<void> {
+  const hostFactories = options.hostFactories ?? createDefaultHostFactories(options);
+
+  return Effect.gen(function* () {
     for (const createHost of hostFactories) {
-      hostRegistry.register(createHost({ commandRegistry }));
-    }
+      const hostScope = yield* Scope.fork(runtimeScope, ExecutionStrategy.sequential);
+      const host = createHost({ commandRegistry, scope: hostScope });
 
+      hostRegistry.register(host);
+    }
+  });
+}
+
+function createDefaultHostFactories(options: CreateRuntimeOptions): readonly PluginHostFactory[] {
+  return [
+    ({ commandRegistry, scope }) =>
+      new NodePluginHost({
+        commandRegistry,
+        createPluginStorage: options.createPluginStorage,
+        scope,
+      }),
+  ];
+}
+
+function scanRuntimePlugins(
+  options: CreateRuntimeOptions,
+  manifestIndex: ManifestIndex,
+): RuntimeEffect<{ pluginCount: number; commandCount: number }> {
+  return Effect.gen(function* () {
     const scanResult = yield* tryRuntimeBoundaryPromise(async () =>
       scanPluginSources({
         sources: options.pluginSources,
@@ -77,26 +145,33 @@ export function createRuntime(options: CreateRuntimeOptions): RuntimeEffect<Crea
       );
     }
 
-    const pluginManager = new PluginManager({
-      manifestIndex,
-      commandRegistry,
-      hostRegistry,
-    });
-
-    return {
-      commandRegistry,
-      hostRegistry,
-      manifestIndex,
-      pluginManager,
-      commandService: new CommandService({
-        pluginManager,
-        coercion: options.coercion ?? "none",
-      }),
-      pluginCount: scanResult.pluginCount,
-      commandCount: scanResult.commandCount,
-      dispose() {
-        return hostRegistry.disposeAll();
-      },
-    };
+    return scanResult;
   });
+}
+
+function disposeRuntimeResources(
+  hostRegistry: PluginHostRegistry,
+  runtimeScope: Scope.CloseableScope,
+): RuntimeEffect<void> {
+  return Effect.uninterruptible(
+    Effect.gen(function* () {
+      const hostsExit = yield* Effect.exit(hostRegistry.disposeAll());
+      const scopeExit = yield* Effect.exit(Scope.close(runtimeScope, hostsExit));
+
+      if (Exit.isFailure(hostsExit)) {
+        return yield* Effect.failCause(hostsExit.cause);
+      }
+
+      if (Exit.isFailure(scopeExit)) {
+        return yield* Effect.failCause(scopeExit.cause);
+      }
+    }),
+  );
+}
+
+function closeScopeOnFailure(
+  scope: Scope.CloseableScope,
+  exit: Exit.Exit<CreatedRuntime, RuntimeError>,
+): Effect.Effect<void> {
+  return Exit.isFailure(exit) ? Scope.close(scope, exit) : Effect.void;
 }

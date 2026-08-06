@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Effect, Exit, Scope } from "effect";
 import { describe, expect, it } from "vitest";
 
 import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
@@ -10,6 +10,7 @@ import {
 } from "@/index";
 
 import { fixturePath } from "./runtime-test-fixtures";
+import { createTestScope } from "./scope-test-fixtures";
 
 describe("createRuntime", () => {
   it("scans manifests without activation, routes commands, and disposes hosts", async () => {
@@ -85,6 +86,47 @@ describe("createRuntime", () => {
     await expect(runRuntimeEffectPromise(runtime.dispose())).resolves.toBeUndefined();
   });
 
+  it("forks the runtime under a parent application Scope", async () => {
+    const module = await import(
+      new URL("./fixtures/runtime-plugin/index.mjs", import.meta.url).href
+    );
+    const applicationScope = createTestScope();
+
+    module.calls.length = 0;
+
+    const runtime = await runRuntimeEffectPromise(
+      createRuntime({
+        parentScope: applicationScope,
+        pluginSources: [
+          {
+            kind: "builtin",
+            path: fixturePath("runtime-plugin"),
+          },
+        ],
+      }),
+    );
+
+    await runtime.commandService.runCommand({
+      commandId: "factory.echo",
+      input: { text: "parent-scope" },
+    });
+    await runRuntimeEffectPromise(Scope.close(applicationScope, Exit.succeed(undefined)));
+
+    expect(module.calls).toEqual([
+      "activate:dev.example.runtime",
+      "deactivate:dev.example.runtime",
+      "dispose:dev.example.runtime",
+    ]);
+
+    await runRuntimeEffectPromise(runtime.dispose());
+
+    expect(module.calls).toEqual([
+      "activate:dev.example.runtime",
+      "deactivate:dev.example.runtime",
+      "dispose:dev.example.runtime",
+    ]);
+  });
+
   it("constructs configured hosts with the runtime command registry", async () => {
     let factoryCommandRegistry: RuntimeCommandRegistry | undefined;
     const activePluginIds = new Set<string>();
@@ -154,5 +196,43 @@ describe("createRuntime", () => {
     expect(activations).toEqual(["dev.example.runtime"]);
 
     await runRuntimeEffectPromise(runtime.dispose());
+  });
+
+  it("closes forked host Scopes when runtime creation fails", async () => {
+    const calls: string[] = [];
+    const host: PluginHost = {
+      kind: "node",
+      hasPlugin: () => false,
+      activatePlugin: () => Effect.void,
+      deactivatePlugin: () => Effect.void,
+      dispose: () => Effect.void,
+    };
+
+    await expect(
+      runRuntimeEffectPromise(
+        createRuntime({
+          pluginSources: [],
+          hostFactories: [
+            ({ scope }) => {
+              Effect.runSync(
+                Scope.addFinalizer(
+                  scope,
+                  Effect.sync(() => {
+                    calls.push("host-scope-finalizer");
+                  }),
+                ),
+              );
+
+              return host;
+            },
+          ],
+          afterScan() {
+            throw new Error("runtime creation failed");
+          },
+        }),
+      ),
+    ).rejects.toThrow("runtime creation failed");
+
+    expect(calls).toEqual(["host-scope-finalizer"]);
   });
 });

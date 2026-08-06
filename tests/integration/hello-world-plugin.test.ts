@@ -10,7 +10,7 @@ import {
   PluginManager,
   RuntimeCommandRegistry,
 } from "@tooldeck/runtime-node";
-import { Effect } from "effect";
+import { Effect, ExecutionStrategy, Scope } from "effect";
 import { describe, expect, it } from "vitest";
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -29,7 +29,8 @@ describe("hello-world plugin integration", () => {
 
     const commandRegistry = new RuntimeCommandRegistry();
     const manifestIndex = new ManifestIndex();
-    const pluginHost = new NodePluginHost({ commandRegistry });
+    const hostScope = Effect.runSync(Scope.make(ExecutionStrategy.sequential));
+    const pluginHost = new NodePluginHost({ commandRegistry, scope: hostScope });
     const hostRegistry = new PluginHostRegistry();
 
     hostRegistry.register(pluginHost);

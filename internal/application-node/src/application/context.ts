@@ -2,13 +2,20 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { type CreatedRuntime, createRuntime, type PluginScanSource } from "@tooldeck/runtime-node";
+import { Exit } from "effect";
 
 import {
   type CommandInputPreprocessor,
   identityCommandInputPreprocessor,
   type TooldeckApplicationAdapters,
 } from "@/application/adapters";
-import { runRuntimeEffect } from "@/application/edge";
+import { runApplicationEffect, runRuntimeEffect } from "@/application/edge";
+import {
+  addDatabaseFinalizer,
+  closeApplicationResourceScope,
+  makeApplicationResourceScope,
+  type ApplicationResourceScope,
+} from "@/application/resource-scope";
 import type {
   ApplicationCommandInputCoercion,
   ApplicationPluginSource,
@@ -48,6 +55,7 @@ export class TooldeckApplicationContext {
   private pluginKv?: PluginKvRepository;
   private pluginManagement?: PluginManagementService;
   private runtime?: CreatedRuntime;
+  private resourceScope?: ApplicationResourceScope;
 
   constructor(options: CreateTooldeckApplicationOptions = {}) {
     if (options.paths && options.pathOptions) {
@@ -69,63 +77,15 @@ export class TooldeckApplicationContext {
       return;
     }
 
-    if (this.state === "disposed") {
-      throw new ApplicationError({
-        source: "application",
-        code: "ERR_APPLICATION_DISPOSED",
-        message: "Tooldeck application has already been disposed.",
-      });
-    }
-
-    if (this.state !== "created") {
-      throw new ApplicationError({
-        source: "application",
-        code: "ERR_INVALID_ARGUMENT",
-        message: `Tooldeck application cannot start while it is ${this.state}.`,
-      });
-    }
+    this.assertCanStart();
 
     this.state = "starting";
 
     try {
-      await mkdir(path.dirname(this.paths.databasePath), { recursive: true });
-      await mkdir(this.paths.installedPluginsDir, { recursive: true });
-      await mkdir(this.paths.userPluginsDir, { recursive: true });
-
-      this.database = openTooldeckDatabase({ path: this.paths.databasePath });
-      this.commandRuns = new CommandRunRepository(this.database.db);
-      this.preferences = new PreferenceRepository(this.database.db);
-      this.plugins = new PluginRepository(this.database.db);
-      this.pluginKv = new PluginKvRepository(this.database.db);
-      this.pluginManagement = new PluginManagementService({
-        database: this.database,
-        installedPluginsDir: this.paths.installedPluginsDir,
-        pluginSources: this.pluginSources,
-      });
-
-      await this.rebuildRuntime();
+      await this.startResources();
       this.state = "started";
     } catch (error) {
-      try {
-        await this.disposeResources();
-      } catch (cleanupError) {
-        this.state = "created";
-        throw combinePrimaryAndCleanupFailures(
-          error,
-          [
-            captureApplicationCleanupFailure({
-              phase: "cleanup",
-              step: "applicationResources.dispose",
-              context: {},
-              error: cleanupError,
-            }),
-          ],
-          "Application startup failed and partial resources could not be fully released.",
-        );
-      }
-
-      this.state = "created";
-      throw error;
+      await this.failStart(error);
     }
   }
 
@@ -152,23 +112,14 @@ export class TooldeckApplicationContext {
 
     const pluginKv = this.requirePluginKv();
     const pluginManagement = this.requirePluginManagement();
+    const parentScope = this.requireApplicationResourceScope().scope;
+
     this.runtime = await runRuntimeEffect(
       createRuntime({
         pluginSources: this.pluginSources,
+        parentScope,
         coercion: this.commandInputCoercion,
-        createPluginStorage(pluginId) {
-          return {
-            async get(key) {
-              return pluginKv.get(pluginId, key);
-            },
-            async set(key, value) {
-              pluginKv.set({ pluginId, key, value });
-            },
-            async delete(key) {
-              pluginKv.delete(pluginId, key);
-            },
-          };
-        },
+        createPluginStorage: (pluginId) => createPluginStorage(pluginKv, pluginId),
         afterScan({ manifestIndex }) {
           pluginManagement.syncCatalog(manifestIndex);
         },
@@ -208,6 +159,10 @@ export class TooldeckApplicationContext {
     return this.requireStartedResource(this.pluginKv, "plugin storage");
   }
 
+  private requireApplicationResourceScope(): ApplicationResourceScope {
+    return this.requireStartedResource(this.resourceScope, "resource scope");
+  }
+
   private requireStartedResource<T>(resource: T | undefined, name: string): T {
     if (!resource) {
       throw new ApplicationError({
@@ -224,12 +179,89 @@ export class TooldeckApplicationContext {
     return resource;
   }
 
-  private async disposeResources(): Promise<void> {
+  private assertCanStart(): void {
+    if (this.state === "disposed") {
+      throw new ApplicationError({
+        source: "application",
+        code: "ERR_APPLICATION_DISPOSED",
+        message: "Tooldeck application has already been disposed.",
+      });
+    }
+
+    if (this.state !== "created") {
+      throw new ApplicationError({
+        source: "application",
+        code: "ERR_INVALID_ARGUMENT",
+        message: `Tooldeck application cannot start while it is ${this.state}.`,
+      });
+    }
+  }
+
+  private async startResources(): Promise<void> {
+    this.resourceScope = await runApplicationEffect(makeApplicationResourceScope());
+
+    await this.createApplicationDirectories();
+
+    const database = openTooldeckDatabase({ path: this.paths.databasePath });
+    this.database = database;
+
+    await runApplicationEffect(addDatabaseFinalizer(this.resourceScope, database));
+
+    this.initializeDatabaseServices(database);
+    await this.rebuildRuntime();
+  }
+
+  private async createApplicationDirectories(): Promise<void> {
+    await mkdir(path.dirname(this.paths.databasePath), { recursive: true });
+    await mkdir(this.paths.installedPluginsDir, { recursive: true });
+    await mkdir(this.paths.userPluginsDir, { recursive: true });
+  }
+
+  private initializeDatabaseServices(database: TooldeckDatabase): void {
+    this.commandRuns = new CommandRunRepository(database.db);
+    this.preferences = new PreferenceRepository(database.db);
+    this.plugins = new PluginRepository(database.db);
+    this.pluginKv = new PluginKvRepository(database.db);
+    this.pluginManagement = new PluginManagementService({
+      database,
+      installedPluginsDir: this.paths.installedPluginsDir,
+      pluginSources: this.pluginSources,
+    });
+  }
+
+  private async failStart(error: unknown): Promise<never> {
+    try {
+      await this.disposeResources(Exit.fail(error));
+    } catch (cleanupError) {
+      this.state = "created";
+      throw combinePrimaryAndCleanupFailures(
+        error,
+        [
+          captureApplicationCleanupFailure({
+            phase: "cleanup",
+            step: "applicationResources.dispose",
+            context: {},
+            error: cleanupError,
+          }),
+        ],
+        "Application startup failed and partial resources could not be fully released.",
+      );
+    }
+
+    this.state = "created";
+    throw error;
+  }
+
+  private async disposeResources(
+    requestedExit: Exit.Exit<unknown, unknown> = Exit.succeed(undefined),
+  ): Promise<void> {
     const cleanupFailures: CapturedApplicationCleanupFailure[] = [];
+    let resourceExit = requestedExit;
 
     try {
       await this.disposeRuntime();
     } catch (error) {
+      resourceExit = Exit.fail(error);
       cleanupFailures.push(
         captureApplicationCleanupFailure({
           phase: "cleanup",
@@ -240,24 +272,12 @@ export class TooldeckApplicationContext {
       );
     }
 
-    const database = this.database;
-    this.database = undefined;
-    this.commandRuns = undefined;
-    this.preferences = undefined;
-    this.plugins = undefined;
-    this.pluginKv = undefined;
-    this.pluginManagement = undefined;
+    const resourceScope = this.resourceScope;
+    this.clearResourceReferences();
 
-    try {
-      database?.close();
-    } catch (error) {
+    if (resourceScope) {
       cleanupFailures.push(
-        captureApplicationCleanupFailure({
-          phase: "cleanup",
-          step: "database.close",
-          context: {},
-          error,
-        }),
+        ...(await runApplicationEffect(closeApplicationResourceScope(resourceScope, resourceExit))),
       );
     }
 
@@ -265,6 +285,30 @@ export class TooldeckApplicationContext {
       throw createApplicationCleanupError("Application resource cleanup failed.", cleanupFailures);
     }
   }
+
+  private clearResourceReferences(): void {
+    this.resourceScope = undefined;
+    this.database = undefined;
+    this.commandRuns = undefined;
+    this.preferences = undefined;
+    this.plugins = undefined;
+    this.pluginKv = undefined;
+    this.pluginManagement = undefined;
+  }
+}
+
+function createPluginStorage(pluginKv: PluginKvRepository, pluginId: string) {
+  return {
+    async get(key: string) {
+      return pluginKv.get(pluginId, key);
+    },
+    async set(key: string, value: unknown) {
+      pluginKv.set({ pluginId, key, value });
+    },
+    async delete(key: string) {
+      pluginKv.delete(pluginId, key);
+    },
+  };
 }
 
 function normalizePluginSources(

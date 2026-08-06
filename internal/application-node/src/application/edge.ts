@@ -11,7 +11,19 @@ export async function runApplicationOperation<T>(operation: () => T | Promise<T>
   }
 }
 
+export function runApplicationEffect<T>(effect: Effect.Effect<T, ApplicationError>): Promise<T> {
+  return runMappedEffect(effect, (error) => error, "Application operation was interrupted.");
+}
+
 export async function runRuntimeEffect<T>(effect: Effect.Effect<T, RuntimeError>): Promise<T> {
+  return runMappedEffect(effect, fromRuntimeError, "Runtime operation was interrupted.");
+}
+
+async function runMappedEffect<T, E>(
+  effect: Effect.Effect<T, E>,
+  mapFailure: (error: E) => ApplicationError,
+  interruptionMessage: string,
+): Promise<T> {
   const exit = await Effect.runPromiseExit(effect);
 
   if (Exit.isSuccess(exit)) {
@@ -21,7 +33,7 @@ export async function runRuntimeEffect<T>(effect: Effect.Effect<T, RuntimeError>
   const failure = Cause.failureOption(exit.cause);
 
   if (Option.isSome(failure)) {
-    throw fromRuntimeError(failure.value);
+    throw mapFailure(failure.value);
   }
 
   const defect = Cause.dieOption(exit.cause);
@@ -33,6 +45,6 @@ export async function runRuntimeEffect<T>(effect: Effect.Effect<T, RuntimeError>
   throw new ApplicationError({
     source: "application",
     code: "ERR_UNKNOWN",
-    message: "Runtime operation was interrupted.",
+    message: interruptionMessage,
   });
 }

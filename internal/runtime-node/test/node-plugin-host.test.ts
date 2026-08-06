@@ -1,14 +1,17 @@
 import { fileURLToPath } from "node:url";
 
-import { Cause, Effect, Exit, Fiber } from "effect";
+import { Cause, Effect, Exit, Fiber, Scope } from "effect";
 import { describe, expect, it } from "vitest";
 
 import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
 import { NodePluginHost, RuntimeCommandRegistry } from "@/index";
 
+import { createTestScope } from "./scope-test-fixtures";
+
 function createHost(): NodePluginHost {
   return new NodePluginHost({
     commandRegistry: new RuntimeCommandRegistry(),
+    scope: createTestScope(),
   });
 }
 
@@ -46,6 +49,7 @@ describe("NodePluginHost", () => {
     const values = new Map<string, unknown>();
     const host = new NodePluginHost({
       commandRegistry: new RuntimeCommandRegistry(),
+      scope: createTestScope(),
       createPluginStorage(pluginId) {
         return {
           async get(key) {
@@ -155,6 +159,41 @@ describe("NodePluginHost", () => {
     ]);
   });
 
+  it("closes a plugin Scope when its parent host Scope closes", async () => {
+    const hostScope = createTestScope();
+    const host = new NodePluginHost({
+      commandRegistry: new RuntimeCommandRegistry(),
+      scope: hostScope,
+    });
+    const module = await import(new URL("./fixtures/valid-plugin.mjs", import.meta.url).href);
+
+    module.calls.length = 0;
+
+    await runRuntimeEffectPromise(
+      host.activatePlugin({
+        pluginId: "dev.example.parent-scope",
+        entryPath: fixturePath("valid-plugin.mjs"),
+      }),
+    );
+
+    await runRuntimeEffectPromise(Scope.close(hostScope, Exit.succeed(undefined)));
+
+    expect(module.calls).toEqual([
+      "activate:dev.example.parent-scope",
+      "deactivate:dev.example.parent-scope",
+      "dispose:dev.example.parent-scope",
+    ]);
+
+    await runRuntimeEffectPromise(host.dispose());
+
+    expect(host.hasPlugin("dev.example.parent-scope")).toBe(false);
+    expect(module.calls).toEqual([
+      "activate:dev.example.parent-scope",
+      "deactivate:dev.example.parent-scope",
+      "dispose:dev.example.parent-scope",
+    ]);
+  });
+
   it("disposes subscriptions when activation fails", async () => {
     const host = createHost();
     const module = await import(
@@ -176,7 +215,7 @@ describe("NodePluginHost", () => {
     expect(module.calls).toEqual(["dispose:dev.example.activation-fails"]);
   });
 
-  it("closes the plugin subscription Scope when activation is interrupted", async () => {
+  it("closes the plugin Scope when activation is interrupted", async () => {
     const host = createHost();
     const module = await import(
       new URL("./fixtures/interruptible-activation-plugin.mjs", import.meta.url).href

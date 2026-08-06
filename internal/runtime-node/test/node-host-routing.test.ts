@@ -4,6 +4,7 @@ import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
 import { NodePluginHost, PluginHostRegistry, RuntimeCommandRegistry } from "@/index";
 
 import { fixturePath } from "./runtime-test-fixtures";
+import { createTestScope } from "./scope-test-fixtures";
 
 describe("Node host routing", () => {
   it("routes activation to the Node host and registers executable commands", async () => {
@@ -12,7 +13,8 @@ describe("Node host routing", () => {
     );
     const commandRegistry = new RuntimeCommandRegistry();
     const hostRegistry = new PluginHostRegistry();
-    const nodeHost = new NodePluginHost({ commandRegistry });
+    const hostScope = createTestScope();
+    const nodeHost = new NodePluginHost({ commandRegistry, scope: hostScope });
 
     module.calls.length = 0;
     hostRegistry.register(nodeHost);
