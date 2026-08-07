@@ -3,6 +3,7 @@ import { readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { RuntimeError } from "@tooldeck/runtime-node";
+import { Cause, Effect, Exit, Fiber } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApplicationError } from "@/errors/application-error";
@@ -12,6 +13,7 @@ import { PluginInstallRepository, PluginRepository, PluginStateRepository } from
 import {
   createHarness,
   createPluginPackage,
+  installPackageForTest,
   writePluginProject,
 } from "./plugin-management-fixtures";
 
@@ -52,7 +54,7 @@ describe("PluginManagementService catalog and install", () => {
 
     states.setEnabled("dev.example.installed-tools", false);
 
-    const result = await harness.service.installPackage(packagePath);
+    const result = await installPackageForTest(harness.service, packagePath);
 
     expect(result.plugin).toMatchObject({
       id: "dev.example.installed-tools",
@@ -85,7 +87,7 @@ describe("PluginManagementService catalog and install", () => {
       commandId: "shared.run",
     });
 
-    await expect(harness.service.installPackage(packagePath)).rejects.toThrow(
+    await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       "Command id conflict: shared.run",
     );
     expect(
@@ -112,7 +114,7 @@ describe("PluginManagementService catalog and install", () => {
       commandId: "installed-shared.run",
     });
 
-    await expect(harness.service.installPackage(packagePath)).rejects.toThrow(
+    await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       `Plugin manifest is already indexed: ${pluginId}`,
     );
     expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
@@ -128,9 +130,9 @@ describe("PluginManagementService catalog and install", () => {
       pluginId,
       commandId: "already-installed.run",
     });
-    const firstInstall = await harness.service.installPackage(packagePath);
+    const firstInstall = await installPackageForTest(harness.service, packagePath);
 
-    await expect(harness.service.installPackage(packagePath)).rejects.toThrow(
+    await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       `Plugin is already installed: ${pluginId}`,
     );
     expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toEqual(
@@ -149,7 +151,7 @@ describe("PluginManagementService catalog and install", () => {
       runtimeKind: "wasm",
     });
 
-    await expect(harness.service.installPackage(packagePath)).rejects.toThrow(
+    await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       "Unsupported installed plugin runtime: wasm",
     );
     expect(
@@ -166,8 +168,9 @@ describe("PluginManagementService catalog and install", () => {
 
     await writeFile(packagePath, new Uint8Array([0xde, 0xad, 0xbe, 0xef]));
 
-    await expect(harness.service.installPackage(packagePath)).rejects.toMatchObject({
-      code: "INVALID_ZIP",
+    await expect(installPackageForTest(harness.service, packagePath)).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_UNKNOWN",
     });
     expect(new PluginInstallRepository(harness.database.db).list()).toEqual([]);
     expect(new PluginRepository(harness.database.db).list()).toEqual([]);
@@ -184,7 +187,9 @@ describe("PluginManagementService catalog and install", () => {
       new Error("forced staging cleanup failure"),
     );
 
-    const error = await harness.service.installPackage(packagePath).catch((caught) => caught);
+    const error = await installPackageForTest(harness.service, packagePath).catch(
+      (caught) => caught,
+    );
 
     expect(error).toMatchObject({
       source: "application",
@@ -225,7 +230,7 @@ describe("PluginManagementService catalog and install", () => {
       end;
     `);
 
-    await expect(harness.service.installPackage(packagePath)).rejects.toThrow(
+    await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       "forced install record failure",
     );
     expect(existsSync(path.join(harness.installedPluginsDir, "dev.example.storage-failure"))).toBe(
@@ -234,6 +239,30 @@ describe("PluginManagementService catalog and install", () => {
     expect(
       new PluginInstallRepository(harness.database.db).getById("dev.example.storage-failure"),
     ).toBeUndefined();
+  });
+
+  it("rolls back a final directory when moving succeeds before reporting failure", async () => {
+    const harness = await createHarness();
+    const pluginId = "dev.example.move-report-failure";
+    const packagePath = await createPluginPackage({
+      rootDir: harness.rootDir,
+      pluginId,
+      commandId: "move-report-failure.run",
+    });
+    const originalMovePath = filesystem.movePath;
+
+    vi.spyOn(filesystem, "movePath").mockImplementationOnce(async (sourcePath, destinationPath) => {
+      await originalMovePath(sourcePath, destinationPath);
+      throw new Error("forced post-move failure");
+    });
+
+    await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
+      "forced post-move failure",
+    );
+    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(new PluginRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
+    expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
 
   it("rolls back files, install state, and catalog when the final rescan fails", async () => {
@@ -259,7 +288,7 @@ describe("PluginManagementService catalog and install", () => {
       },
     );
 
-    await expect(harness.service.installPackage(packagePath)).rejects.toThrow(
+    await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       "forced final rescan failure",
     );
     expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
@@ -267,6 +296,48 @@ describe("PluginManagementService catalog and install", () => {
     expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
     await expect(harness.service.scanAndSyncCatalog()).resolves.toMatchObject({ plugins: [] });
+  });
+
+  it("rolls back completed mutations when installation is interrupted", async () => {
+    const harness = await createHarness();
+    const pluginId = "dev.example.interrupted-install";
+    const packagePath = await createPluginPackage({
+      rootDir: harness.rootDir,
+      pluginId,
+      commandId: "interrupted-install.run",
+    });
+    const originalMovePath = filesystem.movePath;
+    let releaseMove!: () => void;
+    let reportMoveStarted!: () => void;
+    const moveStarted = new Promise<void>((resolve) => {
+      reportMoveStarted = resolve;
+    });
+    const moveGate = new Promise<void>((resolve) => {
+      releaseMove = resolve;
+    });
+
+    vi.spyOn(filesystem, "movePath").mockImplementationOnce(async (sourcePath, destinationPath) => {
+      reportMoveStarted();
+      await moveGate;
+      await originalMovePath(sourcePath, destinationPath);
+    });
+
+    const fiber = Effect.runFork(harness.service.installPackage(packagePath));
+    await moveStarted;
+    const interrupt = Effect.runPromise(Fiber.interrupt(fiber));
+
+    releaseMove();
+
+    const exit = await interrupt;
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    if (Exit.isFailure(exit)) {
+      expect(Cause.isInterrupted(exit.cause)).toBe(true);
+    }
+    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(new PluginRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
+    expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
 
   it("attempts later rollback steps after an earlier compensation fails", async () => {
@@ -305,7 +376,7 @@ describe("PluginManagementService catalog and install", () => {
       new Error("forced plugin-directory rollback failure"),
     );
 
-    await expect(harness.service.installPackage(packagePath)).rejects.toMatchObject({
+    await expect(installPackageForTest(harness.service, packagePath)).rejects.toMatchObject({
       source: "runtime",
       code: "ERR_NOT_FOUND",
       message: "forced known final rescan failure",

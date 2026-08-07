@@ -23,6 +23,12 @@ const allowedRendererApiMethods = [
 
 const checks = [
   {
+    name: "CLI and Desktop surfaces must not import Effect",
+    pattern: String.raw`(?:from\s+["']effect(?:/[^"']*)?["']|import\(["']effect(?:/[^"']*)?["']\))`,
+    paths: ["src", "../cli/src"],
+    expect: "no-match",
+  },
+  {
     name: "renderer/preload must not import internal application or runtime packages",
     pattern: String.raw`@tooldeck/(application-node|runtime-node|storage|plugin-management-node)`,
     paths: rendererAndPreload,

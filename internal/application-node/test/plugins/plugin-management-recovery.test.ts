@@ -7,7 +7,12 @@ import { describe, expect, it, vi } from "vitest";
 import * as filesystem from "@/plugins/management/filesystem";
 import { PluginInstallRepository } from "@/storage";
 
-import { createHarness, createPluginPackage, createTempDir } from "./plugin-management-fixtures";
+import {
+  createHarness,
+  createPluginPackage,
+  createTempDir,
+  installPackageForTest,
+} from "./plugin-management-fixtures";
 
 describe("PluginManagementService recovery and safety", () => {
   it("keeps a plugin logically uninstalled when quarantine cleanup partially fails", async () => {
@@ -18,7 +23,7 @@ describe("PluginManagementService recovery and safety", () => {
       pluginId,
       commandId: "cleanup-failure.run",
     });
-    const installed = await harness.service.installPackage(packagePath);
+    const installed = await installPackageForTest(harness.service, packagePath);
 
     vi.spyOn(filesystem, "removePath").mockImplementationOnce(async (quarantineDir) => {
       await rm(path.join(quarantineDir, "dist"), { recursive: true, force: true });
@@ -68,7 +73,7 @@ describe("PluginManagementService recovery and safety", () => {
       pluginId,
       commandId: "missing-files.run",
     });
-    const installed = await harness.service.installPackage(packagePath);
+    const installed = await installPackageForTest(harness.service, packagePath);
 
     await rm(installed.install.installDir, { recursive: true, force: true });
 
@@ -115,7 +120,7 @@ describe("PluginManagementService recovery and safety", () => {
       pluginId,
       commandId: "rollback-uninstall.run",
     });
-    const installed = await harness.service.installPackage(packagePath);
+    const installed = await installPackageForTest(harness.service, packagePath);
 
     await rm(externalDir, { recursive: true, force: true });
 
@@ -157,7 +162,7 @@ describe("PluginManagementService recovery and safety", () => {
       commandId: "rollback-attempt-all.run",
     });
 
-    await harness.service.installPackage(packagePath);
+    await installPackageForTest(harness.service, packagePath);
     await rm(externalDir, { recursive: true, force: true });
 
     const originalMovePath = filesystem.movePath;

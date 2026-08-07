@@ -6,6 +6,7 @@ import path from "node:path";
 import { packTooldeckPlugin } from "@tooldeck/plugin-package";
 import { afterEach, vi } from "vitest";
 
+import { runApplicationEffect } from "@/application/edge";
 import { PluginManagementService } from "@/plugins/management";
 import { openTooldeckDatabase, type TooldeckDatabase } from "@/storage";
 
@@ -62,6 +63,10 @@ export async function createHarness(
       pluginSources,
     }),
   };
+}
+
+export function installPackageForTest(service: PluginManagementService, packagePath: string) {
+  return runApplicationEffect(service.installPackage(packagePath));
 }
 
 export async function createPluginPackage(options: {

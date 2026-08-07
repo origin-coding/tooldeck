@@ -1,204 +1,293 @@
-import { randomUUID } from "node:crypto";
-import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { unpackTooldeckPackage } from "@tooldeck/plugin-package";
 import { scanPluginDirectory } from "@tooldeck/runtime-node";
+import { Effect, Exit } from "effect";
 
+import { applicationErrorFromCause } from "@/application/edge";
+import {
+  type ApplicationEffect,
+  tryApplicationPromise,
+  tryApplicationSync,
+} from "@/application/effect";
 import {
   captureApplicationCleanupFailure,
   type CapturedApplicationCleanupFailure,
+  combinePrimaryAndCleanupFailures,
+  createApplicationCleanupError,
 } from "@/errors/application-cleanup";
 import { ApplicationError } from "@/errors/application-error";
 import { scanAndSyncPluginCatalog } from "@/plugins/management/catalog";
 import { movePath, pathExists, removePath } from "@/plugins/management/filesystem";
+import {
+  closeInstallStagingScope,
+  makeInstallStagingScope,
+  type InstallStagingScope,
+} from "@/plugins/management/install-scope";
 import type { PluginManagementContext } from "@/plugins/management/internal";
-import {
-  captureOperationFailure,
-  throwOperationFailure,
-} from "@/plugins/management/operation-rollback";
-import {
-  PLUGIN_MANAGEMENT_STAGING_DIR,
-  resolveInstalledPluginDir,
-  resolvePluginManagementStagingDir,
-} from "@/plugins/management/paths";
+import { captureOperationFailureEffect } from "@/plugins/management/operation-rollback";
+import { resolveInstalledPluginDir } from "@/plugins/management/paths";
 import type { InstalledPluginSummary } from "@/plugins/management/types";
 import type { PluginInstallRow } from "@/storage";
 
-export async function installPluginPackage(
+interface InstallMutationState {
+  pluginId?: string;
+  finalInstallDir?: string;
+  createdInstall?: PluginInstallRow;
+  moveAttempted: boolean;
+}
+
+type RestoreInterruptibility = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>;
+
+export function installPluginPackage(
   context: PluginManagementContext,
   packagePath: string,
-): Promise<InstalledPluginSummary> {
-  await mkdir(path.join(context.installedPluginsDir, PLUGIN_MANAGEMENT_STAGING_DIR), {
-    recursive: true,
-  });
+): ApplicationEffect<InstalledPluginSummary> {
+  return Effect.uninterruptibleMask((restore) =>
+    Effect.gen(function* () {
+      const stagingScope = yield* makeInstallStagingScope(context.installedPluginsDir);
+      const mutationState: InstallMutationState = { moveAttempted: false };
+      const installExit = yield* Effect.exit(
+        executeInstall(context, packagePath, stagingScope, mutationState, restore),
+      );
+      const cleanupFailures: CapturedApplicationCleanupFailure[] = [];
 
-  const stagingDir = resolvePluginManagementStagingDir(
-    context.installedPluginsDir,
-    `install-${randomUUID()}`,
+      if (Exit.isFailure(installExit)) {
+        yield* rollbackInstall(context, mutationState, cleanupFailures);
+      }
+
+      cleanupFailures.push(...(yield* closeInstallStagingScope(stagingScope, installExit)));
+
+      if (Exit.isFailure(installExit)) {
+        const primaryError = applicationErrorFromCause(installExit.cause);
+
+        if (cleanupFailures.length > 0) {
+          return yield* Effect.fail(
+            combinePrimaryAndCleanupFailures(
+              primaryError,
+              cleanupFailures,
+              "Plugin installation failed and cleanup or rollback did not complete.",
+            ),
+          );
+        }
+
+        return yield* Effect.fail(primaryError);
+      }
+
+      if (cleanupFailures.length > 0) {
+        return yield* Effect.fail(
+          createApplicationCleanupError(
+            "Plugin installation completed but staging cleanup failed.",
+            cleanupFailures,
+          ),
+        );
+      }
+
+      return installExit.value;
+    }),
   );
-  const stagingEntry = path.basename(stagingDir);
-  let pluginId: string | undefined;
-  let finalInstallDir: string | undefined;
-  let createdInstall: PluginInstallRow | undefined;
-  let movedToFinal = false;
+}
 
-  try {
-    const packageSummary = await unpackTooldeckPackage({
-      packagePath,
-      destinationDir: stagingDir,
-    });
-    pluginId = packageSummary.pluginManifest.id;
+function executeInstall(
+  context: PluginManagementContext,
+  packagePath: string,
+  stagingScope: InstallStagingScope,
+  mutationState: InstallMutationState,
+  restore: RestoreInterruptibility,
+): ApplicationEffect<InstalledPluginSummary> {
+  return Effect.gen(function* () {
+    const packageSummary = yield* tryApplicationPromise(async () =>
+      unpackTooldeckPackage({
+        packagePath,
+        destinationDir: stagingScope.stagingDir,
+      }),
+    );
+    yield* interruptCheckpoint(restore);
+
+    const pluginId = packageSummary.pluginManifest.id;
+
+    stagingScope.pluginId = pluginId;
+    mutationState.pluginId = pluginId;
 
     if (packageSummary.pluginManifest.runtime.kind !== "node") {
-      throw new ApplicationError({
-        source: "application",
-        code: "ERR_INVALID_ARGUMENT",
-        message: `Unsupported installed plugin runtime: ${packageSummary.pluginManifest.runtime.kind}`,
-        details: {
-          pluginId,
-          packagePath: packageSummary.packagePath,
-          runtimeKind: packageSummary.pluginManifest.runtime.kind,
-        },
-      });
+      return yield* Effect.fail(
+        new ApplicationError({
+          source: "application",
+          code: "ERR_INVALID_ARGUMENT",
+          message: `Unsupported installed plugin runtime: ${packageSummary.pluginManifest.runtime.kind}`,
+          details: {
+            pluginId,
+            packagePath: packageSummary.packagePath,
+            runtimeKind: packageSummary.pluginManifest.runtime.kind,
+          },
+        }),
+      );
     }
 
-    finalInstallDir = resolveInstalledPluginDir(context.installedPluginsDir, pluginId);
-    const existingInstall = context.installs.getById(pluginId);
+    const finalInstallDir = resolveInstalledPluginDir(context.installedPluginsDir, pluginId);
+    mutationState.finalInstallDir = finalInstallDir;
 
-    if (existingInstall) {
-      throw new ApplicationError({
-        source: "application",
-        code: "ERR_ALREADY_EXISTS",
-        message: `Plugin is already installed: ${pluginId}`,
-        details: {
-          pluginId,
-          existingInstallDir: existingInstall.installDir,
-          packagePath: packageSummary.packagePath,
-        },
-      });
-    }
-
-    if (await pathExists(finalInstallDir)) {
-      throw new ApplicationError({
-        source: "application",
-        code: "ERR_ALREADY_EXISTS",
-        message: `Installed plugin directory already exists: ${pluginId}`,
-        details: {
-          pluginId,
-          installDir: finalInstallDir,
-          packagePath: packageSummary.packagePath,
-        },
-      });
-    }
-
-    const currentCatalog = await scanAndSyncPluginCatalog(context);
-
-    await scanPluginDirectory({
-      pluginsRoot: stagingDir,
-      kind: "installed",
-      manifestIndex: currentCatalog.manifestIndex,
-    });
-
-    await movePath(stagingDir, finalInstallDir);
-    movedToFinal = true;
-
-    createdInstall = context.installs.create({
+    yield* validateInstallDestination(
+      context,
+      packageSummary.packagePath,
       pluginId,
-      version: packageSummary.pluginManifest.version,
-      installDir: finalInstallDir,
-      manifestPath: path.join(finalInstallDir, "manifest.json"),
-      packageName: path.basename(packageSummary.packagePath),
-      packageDigest: packageSummary.packageDigest,
-      packageSizeBytes: packageSummary.packageSizeBytes,
-    });
+      finalInstallDir,
+    );
+    yield* interruptCheckpoint(restore);
 
-    const updatedCatalog = await scanAndSyncPluginCatalog(context);
+    const currentCatalog = yield* tryApplicationPromise(async () =>
+      scanAndSyncPluginCatalog(context),
+    );
+    yield* interruptCheckpoint(restore);
+
+    yield* tryApplicationPromise(async () =>
+      scanPluginDirectory({
+        pluginsRoot: stagingScope.stagingDir,
+        kind: "installed",
+        manifestIndex: currentCatalog.manifestIndex,
+      }),
+    );
+    yield* interruptCheckpoint(restore);
+
+    mutationState.moveAttempted = true;
+    yield* tryApplicationPromise(async () => movePath(stagingScope.stagingDir, finalInstallDir));
+    yield* interruptCheckpoint(restore);
+
+    const createdInstall = yield* tryApplicationSync(() =>
+      context.installs.create({
+        pluginId,
+        version: packageSummary.pluginManifest.version,
+        installDir: finalInstallDir,
+        manifestPath: path.join(finalInstallDir, "manifest.json"),
+        packageName: path.basename(packageSummary.packagePath),
+        packageDigest: packageSummary.packageDigest,
+        packageSizeBytes: packageSummary.packageSizeBytes,
+      }),
+    );
+    mutationState.createdInstall = createdInstall;
+    yield* interruptCheckpoint(restore);
+
+    const updatedCatalog = yield* tryApplicationPromise(async () =>
+      scanAndSyncPluginCatalog(context),
+    );
+    yield* interruptCheckpoint(restore);
     const plugin = updatedCatalog.plugins.find((entry) => entry.id === pluginId);
 
     if (!plugin || plugin.sourceKind !== "installed") {
-      throw new ApplicationError({
-        source: "application",
-        code: "ERR_NOT_FOUND",
-        message: `Installed plugin was not found after catalog refresh: ${pluginId}`,
-        details: {
-          pluginId,
-          installDir: finalInstallDir,
-        },
-      });
+      return yield* Effect.fail(
+        new ApplicationError({
+          source: "application",
+          code: "ERR_NOT_FOUND",
+          message: `Installed plugin was not found after catalog refresh: ${pluginId}`,
+          details: {
+            pluginId,
+            installDir: finalInstallDir,
+          },
+        }),
+      );
     }
 
-    return {
-      install: createdInstall,
-      plugin,
-    };
-  } catch (error) {
-    const cleanupFailures: CapturedApplicationCleanupFailure[] = [];
+    return { install: createdInstall, plugin };
+  });
+}
 
-    if (createdInstall) {
-      const createdPluginId = createdInstall.pluginId;
+function interruptCheckpoint(restore: RestoreInterruptibility): Effect.Effect<void> {
+  return restore(Effect.yieldNow());
+}
 
-      await captureOperationFailure(
-        () => context.installs.delete(createdPluginId),
+function validateInstallDestination(
+  context: PluginManagementContext,
+  packagePath: string,
+  pluginId: string,
+  finalInstallDir: string,
+): ApplicationEffect<void> {
+  return Effect.gen(function* () {
+    const existingInstall = yield* tryApplicationSync(() => context.installs.getById(pluginId));
+
+    if (existingInstall) {
+      return yield* Effect.fail(
+        new ApplicationError({
+          source: "application",
+          code: "ERR_ALREADY_EXISTS",
+          message: `Plugin is already installed: ${pluginId}`,
+          details: {
+            pluginId,
+            existingInstallDir: existingInstall.installDir,
+            packagePath,
+          },
+        }),
+      );
+    }
+
+    if (yield* tryApplicationPromise(async () => pathExists(finalInstallDir))) {
+      return yield* Effect.fail(
+        new ApplicationError({
+          source: "application",
+          code: "ERR_ALREADY_EXISTS",
+          message: `Installed plugin directory already exists: ${pluginId}`,
+          details: {
+            pluginId,
+            installDir: finalInstallDir,
+            packagePath,
+          },
+        }),
+      );
+    }
+  });
+}
+
+function rollbackInstall(
+  context: PluginManagementContext,
+  mutationState: InstallMutationState,
+  cleanupFailures: CapturedApplicationCleanupFailure[],
+): ApplicationEffect<void> {
+  return Effect.gen(function* () {
+    if (mutationState.createdInstall) {
+      const pluginId = mutationState.createdInstall.pluginId;
+
+      yield* captureOperationFailureEffect(
+        tryApplicationSync(() => context.installs.delete(pluginId)),
         cleanupFailures,
-        (rollbackError) =>
+        (error) =>
           captureApplicationCleanupFailure({
             phase: "rollback",
             step: "pluginInstall.delete",
-            context: { pluginId: createdPluginId },
-            error: rollbackError,
+            context: { pluginId },
+            error,
           }),
       );
     }
 
-    if (movedToFinal && finalInstallDir && pluginId) {
-      const rollbackInstallDir = finalInstallDir;
-      const rollbackPluginId = pluginId;
+    if (mutationState.moveAttempted && mutationState.finalInstallDir && mutationState.pluginId) {
+      const pluginId = mutationState.pluginId;
 
-      await captureOperationFailure(
-        () => removePath(rollbackInstallDir),
+      yield* captureOperationFailureEffect(
+        tryApplicationPromise(async () => removePath(mutationState.finalInstallDir!)),
         cleanupFailures,
-        (rollbackError) =>
+        (error) =>
           captureApplicationCleanupFailure({
             phase: "rollback",
             step: "pluginDirectory.remove",
-            context: { pluginId: rollbackPluginId },
-            error: rollbackError,
-          }),
-      );
-    } else {
-      await captureOperationFailure(
-        () => removePath(stagingDir),
-        cleanupFailures,
-        (cleanupError) =>
-          captureApplicationCleanupFailure({
-            phase: "cleanup",
-            step: "pluginStaging.remove",
-            context: {
-              stagingEntry,
-              ...(pluginId ? { pluginId } : {}),
-            },
-            error: cleanupError,
+            context: { pluginId },
+            error,
           }),
       );
     }
 
-    const rollbackPluginId = createdInstall?.pluginId ?? pluginId;
+    const pluginId = mutationState.createdInstall?.pluginId ?? mutationState.pluginId;
 
-    if ((movedToFinal || createdInstall) && rollbackPluginId) {
-      await captureOperationFailure(
-        () => scanAndSyncPluginCatalog(context),
+    if ((mutationState.moveAttempted || mutationState.createdInstall) && pluginId) {
+      yield* captureOperationFailureEffect(
+        tryApplicationPromise(async () => scanAndSyncPluginCatalog(context)),
         cleanupFailures,
-        (rollbackError) =>
+        (error) =>
           captureApplicationCleanupFailure({
             phase: "rollback",
             step: "pluginCatalog.restore",
-            context: { pluginId: rollbackPluginId },
-            error: rollbackError,
+            context: { pluginId },
+            error,
           }),
       );
     }
-
-    throwOperationFailure("Plugin installation", error, cleanupFailures);
-  }
+  });
 }
