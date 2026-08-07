@@ -20,7 +20,7 @@
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/sdk-node": "workspace:*",
     "ajv": "catalog:",
-    "effect": "3.22.1"
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",
