@@ -5,7 +5,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { packTooldeckPlugin } from "@tooldeck/plugin-package";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it, vi } from "vitest";
 
 import {
   ApplicationError,
@@ -16,6 +16,7 @@ import {
   type TooldeckPaths,
   withTooldeckApplication,
 } from "@/index";
+import { CommandRunRepository } from "@/storage";
 
 const applications: TooldeckApplication[] = [];
 const tempDirs: string[] = [];
@@ -31,6 +32,56 @@ afterEach(async () => {
 });
 
 describe("Tooldeck application facade", () => {
+  it("keeps the public lifecycle boundary Promise-based", () => {
+    expectTypeOf<TooldeckApplication["start"]>().returns.toEqualTypeOf<Promise<void>>();
+    expectTypeOf<TooldeckApplication["dispose"]>().returns.toEqualTypeOf<Promise<void>>();
+  });
+
+  it("owns single-flight start and dispose promises without changing the public lifecycle API", async () => {
+    const rootDir = createTempDir();
+    const paths = createPaths(rootDir);
+    await writeFixturePlugin(paths.builtinPluginsDir);
+    const application = createTooldeckApplication({ paths });
+
+    applications.push(application);
+
+    const firstStart = application.start();
+    const secondStart = application.start();
+
+    expect(secondStart).toBe(firstStart);
+    await firstStart;
+
+    const firstDispose = application.dispose();
+    const secondDispose = application.dispose();
+
+    expect(secondDispose).toBe(firstDispose);
+    await firstDispose;
+    await expect(application.start()).rejects.toSatisfy((error: unknown) =>
+      isApplicationError(error, "ERR_APPLICATION_DISPOSED"),
+    );
+  });
+
+  it("allows a failed start to be retried after partial resources are released", async () => {
+    const rootDir = createTempDir();
+    const paths = createPaths(rootDir);
+    const externalPluginsDir = path.join(rootDir, "external-plugins");
+    const application = createTooldeckApplication({
+      paths,
+      pluginSources: [{ kind: "external", path: externalPluginsDir }],
+    });
+
+    applications.push(application);
+
+    await expect(application.start()).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_UNKNOWN",
+      message: "Application operation failed unexpectedly.",
+    });
+
+    await mkdir(externalPluginsDir, { recursive: true });
+    await expect(application.start()).resolves.toBeUndefined();
+  });
+
   it("groups domains, applies a downstream preprocessor, and records command history", async () => {
     const rootDir = createTempDir();
     const paths = createPaths(rootDir);
@@ -131,18 +182,117 @@ describe("Tooldeck application facade", () => {
     });
 
     await application.plugins.setEnabled("dev.tooldeck.fixture", false);
+    const preprocessCallsBeforeDisabledRun = [...preprocessCalls];
     await expect(
       application.commands.run({
         commandId: "fixture.echo",
         input: { text: "disabled" },
       }),
     ).rejects.toSatisfy((error: unknown) => isApplicationError(error, "ERR_PLUGIN_DISABLED"));
+    expect(preprocessCalls).toEqual(preprocessCallsBeforeDisabledRun);
 
     await application.dispose();
     await application.dispose();
     await expect(application.plugins.list()).rejects.toSatisfy((error: unknown) =>
       isApplicationError(error, "ERR_APPLICATION_DISPOSED"),
     );
+  });
+
+  it("records result and thrown failures while preserving command failure over history failure", async () => {
+    const rootDir = createTempDir();
+    const paths = createPaths(rootDir);
+    await writeFixturePlugin(paths.builtinPluginsDir);
+    const application = createTooldeckApplication({ paths });
+
+    applications.push(application);
+    await application.start();
+
+    await expect(
+      application.commands.run({
+        commandId: "fixture.echo",
+        input: { text: "result-error" },
+        source: "result-error-test",
+      }),
+    ).resolves.toEqual({
+      status: "error",
+      blocks: [],
+      error: { code: "EXPECTED_FAILURE", message: "Fixture returned an error result." },
+    });
+
+    await expect(
+      application.commands.run({
+        commandId: "fixture.echo",
+        input: { text: "throw" },
+        source: "throw-test",
+      }),
+    ).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_UNKNOWN",
+      message: "Application operation failed unexpectedly.",
+    });
+
+    const historyBeforeSkippedRun = await application.history.listCommandRuns();
+
+    await application.commands.run({
+      commandId: "fixture.echo",
+      input: { text: "not-recorded" },
+      source: "skip-history-test",
+      recordHistory: false,
+    });
+
+    await expect(application.history.listCommandRuns()).resolves.toHaveLength(
+      historyBeforeSkippedRun.length,
+    );
+    expect(historyBeforeSkippedRun).toMatchObject([
+      {
+        source: "throw-test",
+        status: "error",
+        error: {
+          source: "application",
+          code: "ERR_UNKNOWN",
+        },
+      },
+      {
+        source: "result-error-test",
+        status: "error",
+        output: {
+          status: "error",
+          error: { code: "EXPECTED_FAILURE" },
+        },
+      },
+    ]);
+
+    const create = vi.spyOn(CommandRunRepository.prototype, "create").mockImplementationOnce(() => {
+      throw new Error("forced command history failure");
+    });
+
+    try {
+      const error = await application.commands
+        .run({
+          commandId: "fixture.missing",
+          input: { text: "throw" },
+          source: "dual-failure-test",
+        })
+        .catch((caught) => caught);
+
+      expect(error).toMatchObject({
+        source: "runtime",
+        code: "ERR_COMMAND_NOT_FOUND",
+        cause: {
+          message: "Command execution and command history persistence both failed.",
+          errors: [
+            expect.objectContaining({ source: "runtime", code: "ERR_COMMAND_NOT_FOUND" }),
+            expect.objectContaining({
+              source: "application",
+              code: "ERR_UNKNOWN",
+              message: "forced command history failure",
+            }),
+          ],
+        },
+      });
+    } finally {
+      create.mockRestore();
+    }
   });
 
   it("scopes startup and cleanup with withTooldeckApplication", async () => {
@@ -283,7 +433,7 @@ describe("Tooldeck application facade", () => {
       await expect(application.start()).rejects.toMatchObject({
         source: "application",
         code: "ERR_UNKNOWN",
-        message: expect.stringContaining("External plugin directory does not exist"),
+        message: "Application operation failed unexpectedly.",
         details: {
           cleanupFailures: [
             {
@@ -394,10 +544,22 @@ async function writeFixturePlugin(
           ]
         : []),
       "    context.subscriptions.push(",
-      '      context.commands.register("fixture.echo", (input) => ({',
-      '        status: "success",',
-      '        blocks: [{ type: "text", text: String(input.text) }],',
-      "      })),",
+      '      context.commands.register("fixture.echo", (input) => {',
+      '        if (input.text === "throw") {',
+      '          throw new Error("Fixture command failed.");',
+      "        }",
+      '        if (input.text === "result-error") {',
+      "          return {",
+      '            status: "error",',
+      "            blocks: [],",
+      '            error: { code: "EXPECTED_FAILURE", message: "Fixture returned an error result." },',
+      "          };",
+      "        }",
+      "        return {",
+      '          status: "success",',
+      '          blocks: [{ type: "text", text: String(input.text) }],',
+      "        };",
+      "      }),",
       "    );",
       "  },",
       "};",

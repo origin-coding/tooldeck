@@ -249,7 +249,7 @@ describe("CLI command catalog", () => {
     expect(error).toMatchObject({
       source: "application",
       code: "ERR_UNKNOWN",
-      message: "command failed at source",
+      message: "Application operation failed unexpectedly.",
       details: expect.objectContaining({
         cleanupFailures: [
           expect.objectContaining({
@@ -268,9 +268,10 @@ describe("CLI command catalog", () => {
       expect.objectContaining({
         commandId: "cleanup.fail",
         status: "error",
-        errorJson: expect.stringContaining("command failed at source"),
+        errorJson: expect.stringContaining("Application operation failed unexpectedly."),
       }),
     ]);
+    expect(readCommandRuns(storagePath)[0]?.errorJson).not.toContain("command failed at source");
     expect(readCommandRuns(storagePath)[0]?.errorJson).not.toContain("cleanupFailures");
   });
 

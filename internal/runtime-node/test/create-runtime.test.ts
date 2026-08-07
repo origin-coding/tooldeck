@@ -48,12 +48,14 @@ describe("createRuntime", () => {
     expect(module.calls).toEqual([]);
 
     await expect(
-      runtime.commandService.runCommand({
-        commandId: "factory.echo",
-        input: {
-          text: "hello",
-        },
-      }),
+      runRuntimeEffectPromise(
+        runtime.runCommand({
+          commandId: "factory.echo",
+          input: {
+            text: "hello",
+          },
+        }),
+      ),
     ).resolves.toEqual({
       commandId: "factory.echo",
       input: {
@@ -72,6 +74,13 @@ describe("createRuntime", () => {
 
     expect(nodeHost.hasPlugin("dev.example.runtime")).toBe(true);
     expect(module.calls).toEqual(["activate:dev.example.runtime"]);
+
+    await expect(
+      runRuntimeEffectPromise(runtime.runCommand({ commandId: "factory.missing" })),
+    ).rejects.toMatchObject({
+      _tag: "RuntimeError",
+      code: "ERR_COMMAND_NOT_FOUND",
+    });
 
     await runRuntimeEffectPromise(runtime.dispose());
 

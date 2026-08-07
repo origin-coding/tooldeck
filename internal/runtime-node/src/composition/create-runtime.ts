@@ -3,7 +3,11 @@ import { Effect, ExecutionStrategy, Exit, Scope } from "effect";
 
 import type { CommandInputCoercion } from "@/commands/command-input";
 import { RuntimeCommandRegistry } from "@/commands/command-registry";
-import { CommandService } from "@/commands/command-service";
+import {
+  CommandService,
+  type RunCommandOutput,
+  type RunServiceCommandOptions,
+} from "@/commands/command-service";
 import { PluginHostRegistry } from "@/composition/host-registry";
 import type { PluginHost } from "@/core/plugin-host";
 import { tryRuntimeBoundaryPromise, type RuntimeEffect } from "@/effects/runtime-effect";
@@ -43,6 +47,7 @@ export interface CreatedRuntime {
   commandService: CommandService;
   pluginCount: number;
   commandCount: number;
+  runCommand(options: RunServiceCommandOptions): RuntimeEffect<RunCommandOutput>;
   dispose(): RuntimeEffect<void>;
 }
 
@@ -77,18 +82,21 @@ function createRuntimeResources(
 
     const scanResult = yield* scanRuntimePlugins(options, manifestIndex);
     const pluginManager = new PluginManager({ manifestIndex, commandRegistry, hostRegistry });
+    const commandService = new CommandService({
+      pluginManager,
+      coercion: options.coercion ?? "none",
+    });
 
     return {
       commandRegistry,
       hostRegistry,
       manifestIndex,
       pluginManager,
-      commandService: new CommandService({
-        pluginManager,
-        coercion: options.coercion ?? "none",
-      }),
+      commandService,
       pluginCount: scanResult.pluginCount,
       commandCount: scanResult.commandCount,
+      runCommand: (commandOptions) =>
+        tryRuntimeBoundaryPromise(async () => commandService.runCommand(commandOptions)),
       dispose: () => disposeRuntimeResources(hostRegistry, runtimeScope),
     };
   });

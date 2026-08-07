@@ -2,6 +2,7 @@ import path from "node:path";
 
 import type { ManifestIndex } from "@tooldeck/runtime-node";
 
+import type { ApplicationEffect } from "@/application/effect";
 import { ApplicationError } from "@/errors/application-error";
 import {
   scanAndSyncPluginCatalog,
@@ -58,7 +59,7 @@ export class PluginManagementService {
     return setManagedPluginEnabled(this.context, pluginId, enabled);
   }
 
-  installPackage(packagePath: string): Promise<InstalledPluginSummary> {
+  installPackage(packagePath: string): ApplicationEffect<InstalledPluginSummary> {
     return installPluginPackage(this.context, packagePath);
   }
 

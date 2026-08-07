@@ -9,7 +9,11 @@ import {
   PluginStateRepository,
 } from "@/storage";
 
-import { createHarness, createPluginPackage } from "./plugin-management-fixtures";
+import {
+  createHarness,
+  createPluginPackage,
+  installPackageForTest,
+} from "./plugin-management-fixtures";
 
 describe("PluginManagementService uninstall and purge", () => {
   it("uninstalls managed files while preserving state, KV, and command history", async () => {
@@ -20,7 +24,7 @@ describe("PluginManagementService uninstall and purge", () => {
       pluginId,
       commandId: "uninstall.run",
     });
-    const installed = await harness.service.installPackage(packagePath);
+    const installed = await installPackageForTest(harness.service, packagePath);
     const states = new PluginStateRepository(harness.database.db);
     const kv = new PluginKvRepository(harness.database.db);
     const runs = new CommandRunRepository(harness.database.db);
@@ -53,7 +57,7 @@ describe("PluginManagementService uninstall and purge", () => {
       }),
     ]);
 
-    const reinstalled = await harness.service.installPackage(packagePath);
+    const reinstalled = await installPackageForTest(harness.service, packagePath);
 
     expect(reinstalled.plugin.enabled).toBe(false);
   });
@@ -70,7 +74,7 @@ describe("PluginManagementService uninstall and purge", () => {
     const kv = new PluginKvRepository(harness.database.db);
     const runs = new CommandRunRepository(harness.database.db);
 
-    await harness.service.installPackage(packagePath);
+    await installPackageForTest(harness.service, packagePath);
     await harness.service.setEnabled(pluginId, false);
     kv.set({ pluginId, key: "first", value: 1 });
     kv.set({ pluginId, key: "second", value: 2 });

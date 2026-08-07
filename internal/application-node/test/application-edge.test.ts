@@ -2,13 +2,13 @@ import { RuntimeError } from "@tooldeck/runtime-node";
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { runApplicationEffect, runRuntimeEffect } from "@/application/edge";
+import { runApplicationEffect } from "@/application/edge";
 import { ApplicationError } from "@/errors/application-error";
 
-describe("runtime Effect application edge", () => {
+describe("Application Effect edge", () => {
   it("maps typed RuntimeError failures without exposing an Effect wrapper", async () => {
     await expect(
-      runRuntimeEffect(
+      runApplicationEffect(
         Effect.fail(
           new RuntimeError({
             code: "ERR_RUNTIME_HOST_UNAVAILABLE",
@@ -30,28 +30,26 @@ describe("runtime Effect application edge", () => {
   it("normalizes defects to an application ERR_UNKNOWN without Cause or FiberFailure", async () => {
     const defect = new Error("runtime defect");
 
-    await expect(runRuntimeEffect(Effect.die(defect))).rejects.toMatchObject({
+    await expect(runApplicationEffect(Effect.die(defect))).rejects.toMatchObject({
       _tag: "ApplicationError",
       name: "ApplicationError",
       source: "application",
       code: "ERR_UNKNOWN",
-      message: "runtime defect",
+      message: "Application operation failed unexpectedly.",
       cause: defect,
     });
   });
 
   it("normalizes interruption to an application ERR_UNKNOWN", async () => {
-    await expect(runRuntimeEffect(Effect.interrupt)).rejects.toMatchObject({
+    await expect(runApplicationEffect(Effect.interrupt)).rejects.toMatchObject({
       _tag: "ApplicationError",
       name: "ApplicationError",
       source: "application",
       code: "ERR_UNKNOWN",
-      message: "Runtime operation was interrupted.",
+      message: "Application operation was interrupted.",
     });
   });
-});
 
-describe("application Effect edge", () => {
   it("preserves typed ApplicationError failures", async () => {
     const error = new ApplicationError({
       source: "application",
@@ -69,7 +67,7 @@ describe("application Effect edge", () => {
       _tag: "ApplicationError",
       source: "application",
       code: "ERR_UNKNOWN",
-      message: "application scope defect",
+      message: "Application operation failed unexpectedly.",
       cause: defect,
     });
   });

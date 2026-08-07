@@ -2,14 +2,20 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { type CreatedRuntime, createRuntime, type PluginScanSource } from "@tooldeck/runtime-node";
-import { Exit } from "effect";
+import { Cause, Effect, Exit } from "effect";
 
 import {
   type CommandInputPreprocessor,
   identityCommandInputPreprocessor,
   type TooldeckApplicationAdapters,
 } from "@/application/adapters";
-import { runApplicationEffect, runRuntimeEffect } from "@/application/edge";
+import { applicationErrorFromCause } from "@/application/edge";
+import {
+  type ApplicationEffect,
+  type ApplicationFailure,
+  tryApplicationPromise,
+  tryApplicationSync,
+} from "@/application/effect";
 import {
   addDatabaseFinalizer,
   closeApplicationResourceScope,
@@ -72,50 +78,58 @@ export class TooldeckApplicationContext {
     this.preprocessCommandInput = resolveCommandPreprocessor(options.adapters);
   }
 
-  async start(): Promise<void> {
-    if (this.state === "started") {
-      return;
-    }
+  start(): ApplicationEffect<void> {
+    return Effect.suspend(() => {
+      if (this.state === "started") {
+        return Effect.void;
+      }
 
-    this.assertCanStart();
+      return Effect.gen(this, function* (this: TooldeckApplicationContext) {
+        yield* tryApplicationSync(() => {
+          this.assertCanStart();
+          this.state = "starting";
+        });
 
-    this.state = "starting";
+        const startExit = yield* Effect.exit(this.startResources());
 
-    try {
-      await this.startResources();
-      this.state = "started";
-    } catch (error) {
-      await this.failStart(error);
-    }
+        if (Exit.isFailure(startExit)) {
+          return yield* this.failStart(startExit.cause);
+        }
+
+        this.state = "started";
+      });
+    });
   }
 
-  async dispose(): Promise<void> {
-    if (this.state === "disposed") {
-      return;
-    }
+  dispose(): ApplicationEffect<void> {
+    return Effect.suspend(() => {
+      if (this.state === "disposed" || this.state === "disposing") {
+        return Effect.void;
+      }
 
-    if (this.state === "disposing") {
-      return;
-    }
+      this.state = "disposing";
 
-    this.state = "disposing";
-
-    try {
-      await this.disposeResources();
-    } finally {
-      this.state = "disposed";
-    }
+      return this.disposeResources().pipe(
+        Effect.ensuring(
+          Effect.sync(() => {
+            this.state = "disposed";
+          }),
+        ),
+      );
+    });
   }
 
-  async rebuildRuntime(): Promise<void> {
-    await this.disposeRuntime();
+  rebuildRuntime(): ApplicationEffect<void> {
+    return Effect.gen(this, function* (this: TooldeckApplicationContext) {
+      yield* this.disposeRuntime();
 
-    const pluginKv = this.requirePluginKv();
-    const pluginManagement = this.requirePluginManagement();
-    const parentScope = this.requireApplicationResourceScope().scope;
+      const pluginKv = yield* tryApplicationSync(() => this.requirePluginKv());
+      const pluginManagement = yield* tryApplicationSync(() => this.requirePluginManagement());
+      const parentScope = yield* tryApplicationSync(
+        () => this.requireApplicationResourceScope().scope,
+      );
 
-    this.runtime = await runRuntimeEffect(
-      createRuntime({
+      this.runtime = yield* createRuntime({
         pluginSources: this.pluginSources,
         parentScope,
         coercion: this.commandInputCoercion,
@@ -123,16 +137,15 @@ export class TooldeckApplicationContext {
         afterScan({ manifestIndex }) {
           pluginManagement.syncCatalog(manifestIndex);
         },
-      }),
-    );
+      });
+    });
   }
 
-  async disposeRuntime(): Promise<void> {
+  disposeRuntime(): ApplicationEffect<void> {
     const runtime = this.runtime;
     this.runtime = undefined;
-    if (runtime) {
-      await runRuntimeEffect(runtime.dispose());
-    }
+
+    return runtime ? runtime.dispose() : Effect.void;
   }
 
   requireRuntime(): CreatedRuntime {
@@ -197,24 +210,30 @@ export class TooldeckApplicationContext {
     }
   }
 
-  private async startResources(): Promise<void> {
-    this.resourceScope = await runApplicationEffect(makeApplicationResourceScope());
+  private startResources(): ApplicationEffect<void> {
+    return Effect.gen(this, function* (this: TooldeckApplicationContext) {
+      const resourceScope = yield* makeApplicationResourceScope();
+      this.resourceScope = resourceScope;
 
-    await this.createApplicationDirectories();
+      yield* this.createApplicationDirectories();
 
-    const database = openTooldeckDatabase({ path: this.paths.databasePath });
-    this.database = database;
+      const database = yield* tryApplicationSync(() =>
+        openTooldeckDatabase({ path: this.paths.databasePath }),
+      );
+      this.database = database;
 
-    await runApplicationEffect(addDatabaseFinalizer(this.resourceScope, database));
-
-    this.initializeDatabaseServices(database);
-    await this.rebuildRuntime();
+      yield* addDatabaseFinalizer(resourceScope, database);
+      yield* tryApplicationSync(() => this.initializeDatabaseServices(database));
+      yield* this.rebuildRuntime();
+    });
   }
 
-  private async createApplicationDirectories(): Promise<void> {
-    await mkdir(path.dirname(this.paths.databasePath), { recursive: true });
-    await mkdir(this.paths.installedPluginsDir, { recursive: true });
-    await mkdir(this.paths.userPluginsDir, { recursive: true });
+  private createApplicationDirectories(): ApplicationEffect<void> {
+    return tryApplicationPromise(async () => {
+      await mkdir(path.dirname(this.paths.databasePath), { recursive: true });
+      await mkdir(this.paths.installedPluginsDir, { recursive: true });
+      await mkdir(this.paths.userPluginsDir, { recursive: true });
+    });
   }
 
   private initializeDatabaseServices(database: TooldeckDatabase): void {
@@ -229,61 +248,72 @@ export class TooldeckApplicationContext {
     });
   }
 
-  private async failStart(error: unknown): Promise<never> {
-    try {
-      await this.disposeResources(Exit.fail(error));
-    } catch (cleanupError) {
-      this.state = "created";
-      throw combinePrimaryAndCleanupFailures(
-        error,
-        [
-          captureApplicationCleanupFailure({
-            phase: "cleanup",
-            step: "applicationResources.dispose",
-            context: {},
-            error: cleanupError,
-          }),
-        ],
-        "Application startup failed and partial resources could not be fully released.",
-      );
-    }
+  private failStart(cause: Cause.Cause<ApplicationFailure>): ApplicationEffect<never> {
+    return Effect.gen(this, function* (this: TooldeckApplicationContext) {
+      const primaryError = applicationErrorFromCause(cause);
+      const cleanupExit = yield* Effect.exit(this.disposeResources(Exit.failCause(cause)));
 
-    this.state = "created";
-    throw error;
+      this.state = "created";
+
+      if (Exit.isFailure(cleanupExit)) {
+        return yield* Effect.fail(
+          combinePrimaryAndCleanupFailures(
+            primaryError,
+            [
+              captureApplicationCleanupFailure({
+                phase: "cleanup",
+                step: "applicationResources.dispose",
+                context: {},
+                error: applicationErrorFromCause(cleanupExit.cause),
+              }),
+            ],
+            "Application startup failed and partial resources could not be fully released.",
+          ),
+        );
+      }
+
+      return yield* Effect.failCause(cause);
+    });
   }
 
-  private async disposeResources(
+  private disposeResources(
     requestedExit: Exit.Exit<unknown, unknown> = Exit.succeed(undefined),
-  ): Promise<void> {
-    const cleanupFailures: CapturedApplicationCleanupFailure[] = [];
-    let resourceExit = requestedExit;
+  ): ApplicationEffect<void> {
+    return Effect.uninterruptible(
+      Effect.gen(this, function* (this: TooldeckApplicationContext) {
+        const cleanupFailures: CapturedApplicationCleanupFailure[] = [];
+        let resourceExit = requestedExit;
+        const runtimeExit = yield* Effect.exit(this.disposeRuntime());
 
-    try {
-      await this.disposeRuntime();
-    } catch (error) {
-      resourceExit = Exit.fail(error);
-      cleanupFailures.push(
-        captureApplicationCleanupFailure({
-          phase: "cleanup",
-          step: "runtime.dispose",
-          context: {},
-          error,
-        }),
-      );
-    }
+        if (Exit.isFailure(runtimeExit)) {
+          const runtimeError = applicationErrorFromCause(runtimeExit.cause);
+          resourceExit = Exit.fail(runtimeError);
+          cleanupFailures.push(
+            captureApplicationCleanupFailure({
+              phase: "cleanup",
+              step: "runtime.dispose",
+              context: {},
+              error: runtimeError,
+            }),
+          );
+        }
 
-    const resourceScope = this.resourceScope;
-    this.clearResourceReferences();
+        const resourceScope = this.resourceScope;
+        this.clearResourceReferences();
 
-    if (resourceScope) {
-      cleanupFailures.push(
-        ...(await runApplicationEffect(closeApplicationResourceScope(resourceScope, resourceExit))),
-      );
-    }
+        if (resourceScope) {
+          cleanupFailures.push(
+            ...(yield* closeApplicationResourceScope(resourceScope, resourceExit)),
+          );
+        }
 
-    if (cleanupFailures.length > 0) {
-      throw createApplicationCleanupError("Application resource cleanup failed.", cleanupFailures);
-    }
+        if (cleanupFailures.length > 0) {
+          return yield* Effect.fail(
+            createApplicationCleanupError("Application resource cleanup failed.", cleanupFailures),
+          );
+        }
+      }),
+    );
   }
 
   private clearResourceReferences(): void {

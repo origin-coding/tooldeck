@@ -1,9 +1,19 @@
 import path from "node:path";
 
 import type { LocalizedString } from "@tooldeck/protocol";
+import { Effect, Exit } from "effect";
 
 import type { TooldeckApplicationContext } from "@/application/context";
-import { runApplicationOperation } from "@/application/edge";
+import {
+  applicationErrorFromCause,
+  runApplicationEffect,
+  runApplicationOperation,
+} from "@/application/edge";
+import {
+  type ApplicationEffect,
+  tryApplicationPromise,
+  tryApplicationSync,
+} from "@/application/effect";
 import { localizeApplicationPlugin } from "@/application/localization";
 import type { ApplicationCommands } from "@/commands/application-commands";
 import { ApplicationError } from "@/errors/application-error";
@@ -31,10 +41,12 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
   }
 
   rescan(request: ApplicationPluginLocaleRequest = {}): Promise<ApplicationPluginCatalog> {
-    return runApplicationOperation(async () => {
-      await this.context.rebuildRuntime();
-      return this.createCatalog(request.locale);
-    });
+    return runApplicationEffect(
+      Effect.gen(this, function* (this: ApplicationPlugins) {
+        yield* this.context.rebuildRuntime();
+        return yield* this.createCatalogEffect(request.locale);
+      }),
+    );
   }
 
   setEnabled(
@@ -42,63 +54,75 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
     enabled: boolean,
     request: ApplicationPluginLocaleRequest = {},
   ): Promise<ApplicationPlugin> {
-    return runApplicationOperation(async () => {
-      assertPluginId(pluginId, "enable or disable");
-      await this.context.requirePluginManagement().setEnabled(pluginId, enabled);
-      await this.context.rebuildRuntime();
+    return runApplicationEffect(
+      Effect.gen(this, function* (this: ApplicationPlugins) {
+        yield* tryApplicationSync(() => assertPluginId(pluginId, "enable or disable"));
+        const management = yield* tryApplicationSync(() => this.context.requirePluginManagement());
 
-      const plugin = this.listUnsafe(request.locale).find((candidate) => candidate.id === pluginId);
+        yield* tryApplicationPromise(async () => management.setEnabled(pluginId, enabled));
+        yield* this.context.rebuildRuntime();
 
-      if (!plugin) {
-        throw new ApplicationError({
-          source: "application",
-          code: "ERR_NOT_FOUND",
-          message: `Plugin is not registered: ${pluginId}`,
-          details: { pluginId },
+        return yield* tryApplicationSync(() => {
+          const plugin = this.listUnsafe(request.locale).find(
+            (candidate) => candidate.id === pluginId,
+          );
+
+          if (!plugin) {
+            throw new ApplicationError({
+              source: "application",
+              code: "ERR_NOT_FOUND",
+              message: `Plugin is not registered: ${pluginId}`,
+              details: { pluginId },
+            });
+          }
+
+          return plugin;
         });
-      }
-
-      return plugin;
-    });
+      }),
+    );
   }
 
   installPackage(
     packagePath: string,
     request: ApplicationPluginLocaleRequest = {},
   ): Promise<ApplicationPluginInstallResult> {
-    return runApplicationOperation(async () => {
-      if (typeof packagePath !== "string" || !path.isAbsolute(packagePath)) {
-        throw new ApplicationError({
-          source: "application",
-          code: "ERR_INVALID_ARGUMENT",
-          message: "Plugin installation requires an absolute package path.",
+    return runApplicationEffect(
+      Effect.gen(this, function* (this: ApplicationPlugins) {
+        yield* tryApplicationSync(() => {
+          if (typeof packagePath !== "string" || !path.isAbsolute(packagePath)) {
+            throw new ApplicationError({
+              source: "application",
+              code: "ERR_INVALID_ARGUMENT",
+              message: "Plugin installation requires an absolute package path.",
+            });
+          }
         });
-      }
 
-      const installed = await this.context.requirePluginManagement().installPackage(packagePath);
+        const management = yield* tryApplicationSync(() => this.context.requirePluginManagement());
+        const installed = yield* management.installPackage(packagePath);
+        const refreshExit = yield* Effect.exit(this.context.rebuildRuntime());
 
-      try {
-        await this.context.rebuildRuntime();
-      } catch (error) {
+        if (Exit.isFailure(refreshExit)) {
+          return {
+            status: "installed-refresh-failed" as const,
+            installedPluginId: installed.plugin.id,
+            packageName: installed.install.packageName,
+            install: formatPluginInstall(installed.install),
+            plugin: formatInstalledPlugin(installed.plugin),
+            refreshError: getErrorMessage(applicationErrorFromCause(refreshExit.cause)),
+          };
+        }
+
         return {
-          status: "installed-refresh-failed",
+          status: "installed" as const,
           installedPluginId: installed.plugin.id,
           packageName: installed.install.packageName,
           install: formatPluginInstall(installed.install),
           plugin: formatInstalledPlugin(installed.plugin),
-          refreshError: getErrorMessage(error),
+          catalog: yield* this.createCatalogEffect(request.locale),
         };
-      }
-
-      return {
-        status: "installed",
-        installedPluginId: installed.plugin.id,
-        packageName: installed.install.packageName,
-        install: formatPluginInstall(installed.install),
-        plugin: formatInstalledPlugin(installed.plugin),
-        catalog: await this.createCatalog(request.locale),
-      };
-    });
+      }),
+    );
   }
 
   uninstall(
@@ -107,7 +131,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
   ): Promise<ApplicationPluginUninstallResult> {
     return runApplicationOperation(async () => {
       assertPluginId(pluginId, "uninstall");
-      await this.context.disposeRuntime();
+      await runApplicationEffect(this.context.disposeRuntime());
 
       let uninstalled;
 
@@ -115,7 +139,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
         uninstalled = await this.context.requirePluginManagement().uninstall(pluginId);
       } catch (error) {
         try {
-          await this.context.rebuildRuntime();
+          await runApplicationEffect(this.context.rebuildRuntime());
         } catch (recoveryError) {
           throw new AggregateError(
             [error, recoveryError],
@@ -127,7 +151,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
         throw error;
       }
 
-      await this.context.rebuildRuntime();
+      await runApplicationEffect(this.context.rebuildRuntime());
 
       return {
         cleanupFailures: uninstalled.cleanupFailures,
@@ -135,7 +159,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
         filesMissing: uninstalled.filesMissing,
         pluginId: uninstalled.pluginId,
         install: formatPluginInstall(uninstalled.install),
-        catalog: await this.createCatalog(request.locale),
+        catalog: await runApplicationEffect(this.createCatalogEffect(request.locale)),
         residues: this.listDataResiduesUnsafe(),
       };
     });
@@ -194,11 +218,13 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
       });
   }
 
-  private async createCatalog(locale?: string): Promise<ApplicationPluginCatalog> {
-    return {
-      commands: await this.commands.list({ locale }),
-      plugins: this.listUnsafe(locale),
-    };
+  private createCatalogEffect(locale?: string): ApplicationEffect<ApplicationPluginCatalog> {
+    return Effect.gen(this, function* (this: ApplicationPlugins) {
+      const commands = yield* this.commands.listEffect({ locale });
+      const plugins = yield* tryApplicationSync(() => this.listUnsafe(locale));
+
+      return { commands, plugins };
+    });
   }
 
   private listDataResiduesUnsafe(): ApplicationPluginDataResidue[] {
