@@ -83,6 +83,7 @@ packages/
   create-plugin/            Public external plugin project generator.
 
 internal/
+  state-machine/            Private business-neutral Effect-first transition core.
   runtime-node/             Private runtime coordination and Node plugin host.
   application-node/         Private database and product application facade.
 
@@ -116,6 +117,12 @@ Keep package dependencies layered by public contract and private implementation:
   result validation, runtime-kind routing, Node plugin loading, and plugin manager
   services.
 
+@tooldeck/state-machine
+  Private business-neutral Effect-first state-machine core: Event Maps and derived
+  event unions, transition tables, typed neutral transition failures, serialized
+  dispatch, transition records, and interruption semantics. It does not own service
+  errors or business resources.
+
 @tooldeck/plugin-package
   Public .tdplugin container implementation: package metadata, ZIP adapter,
   validation, safe unpacking, digest calculation, and package limits.
@@ -134,6 +141,7 @@ Dependency direction should stay one-way:
 
 ```text
 protocol <- sdk-node <- runtime-node <- application-node <- CLI/Desktop main
+state-machine <- runtime-node <- application-node
 protocol <- plugin-package <- plugin-tools
 plugin-package + runtime-node -> application-node
 ```
@@ -150,6 +158,11 @@ Rules for dependency changes:
 8. `@tooldeck/plugin-tools` may depend on public authoring packages, but it must not expose private product packages through its published API.
 9. Published public packages must not leak private package dependencies through `dependencies` or generated `.d.ts` files.
 10. Before publishing SDK or authoring packages, inspect packed tarballs if dependency boundaries changed.
+11. `@tooldeck/state-machine` may depend on Effect but must not depend on runtime-node,
+    application-node, sdk-node, protocol, Electron, React, SQLite, or product services.
+12. `@tooldeck/state-machine` owns transition state and sequencing only. Runtime/Application
+    wrappers own error mapping, while resource ownership, rollback, cleanup, and single-flight
+    policy remain outside the machine.
 
 ## Architecture Rules
 

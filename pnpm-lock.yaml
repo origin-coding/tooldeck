@@ -232,6 +232,12 @@ importers:
         specifier: ^1.9.1
         version: 1.9.1
 
+  internal/state-machine:
+    dependencies:
+      effect:
+        specifier: 'catalog:'
+        version: 3.22.1
+
   packages/create-plugin:
     dependencies:
       '@clack/prompts':
