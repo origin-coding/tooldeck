@@ -1,9 +1,9 @@
 import path from "node:path";
 
 import type { LocalizedString } from "@tooldeck/protocol";
+import type { CreatedRuntime } from "@tooldeck/runtime-node";
 import { Effect, Exit } from "effect";
 
-import type { TooldeckApplicationContext } from "@/application/context";
 import {
   applicationErrorFromCause,
   runApplicationEffect,
@@ -15,7 +15,7 @@ import {
   tryApplicationSync,
 } from "@/application/effect";
 import { localizeApplicationPlugin } from "@/application/localization";
-import type { ApplicationCommands } from "@/commands/application-commands";
+import type { ApplicationCommand } from "@/commands/types";
 import { ApplicationError } from "@/errors/application-error";
 import type {
   ApplicationInstalledPlugin,
@@ -29,12 +29,23 @@ import type {
   ApplicationPluginPurgeResult,
   ApplicationPluginUninstallResult,
 } from "@/plugins/facade-types";
+import type { PluginManagementService } from "@/plugins/management";
+import type { PluginRepository } from "@/storage";
+
+export interface ApplicationPluginDependencies {
+  readonly getRuntime: () => Pick<CreatedRuntime, "manifestIndex" | "pluginManager">;
+  readonly getPlugins: () => Pick<PluginRepository, "list">;
+  readonly getPluginManagement: () => Pick<
+    PluginManagementService,
+    "setEnabled" | "installPackage" | "uninstall" | "listPurgeablePluginData" | "purge"
+  >;
+  readonly rebuildRuntime: () => ApplicationEffect<void>;
+  readonly disposeRuntime: () => ApplicationEffect<void>;
+  readonly listCommands: (locale?: string) => ApplicationEffect<ApplicationCommand[]>;
+}
 
 export class ApplicationPlugins implements ApplicationPluginFacade {
-  constructor(
-    private readonly context: TooldeckApplicationContext,
-    private readonly commands: ApplicationCommands,
-  ) {}
+  constructor(private readonly dependencies: ApplicationPluginDependencies) {}
 
   list(request: ApplicationPluginLocaleRequest = {}): Promise<ApplicationPlugin[]> {
     return runApplicationOperation(() => this.listUnsafe(request.locale));
@@ -43,7 +54,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
   rescan(request: ApplicationPluginLocaleRequest = {}): Promise<ApplicationPluginCatalog> {
     return runApplicationEffect(
       Effect.gen(this, function* (this: ApplicationPlugins) {
-        yield* this.context.rebuildRuntime();
+        yield* this.dependencies.rebuildRuntime();
         return yield* this.createCatalogEffect(request.locale);
       }),
     );
@@ -57,10 +68,10 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
     return runApplicationEffect(
       Effect.gen(this, function* (this: ApplicationPlugins) {
         yield* tryApplicationSync(() => assertPluginId(pluginId, "enable or disable"));
-        const management = yield* tryApplicationSync(() => this.context.requirePluginManagement());
+        const management = yield* tryApplicationSync(() => this.dependencies.getPluginManagement());
 
         yield* tryApplicationPromise(async () => management.setEnabled(pluginId, enabled));
-        yield* this.context.rebuildRuntime();
+        yield* this.dependencies.rebuildRuntime();
 
         return yield* tryApplicationSync(() => {
           const plugin = this.listUnsafe(request.locale).find(
@@ -98,9 +109,9 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
           }
         });
 
-        const management = yield* tryApplicationSync(() => this.context.requirePluginManagement());
+        const management = yield* tryApplicationSync(() => this.dependencies.getPluginManagement());
         const installed = yield* management.installPackage(packagePath);
-        const refreshExit = yield* Effect.exit(this.context.rebuildRuntime());
+        const refreshExit = yield* Effect.exit(this.dependencies.rebuildRuntime());
 
         if (Exit.isFailure(refreshExit)) {
           return {
@@ -131,15 +142,15 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
   ): Promise<ApplicationPluginUninstallResult> {
     return runApplicationOperation(async () => {
       assertPluginId(pluginId, "uninstall");
-      await runApplicationEffect(this.context.disposeRuntime());
+      await runApplicationEffect(this.dependencies.disposeRuntime());
 
       let uninstalled;
 
       try {
-        uninstalled = await this.context.requirePluginManagement().uninstall(pluginId);
+        uninstalled = await this.dependencies.getPluginManagement().uninstall(pluginId);
       } catch (error) {
         try {
-          await runApplicationEffect(this.context.rebuildRuntime());
+          await runApplicationEffect(this.dependencies.rebuildRuntime());
         } catch (recoveryError) {
           throw new AggregateError(
             [error, recoveryError],
@@ -151,7 +162,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
         throw error;
       }
 
-      await runApplicationEffect(this.context.rebuildRuntime());
+      await runApplicationEffect(this.dependencies.rebuildRuntime());
 
       return {
         cleanupFailures: uninstalled.cleanupFailures,
@@ -172,7 +183,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
   purgeData(pluginId: string): Promise<ApplicationPluginPurgeResult> {
     return runApplicationOperation(() => {
       assertPluginId(pluginId, "purge data for");
-      const purged = this.context.requirePluginManagement().purge(pluginId);
+      const purged = this.dependencies.getPluginManagement().purge(pluginId);
 
       return {
         ...purged,
@@ -182,15 +193,15 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
   }
 
   private listUnsafe(locale?: string): ApplicationPlugin[] {
-    const runtime = this.context.requireRuntime();
+    const runtime = this.dependencies.getRuntime();
     const commandCounts = new Map<string, number>();
 
     for (const command of runtime.manifestIndex.listCommands()) {
       commandCounts.set(command.pluginId, (commandCounts.get(command.pluginId) ?? 0) + 1);
     }
 
-    return this.context
-      .requirePlugins()
+    return this.dependencies
+      .getPlugins()
       .list()
       .filter((plugin) => runtime.manifestIndex.hasPlugin(plugin.id))
       .map((plugin) => {
@@ -220,7 +231,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
 
   private createCatalogEffect(locale?: string): ApplicationEffect<ApplicationPluginCatalog> {
     return Effect.gen(this, function* (this: ApplicationPlugins) {
-      const commands = yield* this.commands.listEffect({ locale });
+      const commands = yield* this.dependencies.listCommands(locale);
       const plugins = yield* tryApplicationSync(() => this.listUnsafe(locale));
 
       return { commands, plugins };
@@ -228,7 +239,7 @@ export class ApplicationPlugins implements ApplicationPluginFacade {
   }
 
   private listDataResiduesUnsafe(): ApplicationPluginDataResidue[] {
-    return this.context.requirePluginManagement().listPurgeablePluginData();
+    return this.dependencies.getPluginManagement().listPurgeablePluginData();
   }
 }
 

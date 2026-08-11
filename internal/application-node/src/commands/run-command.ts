@@ -4,7 +4,7 @@ import type { CommandResult, JsonObject } from "@tooldeck/protocol";
 import type { CreatedRuntime, RunCommandOutput } from "@tooldeck/runtime-node";
 import { Cause, Effect, Exit } from "effect";
 
-import type { TooldeckApplicationContext } from "@/application/context";
+import type { CommandInputPreprocessor } from "@/application/adapters";
 import { applicationErrorFromCause } from "@/application/edge";
 import {
   type ApplicationEffect,
@@ -16,11 +16,18 @@ import { localizeApplicationCommandResult } from "@/application/localization";
 import type { RunApplicationCommandRequest } from "@/commands/types";
 import { ApplicationError } from "@/errors/application-error";
 import { toApplicationErrorTransport } from "@/errors/application-error-transport";
-import type { CommandRunRepository } from "@/storage";
+import type { CommandRunRepository, PluginRepository } from "@/storage";
+
+export interface ApplicationCommandDependencies {
+  readonly getRuntime: () => Pick<CreatedRuntime, "manifestIndex" | "pluginManager" | "runCommand">;
+  readonly getCommandRuns: () => Pick<CommandRunRepository, "create">;
+  readonly getPlugins: () => Pick<PluginRepository, "getById">;
+  readonly preprocessInput: CommandInputPreprocessor;
+}
 
 interface RunCommandResources {
-  commandRuns: CommandRunRepository;
-  runtime: CreatedRuntime;
+  commandRuns: Pick<CommandRunRepository, "create">;
+  runtime: Pick<CreatedRuntime, "manifestIndex" | "pluginManager" | "runCommand">;
   pluginId: string | undefined;
 }
 
@@ -37,7 +44,7 @@ interface ExecutedCommand {
 }
 
 export function runApplicationCommand(
-  context: TooldeckApplicationContext,
+  dependencies: ApplicationCommandDependencies,
   request: RunApplicationCommandRequest,
 ): ApplicationEffect<CommandResult> {
   return Effect.suspend(() => {
@@ -48,34 +55,36 @@ export function runApplicationCommand(
       historyInput: request?.input ?? {},
     };
 
-    return runCommandWorkflow(context, request, state);
+    return runCommandWorkflow(dependencies, request, state);
   });
 }
 
 function runCommandWorkflow(
-  context: TooldeckApplicationContext,
+  dependencies: ApplicationCommandDependencies,
   request: RunApplicationCommandRequest,
   state: RunCommandState,
 ): ApplicationEffect<CommandResult> {
   return Effect.gen(function* () {
-    const resources = yield* resolveRunCommandResources(context, request);
-    const executionExit = yield* Effect.exit(executeCommand(context, resources, request, state));
+    const resources = yield* resolveRunCommandResources(dependencies, request);
+    const executionExit = yield* Effect.exit(
+      executeCommand(dependencies, resources, request, state),
+    );
 
     return yield* completeCommand(resources, request, state, executionExit);
   });
 }
 
 function resolveRunCommandResources(
-  context: TooldeckApplicationContext,
+  dependencies: ApplicationCommandDependencies,
   request: RunApplicationCommandRequest,
 ): ApplicationEffect<RunCommandResources> {
   return tryApplicationSync(() => {
     assertRunCommandRequest(request);
 
-    const runtime = context.requireRuntime();
+    const runtime = dependencies.getRuntime();
 
     return {
-      commandRuns: context.requireCommandRuns(),
+      commandRuns: dependencies.getCommandRuns(),
       runtime,
       pluginId: runtime.manifestIndex.getCommandOwner(request.commandId),
     };
@@ -83,16 +92,16 @@ function resolveRunCommandResources(
 }
 
 function executeCommand(
-  context: TooldeckApplicationContext,
+  dependencies: ApplicationCommandDependencies,
   resources: RunCommandResources,
   request: RunApplicationCommandRequest,
   state: RunCommandState,
 ): ApplicationEffect<ExecutedCommand> {
   return Effect.gen(function* () {
-    yield* assertCommandPluginEnabled(context, resources, request.commandId);
+    yield* assertCommandPluginEnabled(dependencies, resources, request.commandId);
 
     state.historyInput = yield* tryApplicationPromise(async () =>
-      context.preprocessCommandInput({
+      dependencies.preprocessInput({
         commandId: request.commandId,
         source: state.source,
         input: state.historyInput,
@@ -118,7 +127,7 @@ function executeCommand(
 }
 
 function assertCommandPluginEnabled(
-  context: TooldeckApplicationContext,
+  dependencies: ApplicationCommandDependencies,
   resources: RunCommandResources,
   commandId: string,
 ): ApplicationEffect<void> {
@@ -127,7 +136,7 @@ function assertCommandPluginEnabled(
       commandId,
       pluginId: resources.pluginId,
       enabled: resources.pluginId
-        ? context.requirePlugins().getById(resources.pluginId)?.enabled
+        ? dependencies.getPlugins().getById(resources.pluginId)?.enabled
         : undefined,
     }),
   );

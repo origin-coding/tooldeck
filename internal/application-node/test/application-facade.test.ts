@@ -61,10 +61,40 @@ describe("Tooldeck application facade", () => {
     );
   });
 
+  it("disposes an unstarted application once and preserves disposed lifecycle errors", async () => {
+    const rootDir = createTempDir();
+    const application = createTooldeckApplication({ paths: createPaths(rootDir) });
+
+    applications.push(application);
+
+    await expect(application.commands.list()).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_APPLICATION_NOT_STARTED",
+      message: "Tooldeck application runtime is unavailable before start.",
+    });
+
+    const firstDispose = application.dispose();
+    const secondDispose = application.dispose();
+
+    expect(secondDispose).toBe(firstDispose);
+    await expect(firstDispose).resolves.toBeUndefined();
+    await expect(application.start()).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_APPLICATION_DISPOSED",
+      message: "Tooldeck application is disposing or has already been disposed.",
+    });
+    await expect(application.commands.list()).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_APPLICATION_DISPOSED",
+      message: "Tooldeck application runtime is unavailable after disposal.",
+    });
+  });
+
   it("allows a failed start to be retried after partial resources are released", async () => {
     const rootDir = createTempDir();
     const paths = createPaths(rootDir);
     const externalPluginsDir = path.join(rootDir, "external-plugins");
+    const close = vi.spyOn(DatabaseSync.prototype, "close");
     const application = createTooldeckApplication({
       paths,
       pluginSources: [{ kind: "external", path: externalPluginsDir }],
@@ -72,14 +102,56 @@ describe("Tooldeck application facade", () => {
 
     applications.push(application);
 
-    await expect(application.start()).rejects.toMatchObject({
+    try {
+      const firstStart = application.start();
+      const concurrentStart = application.start();
+
+      expect(concurrentStart).toBe(firstStart);
+      await expect(firstStart).rejects.toMatchObject({
+        source: "application",
+        code: "ERR_UNKNOWN",
+        message: "Application operation failed unexpectedly.",
+      });
+      expect(close).toHaveBeenCalledTimes(1);
+
+      await mkdir(externalPluginsDir, { recursive: true });
+
+      const retryStart = application.start();
+      expect(retryStart).not.toBe(firstStart);
+      expect(application.start()).toBe(retryStart);
+      await expect(retryStart).resolves.toBeUndefined();
+      expect(close).toHaveBeenCalledTimes(1);
+    } finally {
+      close.mockRestore();
+    }
+  });
+
+  it("waits for an in-flight failed start before completing single-flight disposal", async () => {
+    const rootDir = createTempDir();
+    const paths = createPaths(rootDir);
+    const application = createTooldeckApplication({
+      paths,
+      pluginSources: [{ kind: "external", path: path.join(rootDir, "missing-plugins") }],
+    });
+
+    applications.push(application);
+
+    const start = application.start();
+    const firstDispose = application.dispose();
+    const secondDispose = application.dispose();
+
+    expect(secondDispose).toBe(firstDispose);
+    await expect(start).rejects.toMatchObject({
       source: "application",
       code: "ERR_UNKNOWN",
       message: "Application operation failed unexpectedly.",
     });
-
-    await mkdir(externalPluginsDir, { recursive: true });
-    await expect(application.start()).resolves.toBeUndefined();
+    await expect(firstDispose).resolves.toBeUndefined();
+    await expect(application.start()).rejects.toMatchObject({
+      source: "application",
+      code: "ERR_APPLICATION_DISPOSED",
+      message: "Tooldeck application is disposing or has already been disposed.",
+    });
   });
 
   it("groups domains, applies a downstream preprocessor, and records command history", async () => {

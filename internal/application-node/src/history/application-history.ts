@@ -1,6 +1,5 @@
 import type { CommandResult, JsonValue } from "@tooldeck/protocol";
 
-import type { TooldeckApplicationContext } from "@/application/context";
 import { runApplicationOperation } from "@/application/edge";
 import { classifyApplicationErrorEvidence } from "@/history/error-evidence";
 import type {
@@ -8,16 +7,21 @@ import type {
   ApplicationHistoryFacade,
   ListApplicationCommandRunsRequest,
 } from "@/history/types";
+import type { CommandRunRepository } from "@/storage";
+
+export interface ApplicationHistoryDependencies {
+  readonly getCommandRuns: () => Pick<CommandRunRepository, "listRecent">;
+}
 
 export class ApplicationHistory implements ApplicationHistoryFacade {
-  constructor(private readonly context: TooldeckApplicationContext) {}
+  constructor(private readonly dependencies: ApplicationHistoryDependencies) {}
 
   listCommandRuns(
     request: ListApplicationCommandRunsRequest = {},
   ): Promise<ApplicationCommandRun[]> {
     return runApplicationOperation(() =>
-      this.context
-        .requireCommandRuns()
+      this.dependencies
+        .getCommandRuns()
         .listRecent(request)
         .map((row) => {
           const error = row.errorJson ? (JSON.parse(row.errorJson) as JsonValue) : undefined;

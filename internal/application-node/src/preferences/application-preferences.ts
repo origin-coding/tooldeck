@@ -1,6 +1,5 @@
 import type { JsonValue } from "@tooldeck/protocol";
 
-import type { TooldeckApplicationContext } from "@/application/context";
 import { runApplicationOperation } from "@/application/edge";
 import { ApplicationError } from "@/errors/application-error";
 import type {
@@ -16,15 +15,19 @@ import {
   validatePreferenceValue,
   type PreferenceDefinition,
 } from "@/preferences/preferences";
-import type { PreferenceRow } from "@/storage";
+import type { PreferenceRepository, PreferenceRow } from "@/storage";
+
+export interface ApplicationPreferenceDependencies {
+  readonly getPreferences: () => Pick<PreferenceRepository, "getRow" | "set" | "delete">;
+}
 
 export class ApplicationPreferences implements ApplicationPreferenceFacade {
-  constructor(private readonly context: TooldeckApplicationContext) {}
+  constructor(private readonly dependencies: ApplicationPreferenceDependencies) {}
 
   list(request: ListApplicationPreferencesRequest = {}): Promise<ApplicationPreference[]> {
     return runApplicationOperation(() => {
       const scopes = request.scopes ? new Set(request.scopes) : undefined;
-      const preferences = this.context.requirePreferences();
+      const preferences = this.dependencies.getPreferences();
 
       return listPreferenceDefinitions()
         .filter((definition) => !scopes || scopes.has(definition.scope))
@@ -41,7 +44,7 @@ export class ApplicationPreferences implements ApplicationPreferenceFacade {
 
       return formatPreference(
         definition,
-        this.context.requirePreferences().getRow(definition.scope, definition.key),
+        this.dependencies.getPreferences().getRow(definition.scope, definition.key),
       );
     });
   }
@@ -51,7 +54,7 @@ export class ApplicationPreferences implements ApplicationPreferenceFacade {
       assertPreferenceRequest(request);
       const definition = requirePreferenceDefinition(request.scope, request.key);
       const value = validatePreferenceValue(definition.scope, definition.key, request.value);
-      const row = this.context.requirePreferences().set({
+      const row = this.dependencies.getPreferences().set({
         scope: definition.scope,
         key: definition.key,
         value,
@@ -66,7 +69,7 @@ export class ApplicationPreferences implements ApplicationPreferenceFacade {
       assertPreferenceRequest(request);
       const definition = requirePreferenceDefinition(request.scope, request.key);
 
-      this.context.requirePreferences().delete(definition.scope, definition.key);
+      this.dependencies.getPreferences().delete(definition.scope, definition.key);
     });
   }
 }

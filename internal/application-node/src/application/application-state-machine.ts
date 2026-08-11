@@ -8,28 +8,27 @@ import {
 } from "@tooldeck/state-machine";
 import { Effect } from "effect";
 
-import { RuntimeError } from "@/errors/runtime-error";
+import { ApplicationError } from "@/errors/application-error";
 
-export interface RuntimeStateMachineMessages {
+export interface ApplicationStateMachineMessages {
   readonly invalidTransition: string;
   readonly blockedTransition: string;
 }
 
-export interface RuntimeStateMachineOptions<TState extends string, TEvents extends object> {
+export interface ApplicationStateMachineOptions<TState extends string, TEvents extends object> {
   readonly initialState: TState;
   readonly transitions: StateTransitionTable<TState, TEvents>;
-  readonly messages: RuntimeStateMachineMessages;
+  readonly messages: ApplicationStateMachineMessages;
 }
 
-export type RuntimeStateMachine<TState extends string, TEvents extends object> = MappedStateMachine<
-  TState,
-  TEvents,
-  RuntimeError
->;
+export type ApplicationStateMachine<
+  TState extends string,
+  TEvents extends object,
+> = MappedStateMachine<TState, TEvents, ApplicationError>;
 
-export function makeRuntimeStateMachine<TState extends string, TEvents extends object>(
-  options: RuntimeStateMachineOptions<TState, TEvents>,
-): Effect.Effect<RuntimeStateMachine<TState, TEvents>> {
+export function makeApplicationStateMachine<TState extends string, TEvents extends object>(
+  options: ApplicationStateMachineOptions<TState, TEvents>,
+): Effect.Effect<ApplicationStateMachine<TState, TEvents>> {
   return Effect.map(
     makeStateMachine<TState, TEvents>({
       initialState: options.initialState,
@@ -37,21 +36,22 @@ export function makeRuntimeStateMachine<TState extends string, TEvents extends o
     }),
     (machine) =>
       mapStateMachineTransitionErrors(machine, (error) =>
-        runtimeErrorFromStateTransition(error, options.messages),
+        applicationErrorFromStateTransition(error, options.messages),
       ),
   );
 }
 
-function runtimeErrorFromStateTransition<TState extends string, TEvents extends object>(
+function applicationErrorFromStateTransition<TState extends string, TEvents extends object>(
   error: StateTransitionError<TState, StateEventName<TEvents>>,
-  messages: RuntimeStateMachineMessages,
-): RuntimeError {
+  messages: ApplicationStateMachineMessages,
+): ApplicationError {
   const message =
     error._tag === "InvalidStateTransition"
       ? messages.invalidTransition
       : messages.blockedTransition;
 
-  return new RuntimeError({
+  return new ApplicationError({
+    source: "application",
     code: "ERR_INVALID_ARGUMENT",
     message: `${message}: ${error.state} -> ${error.event}`,
     details: {

@@ -4,10 +4,13 @@ import { describe, expect, expectTypeOf, it } from "vitest";
 import {
   BlockedStateTransition,
   InvalidStateTransition,
+  mapStateMachineTransitionErrors,
   makeStateMachine,
+  type MappedStateMachine,
   type StateEvent,
   type StateEventOf,
   type StateMachine,
+  type StateTransitionError,
   type StateTransitionRecord,
   type StateTransitionTable,
 } from "../src";
@@ -121,6 +124,86 @@ describe("makeStateMachine", () => {
       Effect.runPromise(Effect.flip(machine.dispatch(prepareEvent("failure", true)))),
     ).resolves.toBe(guardFailure);
     await expect(Effect.runPromise(machine.state)).resolves.toBe("idle");
+  });
+
+  it("maps neutral transition errors while preserving guard failures and requirements", async () => {
+    class TransitionGate extends Context.Tag("test/MappedTransitionGate")<
+      TransitionGate,
+      { readonly allowed: boolean }
+    >() {}
+
+    interface GuardFailure {
+      readonly _tag: "GuardFailure";
+      readonly reason: string;
+    }
+
+    interface OwnedTransitionFailure {
+      readonly _tag: "OwnedTransitionFailure";
+      readonly state: TestState;
+      readonly event: keyof TestEvents;
+    }
+
+    const guardFailure: GuardFailure = {
+      _tag: "GuardFailure",
+      reason: "transition gate rejected the request",
+    };
+    const transitions: StateTransitionTable<TestState, TestEvents, GuardFailure, TransitionGate> = {
+      idle: {
+        prepare: {
+          target: "ready",
+          guard: () =>
+            Effect.flatMap(TransitionGate, ({ allowed }) =>
+              allowed ? Effect.succeed(true) : Effect.fail(guardFailure),
+            ),
+        },
+      },
+      ready: { finish: "done" },
+      done: {},
+    };
+    const machine = await Effect.runPromise(
+      makeStateMachine({ initialState: "idle" as TestState, transitions }),
+    );
+    const mapped: MappedStateMachine<
+      TestState,
+      TestEvents,
+      OwnedTransitionFailure,
+      GuardFailure,
+      TransitionGate
+    > = mapStateMachineTransitionErrors(
+      machine,
+      (error: StateTransitionError<TestState, keyof TestEvents>): OwnedTransitionFailure => ({
+        _tag: "OwnedTransitionFailure",
+        state: error.state,
+        event: error.event,
+      }),
+    );
+    const prepare = mapped.dispatch(prepareEvent("mapped-guard", true));
+
+    expectTypeOf(prepare).toEqualTypeOf<
+      Effect.Effect<
+        StateTransitionRecord<TestState, StateEventOf<TestEvents, "prepare">>,
+        OwnedTransitionFailure | GuardFailure,
+        TransitionGate
+      >
+    >();
+
+    await expect(
+      Effect.runPromise(
+        Effect.flip(prepare).pipe(Effect.provideService(TransitionGate, { allowed: false })),
+      ),
+    ).resolves.toBe(guardFailure);
+    await expect(
+      Effect.runPromise(
+        Effect.flip(mapped.dispatch(finishEvent())).pipe(
+          Effect.provideService(TransitionGate, { allowed: true }),
+        ),
+      ),
+    ).resolves.toEqual({
+      _tag: "OwnedTransitionFailure",
+      state: "idle",
+      event: "finish",
+    });
+    await expect(Effect.runPromise(mapped.state)).resolves.toBe("idle");
   });
 
   it("serializes concurrent guard evaluation and state commits", async () => {
