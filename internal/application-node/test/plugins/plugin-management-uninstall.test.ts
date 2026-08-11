@@ -121,4 +121,53 @@ describe("PluginManagementService uninstall and purge", () => {
       kvEntriesRemoved: 0,
     });
   });
+
+  it("rolls back KV deletion when state deletion fails during purge", async () => {
+    const harness = await createHarness();
+    const pluginId = "dev.example.atomic-purge-tools";
+    const packagePath = await createPluginPackage({
+      rootDir: harness.rootDir,
+      pluginId,
+      commandId: "atomic-purge.run",
+    });
+    const states = new PluginStateRepository(harness.database.db);
+    const kv = new PluginKvRepository(harness.database.db);
+
+    await installPackageForTest(harness.service, packagePath);
+    await harness.service.setEnabled(pluginId, false);
+    kv.set({ pluginId, key: "first", value: 1 });
+    kv.set({ pluginId, key: "second", value: 2 });
+    await harness.service.uninstall(pluginId);
+
+    harness.database.sqlite.exec(`
+      create trigger fail_plugin_state_purge
+      before delete on plugin_states
+      when old.plugin_id = '${pluginId}'
+      begin
+        select raise(abort, 'forced plugin state purge failure');
+      end;
+    `);
+
+    expect(() => harness.service.purge(pluginId)).toThrow("forced plugin state purge failure");
+    expect(states.getById(pluginId)).toMatchObject({ pluginId, enabled: false });
+    expect(kv.listByPlugin(pluginId)).toMatchObject([
+      { pluginId, key: "first", valueJson: "1" },
+      { pluginId, key: "second", valueJson: "2" },
+    ]);
+    expect(harness.service.listPurgeablePluginData()).toEqual([
+      {
+        pluginId,
+        statePresent: true,
+        kvEntries: 2,
+      },
+    ]);
+
+    harness.database.sqlite.exec("drop trigger fail_plugin_state_purge;");
+
+    expect(harness.service.purge(pluginId)).toEqual({
+      pluginId,
+      stateRemoved: true,
+      kvEntriesRemoved: 2,
+    });
+  });
 });
