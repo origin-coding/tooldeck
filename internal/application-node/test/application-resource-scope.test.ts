@@ -71,6 +71,52 @@ describe("ApplicationResourceScope", () => {
       },
     ]);
   });
+
+  it("attempts every database finalizer in reverse order when releases fail", async () => {
+    const calls: string[] = [];
+    const resourceScope = await Effect.runPromise(makeApplicationResourceScope());
+
+    await Effect.runPromise(
+      addDatabaseFinalizer(
+        resourceScope,
+        createDatabase(() => {
+          calls.push("first");
+          throw new Error("first database close failed");
+        }),
+      ),
+    );
+    await Effect.runPromise(
+      addDatabaseFinalizer(
+        resourceScope,
+        createDatabase(() => {
+          calls.push("second");
+          throw new Error("second database close failed");
+        }),
+      ),
+    );
+
+    const cleanupFailures = await Effect.runPromise(
+      closeApplicationResourceScope(resourceScope, Exit.succeed(undefined)),
+    );
+
+    expect(calls).toEqual(["second", "first"]);
+    expect(cleanupFailures).toMatchObject([
+      {
+        diagnostic: {
+          phase: "cleanup",
+          step: "database.close",
+          error: { message: "second database close failed" },
+        },
+      },
+      {
+        diagnostic: {
+          phase: "cleanup",
+          step: "database.close",
+          error: { message: "first database close failed" },
+        },
+      },
+    ]);
+  });
 });
 
 function createDatabase(close: () => void): TooldeckDatabase {
