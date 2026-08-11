@@ -1,6 +1,7 @@
 import { Effect, Exit } from "effect";
 
 import type { TooldeckApplicationAdapters } from "@/application/adapters";
+import { composeTooldeckApplication } from "@/application/composition-root";
 import { TooldeckApplicationContext } from "@/application/context";
 import { applicationErrorFromCause, runApplicationEffect } from "@/application/edge";
 import {
@@ -9,19 +10,15 @@ import {
   tryApplicationPromise,
 } from "@/application/effect";
 import type { CreateTooldeckApplicationOptions } from "@/application/types";
-import { ApplicationCommands } from "@/commands/application-commands";
 import type { ApplicationCommandFacade } from "@/commands/types";
 import {
   captureApplicationCleanupFailure,
   combinePrimaryAndCleanupFailures,
 } from "@/errors/application-cleanup";
 import { toApplicationError } from "@/errors/application-error";
-import { ApplicationHistory } from "@/history/application-history";
 import type { ApplicationHistoryFacade } from "@/history/types";
 import type { TooldeckPaths } from "@/paths";
-import { ApplicationPlugins } from "@/plugins/application-plugins";
 import type { ApplicationPluginFacade } from "@/plugins/facade-types";
-import { ApplicationPreferences } from "@/preferences/application-preferences";
 import type { ApplicationPreferenceFacade } from "@/preferences/facade-types";
 
 export interface TooldeckApplication {
@@ -37,20 +34,22 @@ export interface TooldeckApplication {
 
 class DefaultTooldeckApplication implements TooldeckApplication {
   readonly paths: TooldeckPaths;
-  readonly commands: ApplicationCommands;
-  readonly plugins: ApplicationPlugins;
-  readonly preferences: ApplicationPreferences;
-  readonly history: ApplicationHistory;
+  readonly commands: ApplicationCommandFacade;
+  readonly plugins: ApplicationPluginFacade;
+  readonly preferences: ApplicationPreferenceFacade;
+  readonly history: ApplicationHistoryFacade;
 
   private readonly context: TooldeckApplicationContext;
 
   constructor(options: CreateTooldeckApplicationOptions) {
-    this.context = new TooldeckApplicationContext(options);
-    this.paths = this.context.paths;
-    this.commands = new ApplicationCommands(this.context);
-    this.plugins = new ApplicationPlugins(this.context, this.commands);
-    this.preferences = new ApplicationPreferences(this.context);
-    this.history = new ApplicationHistory(this.context);
+    const composition = composeTooldeckApplication(options);
+
+    this.context = composition.context;
+    this.paths = composition.configuration.paths;
+    this.commands = composition.facades.commands;
+    this.plugins = composition.facades.plugins;
+    this.preferences = composition.facades.preferences;
+    this.history = composition.facades.history;
   }
 
   start(): Promise<void> {

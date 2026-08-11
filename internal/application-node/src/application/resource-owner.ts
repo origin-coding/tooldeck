@@ -1,8 +1,8 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
-import { type CreatedRuntime, createRuntime, type PluginScanSource } from "@tooldeck/runtime-node";
-import { Cause, Effect, Exit } from "effect";
+import type { CreatedRuntime } from "@tooldeck/runtime-node";
+import { Cause, Effect, Exit, type Scope } from "effect";
 
 import { applicationErrorFromCause } from "@/application/edge";
 import {
@@ -17,7 +17,6 @@ import {
   makeApplicationResourceScope,
   type ApplicationResourceScope,
 } from "@/application/resource-scope";
-import type { ApplicationCommandInputCoercion } from "@/application/types";
 import {
   captureApplicationCleanupFailure,
   type CapturedApplicationCleanupFailure,
@@ -26,30 +25,41 @@ import {
 } from "@/errors/application-cleanup";
 import { ApplicationError } from "@/errors/application-error";
 import type { TooldeckPaths } from "@/paths";
-import { PluginManagementService } from "@/plugins/management";
+import type { PluginManagementService } from "@/plugins/management";
 import {
-  CommandRunRepository,
+  type CommandRunRepository,
   openTooldeckDatabase,
-  PluginKvRepository,
-  PluginRepository,
-  PreferenceRepository,
+  type PluginKvRepository,
+  type PluginRepository,
+  type PreferenceRepository,
   type TooldeckDatabase,
 } from "@/storage";
 
+export interface ApplicationDatabaseServices {
+  readonly commandRuns: CommandRunRepository;
+  readonly preferences: PreferenceRepository;
+  readonly plugins: PluginRepository;
+  readonly pluginKv: PluginKvRepository;
+  readonly pluginManagement: PluginManagementService;
+}
+
+export interface ApplicationRuntimeDependencies {
+  readonly parentScope: Scope.CloseableScope;
+  readonly pluginKv: PluginKvRepository;
+  readonly pluginManagement: PluginManagementService;
+}
+
 interface ApplicationResourceOwnerOptions {
   readonly paths: TooldeckPaths;
-  readonly pluginSources: PluginScanSource[];
-  readonly commandInputCoercion: ApplicationCommandInputCoercion;
+  readonly createDatabaseServices: (database: TooldeckDatabase) => ApplicationDatabaseServices;
+  readonly createRuntime: (
+    dependencies: ApplicationRuntimeDependencies,
+  ) => ApplicationEffect<CreatedRuntime>;
 }
 
 export class ApplicationResourceOwner {
   private disposed = false;
-  private database?: TooldeckDatabase;
-  private commandRuns?: CommandRunRepository;
-  private preferences?: PreferenceRepository;
-  private plugins?: PluginRepository;
-  private pluginKv?: PluginKvRepository;
-  private pluginManagement?: PluginManagementService;
+  private databaseServices?: ApplicationDatabaseServices;
   private runtime?: CreatedRuntime;
   private resourceScope?: ApplicationResourceScope;
 
@@ -65,10 +75,11 @@ export class ApplicationResourceOwner {
       const database = yield* tryApplicationSync(() =>
         openTooldeckDatabase({ path: this.options.paths.databasePath }),
       );
-      this.database = database;
 
       yield* addDatabaseFinalizer(resourceScope, database);
-      yield* tryApplicationSync(() => this.initializeDatabaseServices(database));
+      this.databaseServices = yield* tryApplicationSync(() =>
+        this.options.createDatabaseServices(database),
+      );
       yield* this.rebuildRuntime();
     });
   }
@@ -113,18 +124,13 @@ export class ApplicationResourceOwner {
     return Effect.gen(this, function* (this: ApplicationResourceOwner) {
       yield* this.disposeRuntime();
 
-      const pluginKv = yield* tryApplicationSync(() => this.requirePluginKv());
-      const pluginManagement = yield* tryApplicationSync(() => this.requirePluginManagement());
+      const databaseServices = yield* tryApplicationSync(() => this.requireDatabaseServices());
       const parentScope = yield* tryApplicationSync(() => this.requireResourceScope().scope);
 
-      this.runtime = yield* createRuntime({
-        pluginSources: this.options.pluginSources,
+      this.runtime = yield* this.options.createRuntime({
         parentScope,
-        coercion: this.options.commandInputCoercion,
-        createPluginStorage: (pluginId) => createPluginStorage(pluginKv, pluginId),
-        afterScan({ manifestIndex }) {
-          pluginManagement.syncCatalog(manifestIndex);
-        },
+        pluginKv: databaseServices.pluginKv,
+        pluginManagement: databaseServices.pluginManagement,
       });
     });
   }
@@ -141,23 +147,23 @@ export class ApplicationResourceOwner {
   }
 
   requireCommandRuns(): CommandRunRepository {
-    return this.requireResource(this.commandRuns, "command history");
+    return this.requireResource(this.databaseServices?.commandRuns, "command history");
   }
 
   requirePreferences(): PreferenceRepository {
-    return this.requireResource(this.preferences, "preferences");
+    return this.requireResource(this.databaseServices?.preferences, "preferences");
   }
 
   requirePlugins(): PluginRepository {
-    return this.requireResource(this.plugins, "plugin catalog");
+    return this.requireResource(this.databaseServices?.plugins, "plugin catalog");
   }
 
   requirePluginManagement(): PluginManagementService {
-    return this.requireResource(this.pluginManagement, "plugin management");
+    return this.requireResource(this.databaseServices?.pluginManagement, "plugin management");
   }
 
-  private requirePluginKv(): PluginKvRepository {
-    return this.requireResource(this.pluginKv, "plugin storage");
+  private requireDatabaseServices(): ApplicationDatabaseServices {
+    return this.requireResource(this.databaseServices, "database services");
   }
 
   private requireResourceScope(): ApplicationResourceScope {
@@ -183,18 +189,6 @@ export class ApplicationResourceOwner {
       await mkdir(path.dirname(this.options.paths.databasePath), { recursive: true });
       await mkdir(this.options.paths.installedPluginsDir, { recursive: true });
       await mkdir(this.options.paths.userPluginsDir, { recursive: true });
-    });
-  }
-
-  private initializeDatabaseServices(database: TooldeckDatabase): void {
-    this.commandRuns = new CommandRunRepository(database.db);
-    this.preferences = new PreferenceRepository(database.db);
-    this.plugins = new PluginRepository(database.db);
-    this.pluginKv = new PluginKvRepository(database.db);
-    this.pluginManagement = new PluginManagementService({
-      database,
-      installedPluginsDir: this.options.paths.installedPluginsDir,
-      pluginSources: this.options.pluginSources,
     });
   }
 
@@ -240,25 +234,6 @@ export class ApplicationResourceOwner {
 
   private clearResourceReferences(): void {
     this.resourceScope = undefined;
-    this.database = undefined;
-    this.commandRuns = undefined;
-    this.preferences = undefined;
-    this.plugins = undefined;
-    this.pluginKv = undefined;
-    this.pluginManagement = undefined;
+    this.databaseServices = undefined;
   }
-}
-
-function createPluginStorage(pluginKv: PluginKvRepository, pluginId: string) {
-  return {
-    async get(key: string) {
-      return pluginKv.get(pluginId, key);
-    },
-    async set(key: string, value: unknown) {
-      pluginKv.set({ pluginId, key, value });
-    },
-    async delete(key: string) {
-      pluginKv.delete(pluginId, key);
-    },
-  };
 }
