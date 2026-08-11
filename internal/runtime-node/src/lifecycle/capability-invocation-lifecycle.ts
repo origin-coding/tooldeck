@@ -1,8 +1,11 @@
+import { type StateEvent, type StateTransitionTable } from "@tooldeck/state-machine";
+import { Effect } from "effect";
+
+import type { RuntimeEffect } from "@/effects/runtime-effect";
 import {
-  StateMachine,
-  type StateMachineTransitionHook,
-  type StateMachineTransitionTable,
-} from "@/lifecycle/state-machine";
+  makeRuntimeStateMachine,
+  type RuntimeStateMachine,
+} from "@/lifecycle/runtime-state-machine";
 
 export type CapabilityInvocationState =
   | "pending"
@@ -12,18 +15,20 @@ export type CapabilityInvocationState =
   | "succeeded"
   | "failed";
 
-export type CapabilityInvocationEvent =
-  | "validationStarted"
-  | "validationSucceeded"
-  | "validationFailed"
-  | "executionStarted"
-  | "executionSucceeded"
-  | "executionFailed";
+export interface CapabilityInvocationEvents {
+  readonly validationStarted: void;
+  readonly validationSucceeded: void;
+  readonly validationFailed: void;
+  readonly executionStarted: void;
+  readonly executionSucceeded: void;
+  readonly executionFailed: void;
+}
 
-export type CapabilityInvocationTransitionTable<TContext = undefined> = StateMachineTransitionTable<
+export type CapabilityInvocationEvent = StateEvent<CapabilityInvocationEvents>;
+
+export type CapabilityInvocationTransitionTable = StateTransitionTable<
   CapabilityInvocationState,
-  CapabilityInvocationEvent,
-  TContext
+  CapabilityInvocationEvents
 >;
 
 export const initialCapabilityInvocationState: CapabilityInvocationState = "pending";
@@ -50,58 +55,35 @@ export const capabilityInvocationTransitions: CapabilityInvocationTransitionTabl
 export function canTransitionCapabilityInvocationState(
   state: CapabilityInvocationState,
   event: CapabilityInvocationEvent,
-): boolean {
-  return new CapabilityInvocationLifecycleMachine(state).canDispatch(event);
+): Effect.Effect<boolean> {
+  return Effect.flatMap(makeCapabilityInvocationLifecycleMachine(state), (machine) =>
+    machine.canDispatch(event),
+  );
 }
 
 export function transitionCapabilityInvocationState(
   state: CapabilityInvocationState,
   event: CapabilityInvocationEvent,
-): CapabilityInvocationState {
-  return new CapabilityInvocationLifecycleMachine(state).dispatch(event);
+): RuntimeEffect<CapabilityInvocationState> {
+  return Effect.flatMap(makeCapabilityInvocationLifecycleMachine(state), (machine) =>
+    Effect.map(machine.dispatch(event), (transition) => transition.to),
+  );
 }
 
-export interface CapabilityInvocationLifecycleMachineOptions<TContext = undefined> {
-  initialState?: CapabilityInvocationState;
-  transitions?: StateMachineTransitionTable<
-    CapabilityInvocationState,
-    CapabilityInvocationEvent,
-    TContext
-  >;
-  onTransition?: StateMachineTransitionHook<
-    CapabilityInvocationState,
-    CapabilityInvocationEvent,
-    TContext
-  >;
-}
-
-export class CapabilityInvocationLifecycleMachine<TContext = undefined> extends StateMachine<
+export type CapabilityInvocationLifecycleMachine = RuntimeStateMachine<
   CapabilityInvocationState,
-  CapabilityInvocationEvent,
-  TContext
-> {
-  constructor(
-    options: CapabilityInvocationState | CapabilityInvocationLifecycleMachineOptions<TContext> = {},
-  ) {
-    const normalizedOptions =
-      typeof options === "string"
-        ? {
-            initialState: options,
-          }
-        : options;
+  CapabilityInvocationEvents
+>;
 
-    super({
-      initialState: normalizedOptions.initialState ?? initialCapabilityInvocationState,
-      transitions:
-        normalizedOptions.transitions ??
-        (capabilityInvocationTransitions as StateMachineTransitionTable<
-          CapabilityInvocationState,
-          CapabilityInvocationEvent,
-          TContext
-        >),
-      invalidTransitionMessage: "Invalid capability invocation transition",
-      blockedTransitionMessage: "Blocked capability invocation transition",
-      onTransition: normalizedOptions.onTransition,
-    });
-  }
+export function makeCapabilityInvocationLifecycleMachine(
+  initialState: CapabilityInvocationState = initialCapabilityInvocationState,
+): Effect.Effect<CapabilityInvocationLifecycleMachine> {
+  return makeRuntimeStateMachine({
+    initialState,
+    transitions: capabilityInvocationTransitions,
+    messages: {
+      invalidTransition: "Invalid capability invocation transition",
+      blockedTransition: "Blocked capability invocation transition",
+    },
+  });
 }

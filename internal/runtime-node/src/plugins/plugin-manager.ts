@@ -6,11 +6,12 @@ import { validateCommandOutputSchema } from "@/commands/command-output-schema-va
 import type { CommandRunResult, RuntimeCommandRegistry } from "@/commands/command-registry";
 import { PluginHostRegistry } from "@/composition/host-registry";
 import type { PluginHost } from "@/core/plugin-host";
-import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
+import { runRuntimeEffectPromise, runRuntimeEffectSync } from "@/effects/runtime-effect";
 import { RuntimeError, toRuntimeError } from "@/errors/runtime-error";
 import {
   initialPluginRuntimeState,
-  PluginRuntimeLifecycleMachine,
+  makePluginRuntimeLifecycleMachine,
+  type PluginRuntimeLifecycleMachine,
   type PluginRuntimeState,
 } from "@/lifecycle/plugin-runtime-lifecycle";
 import type { IndexedCommand, IndexedPlugin, ManifestIndex } from "@/manifests/manifest-index";
@@ -97,7 +98,9 @@ export class PluginManager {
   }
 
   getPluginRuntimeState(pluginId: string): PluginRuntimeState {
-    return this.pluginLifecycles.get(pluginId)?.state ?? initialPluginRuntimeState;
+    const lifecycle = this.pluginLifecycles.get(pluginId);
+
+    return lifecycle ? runRuntimeEffectSync(lifecycle.state) : initialPluginRuntimeState;
   }
 
   private getIndexedCommandOrThrow(commandId: string): IndexedCommand {
@@ -169,7 +172,7 @@ export class PluginManager {
   private async activatePlugin(plugin: IndexedPlugin, host: PluginHost): Promise<void> {
     const lifecycle = this.getPluginLifecycle(plugin.id);
 
-    lifecycle.dispatch("activationRequested");
+    runRuntimeEffectSync(lifecycle.dispatch({ type: "activationRequested" }));
 
     try {
       await runRuntimeEffectPromise(
@@ -178,9 +181,9 @@ export class PluginManager {
           entryPath: plugin.entryPath,
         }),
       );
-      lifecycle.dispatch("activated");
+      runRuntimeEffectSync(lifecycle.dispatch({ type: "activated" }));
     } catch (error) {
-      lifecycle.dispatch("activationFailed");
+      runRuntimeEffectSync(lifecycle.dispatch({ type: "activationFailed" }));
       throw error;
     }
   }
@@ -189,7 +192,7 @@ export class PluginManager {
     let lifecycle = this.pluginLifecycles.get(pluginId);
 
     if (!lifecycle) {
-      lifecycle = new PluginRuntimeLifecycleMachine();
+      lifecycle = runRuntimeEffectSync(makePluginRuntimeLifecycleMachine());
       this.pluginLifecycles.set(pluginId, lifecycle);
     }
 

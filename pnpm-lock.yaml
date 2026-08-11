@@ -218,6 +218,9 @@ importers:
       '@tooldeck/sdk-node':
         specifier: workspace:*
         version: link:../../packages/sdk-node
+      '@tooldeck/state-machine':
+        specifier: workspace:*
+        version: link:../state-machine
       ajv:
         specifier: 'catalog:'
         version: 8.20.0

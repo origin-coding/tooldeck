@@ -11,7 +11,6 @@ export * from "@/i18n/locale-resolution";
 export * from "@/lifecycle/capability-invocation-lifecycle";
 export * from "@/lifecycle/plugin-registry-lifecycle";
 export * from "@/lifecycle/plugin-runtime-lifecycle";
-export * from "@/lifecycle/state-machine";
 export * from "@/manifests/manifest-index";
 export * from "@/manifests/manifest-validation";
 export * from "@/plugins/plugin-manager";

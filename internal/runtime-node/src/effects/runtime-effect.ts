@@ -35,6 +35,16 @@ export async function runRuntimeEffectPromise<A>(effect: RuntimeEffect<A>): Prom
   throw runtimeErrorFromCause(exit.cause);
 }
 
+export function runRuntimeEffectSync<A>(effect: RuntimeEffect<A>): A {
+  const exit = Effect.runSyncExit(effect);
+
+  if (Exit.isSuccess(exit)) {
+    return exit.value;
+  }
+
+  throw runtimeErrorFromCause(exit.cause);
+}
+
 export function runtimeErrorFromCause(cause: Cause.Cause<RuntimeError>): RuntimeError {
   const failure = Cause.failureOption(cause);
 
