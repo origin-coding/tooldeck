@@ -19,6 +19,7 @@
   "dependencies": {
     "@tooldeck/protocol": "workspace:*",
     "@tooldeck/sdk-node": "workspace:*",
+    "@tooldeck/state-machine": "workspace:*",
     "ajv": "catalog:",
     "effect": "catalog:"
   },

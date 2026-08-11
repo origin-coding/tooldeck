@@ -1,55 +1,94 @@
 import { describe, expect, it } from "vitest";
 
+import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
 import {
-  CapabilityInvocationLifecycleMachine,
   canTransitionCapabilityInvocationState,
+  makeCapabilityInvocationLifecycleMachine,
   transitionCapabilityInvocationState,
 } from "@/index";
 
 describe("CapabilityInvocationLifecycleMachine", () => {
-  it("moves through validation, execution, and success", () => {
-    const machine = new CapabilityInvocationLifecycleMachine();
+  it("moves through validation, execution, and success", async () => {
+    const machine = await runRuntimeEffectPromise(makeCapabilityInvocationLifecycleMachine());
 
-    expect(machine.state).toBe("pending");
-    expect(machine.dispatch("validationStarted")).toBe("validating");
-    expect(machine.dispatch("validationSucceeded")).toBe("ready");
-    expect(machine.dispatch("executionStarted")).toBe("running");
-    expect(machine.dispatch("executionSucceeded")).toBe("succeeded");
+    await expect(runRuntimeEffectPromise(machine.state)).resolves.toBe("pending");
+    await expect(
+      runRuntimeEffectPromise(machine.dispatch({ type: "validationStarted" })),
+    ).resolves.toMatchObject({ to: "validating" });
+    await expect(
+      runRuntimeEffectPromise(machine.dispatch({ type: "validationSucceeded" })),
+    ).resolves.toMatchObject({ to: "ready" });
+    await expect(
+      runRuntimeEffectPromise(machine.dispatch({ type: "executionStarted" })),
+    ).resolves.toMatchObject({ to: "running" });
+    await expect(
+      runRuntimeEffectPromise(machine.dispatch({ type: "executionSucceeded" })),
+    ).resolves.toMatchObject({ to: "succeeded" });
   });
 
-  it("can fail during validation or execution", () => {
-    const validationMachine = new CapabilityInvocationLifecycleMachine();
-
-    validationMachine.dispatch("validationStarted");
-    expect(validationMachine.dispatch("validationFailed")).toBe("failed");
-
-    const executionMachine = new CapabilityInvocationLifecycleMachine();
-
-    executionMachine.dispatch("validationStarted");
-    executionMachine.dispatch("validationSucceeded");
-    executionMachine.dispatch("executionStarted");
-    expect(executionMachine.dispatch("executionFailed")).toBe("failed");
-  });
-
-  it("treats succeeded and failed as terminal invocation states", () => {
-    expect(canTransitionCapabilityInvocationState("succeeded", "executionFailed")).toBe(false);
-    expect(canTransitionCapabilityInvocationState("failed", "validationStarted")).toBe(false);
-
-    expect(() => transitionCapabilityInvocationState("succeeded", "executionFailed")).toThrow(
-      "Invalid capability invocation transition: succeeded -> executionFailed",
+  it("can fail during validation or execution", async () => {
+    const validationMachine = await runRuntimeEffectPromise(
+      makeCapabilityInvocationLifecycleMachine(),
     );
+
+    await runRuntimeEffectPromise(validationMachine.dispatch({ type: "validationStarted" }));
+    await expect(
+      runRuntimeEffectPromise(validationMachine.dispatch({ type: "validationFailed" })),
+    ).resolves.toMatchObject({ to: "failed" });
+
+    const executionMachine = await runRuntimeEffectPromise(
+      makeCapabilityInvocationLifecycleMachine(),
+    );
+
+    await runRuntimeEffectPromise(executionMachine.dispatch({ type: "validationStarted" }));
+    await runRuntimeEffectPromise(executionMachine.dispatch({ type: "validationSucceeded" }));
+    await runRuntimeEffectPromise(executionMachine.dispatch({ type: "executionStarted" }));
+    await expect(
+      runRuntimeEffectPromise(executionMachine.dispatch({ type: "executionFailed" })),
+    ).resolves.toMatchObject({ to: "failed" });
   });
 
-  it("requires execution to start before it can succeed", () => {
-    const machine = new CapabilityInvocationLifecycleMachine();
+  it("treats succeeded and failed as terminal invocation states", async () => {
+    await expect(
+      runRuntimeEffectPromise(
+        canTransitionCapabilityInvocationState("succeeded", { type: "executionFailed" }),
+      ),
+    ).resolves.toBe(false);
+    await expect(
+      runRuntimeEffectPromise(
+        canTransitionCapabilityInvocationState("failed", { type: "validationStarted" }),
+      ),
+    ).resolves.toBe(false);
 
-    machine.dispatch("validationStarted");
-    machine.dispatch("validationSucceeded");
+    await expect(
+      runRuntimeEffectPromise(
+        transitionCapabilityInvocationState("succeeded", { type: "executionFailed" }),
+      ),
+    ).rejects.toMatchObject({
+      code: "ERR_INVALID_ARGUMENT",
+      message: "Invalid capability invocation transition: succeeded -> executionFailed",
+      details: {
+        state: "succeeded",
+        event: "executionFailed",
+      },
+    });
+  });
 
-    expect(machine.state).toBe("ready");
-    expect(machine.canDispatch("executionSucceeded")).toBe(false);
-    expect(() => machine.dispatch("executionSucceeded")).toThrow(
-      "Invalid capability invocation transition: ready -> executionSucceeded",
-    );
+  it("requires execution to start before it can succeed", async () => {
+    const machine = await runRuntimeEffectPromise(makeCapabilityInvocationLifecycleMachine());
+
+    await runRuntimeEffectPromise(machine.dispatch({ type: "validationStarted" }));
+    await runRuntimeEffectPromise(machine.dispatch({ type: "validationSucceeded" }));
+
+    await expect(runRuntimeEffectPromise(machine.state)).resolves.toBe("ready");
+    await expect(
+      runRuntimeEffectPromise(machine.canDispatch({ type: "executionSucceeded" })),
+    ).resolves.toBe(false);
+    await expect(
+      runRuntimeEffectPromise(machine.dispatch({ type: "executionSucceeded" })),
+    ).rejects.toMatchObject({
+      code: "ERR_INVALID_ARGUMENT",
+      message: "Invalid capability invocation transition: ready -> executionSucceeded",
+    });
   });
 });

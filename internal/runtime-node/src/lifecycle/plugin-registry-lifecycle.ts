@@ -1,8 +1,11 @@
+import { type StateEvent, type StateTransitionTable } from "@tooldeck/state-machine";
+import { Effect } from "effect";
+
+import type { RuntimeEffect } from "@/effects/runtime-effect";
 import {
-  StateMachine,
-  type StateMachineTransitionHook,
-  type StateMachineTransitionTable,
-} from "@/lifecycle/state-machine";
+  makeRuntimeStateMachine,
+  type RuntimeStateMachine,
+} from "@/lifecycle/runtime-state-machine";
 
 export type PluginRegistryState =
   | "discovered"
@@ -11,17 +14,19 @@ export type PluginRegistryState =
   | "disabled"
   | "uninstalled";
 
-export type PluginRegistryEvent =
-  | "installRequested"
-  | "enableRequested"
-  | "disableRequested"
-  | "uninstallRequested"
-  | "manifestDiscovered";
+export interface PluginRegistryEvents {
+  readonly installRequested: void;
+  readonly enableRequested: void;
+  readonly disableRequested: void;
+  readonly uninstallRequested: void;
+  readonly manifestDiscovered: void;
+}
 
-export type PluginRegistryTransitionTable<TContext = undefined> = StateMachineTransitionTable<
+export type PluginRegistryEvent = StateEvent<PluginRegistryEvents>;
+
+export type PluginRegistryTransitionTable = StateTransitionTable<
   PluginRegistryState,
-  PluginRegistryEvent,
-  TContext
+  PluginRegistryEvents
 >;
 
 export const initialPluginRegistryState: PluginRegistryState = "discovered";
@@ -51,48 +56,35 @@ export const pluginRegistryTransitions: PluginRegistryTransitionTable = {
 export function canTransitionPluginRegistryState(
   state: PluginRegistryState,
   event: PluginRegistryEvent,
-): boolean {
-  return new PluginRegistryLifecycleMachine(state).canDispatch(event);
+): Effect.Effect<boolean> {
+  return Effect.flatMap(makePluginRegistryLifecycleMachine(state), (machine) =>
+    machine.canDispatch(event),
+  );
 }
 
 export function transitionPluginRegistryState(
   state: PluginRegistryState,
   event: PluginRegistryEvent,
-): PluginRegistryState {
-  return new PluginRegistryLifecycleMachine(state).dispatch(event);
+): RuntimeEffect<PluginRegistryState> {
+  return Effect.flatMap(makePluginRegistryLifecycleMachine(state), (machine) =>
+    Effect.map(machine.dispatch(event), (transition) => transition.to),
+  );
 }
 
-export interface PluginRegistryLifecycleMachineOptions<TContext = undefined> {
-  initialState?: PluginRegistryState;
-  transitions?: StateMachineTransitionTable<PluginRegistryState, PluginRegistryEvent, TContext>;
-  onTransition?: StateMachineTransitionHook<PluginRegistryState, PluginRegistryEvent, TContext>;
-}
-
-export class PluginRegistryLifecycleMachine<TContext = undefined> extends StateMachine<
+export type PluginRegistryLifecycleMachine = RuntimeStateMachine<
   PluginRegistryState,
-  PluginRegistryEvent,
-  TContext
-> {
-  constructor(options: PluginRegistryState | PluginRegistryLifecycleMachineOptions<TContext> = {}) {
-    const normalizedOptions =
-      typeof options === "string"
-        ? {
-            initialState: options,
-          }
-        : options;
+  PluginRegistryEvents
+>;
 
-    super({
-      initialState: normalizedOptions.initialState ?? initialPluginRegistryState,
-      transitions:
-        normalizedOptions.transitions ??
-        (pluginRegistryTransitions as StateMachineTransitionTable<
-          PluginRegistryState,
-          PluginRegistryEvent,
-          TContext
-        >),
-      invalidTransitionMessage: "Invalid plugin registry transition",
-      blockedTransitionMessage: "Blocked plugin registry transition",
-      onTransition: normalizedOptions.onTransition,
-    });
-  }
+export function makePluginRegistryLifecycleMachine(
+  initialState: PluginRegistryState = initialPluginRegistryState,
+): Effect.Effect<PluginRegistryLifecycleMachine> {
+  return makeRuntimeStateMachine({
+    initialState,
+    transitions: pluginRegistryTransitions,
+    messages: {
+      invalidTransition: "Invalid plugin registry transition",
+      blockedTransition: "Blocked plugin registry transition",
+    },
+  });
 }

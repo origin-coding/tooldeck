@@ -1,8 +1,11 @@
+import { type StateEvent, type StateTransitionTable } from "@tooldeck/state-machine";
+import { Effect } from "effect";
+
+import type { RuntimeEffect } from "@/effects/runtime-effect";
 import {
-  StateMachine,
-  type StateMachineTransitionHook,
-  type StateMachineTransitionTable,
-} from "@/lifecycle/state-machine";
+  makeRuntimeStateMachine,
+  type RuntimeStateMachine,
+} from "@/lifecycle/runtime-state-machine";
 
 export type PluginRuntimeState =
   | "inactive"
@@ -12,18 +15,20 @@ export type PluginRuntimeState =
   | "failed"
   | "disposed";
 
-export type PluginRuntimeEvent =
-  | "activationRequested"
-  | "activated"
-  | "activationFailed"
-  | "deactivationRequested"
-  | "deactivated"
-  | "disposeRequested";
+export interface PluginRuntimeEvents {
+  readonly activationRequested: void;
+  readonly activated: void;
+  readonly activationFailed: void;
+  readonly deactivationRequested: void;
+  readonly deactivated: void;
+  readonly disposeRequested: void;
+}
 
-export type PluginRuntimeTransitionTable<TContext = undefined> = StateMachineTransitionTable<
+export type PluginRuntimeEvent = StateEvent<PluginRuntimeEvents>;
+
+export type PluginRuntimeTransitionTable = StateTransitionTable<
   PluginRuntimeState,
-  PluginRuntimeEvent,
-  TContext
+  PluginRuntimeEvents
 >;
 
 export const initialPluginRuntimeState: PluginRuntimeState = "inactive";
@@ -55,48 +60,35 @@ export const pluginRuntimeTransitions: PluginRuntimeTransitionTable = {
 export function canTransitionPluginRuntimeState(
   state: PluginRuntimeState,
   event: PluginRuntimeEvent,
-): boolean {
-  return new PluginRuntimeLifecycleMachine(state).canDispatch(event);
+): Effect.Effect<boolean> {
+  return Effect.flatMap(makePluginRuntimeLifecycleMachine(state), (machine) =>
+    machine.canDispatch(event),
+  );
 }
 
 export function transitionPluginRuntimeState(
   state: PluginRuntimeState,
   event: PluginRuntimeEvent,
-): PluginRuntimeState {
-  return new PluginRuntimeLifecycleMachine(state).dispatch(event);
+): RuntimeEffect<PluginRuntimeState> {
+  return Effect.flatMap(makePluginRuntimeLifecycleMachine(state), (machine) =>
+    Effect.map(machine.dispatch(event), (transition) => transition.to),
+  );
 }
 
-export interface PluginRuntimeLifecycleMachineOptions<TContext = undefined> {
-  initialState?: PluginRuntimeState;
-  transitions?: StateMachineTransitionTable<PluginRuntimeState, PluginRuntimeEvent, TContext>;
-  onTransition?: StateMachineTransitionHook<PluginRuntimeState, PluginRuntimeEvent, TContext>;
-}
-
-export class PluginRuntimeLifecycleMachine<TContext = undefined> extends StateMachine<
+export type PluginRuntimeLifecycleMachine = RuntimeStateMachine<
   PluginRuntimeState,
-  PluginRuntimeEvent,
-  TContext
-> {
-  constructor(options: PluginRuntimeState | PluginRuntimeLifecycleMachineOptions<TContext> = {}) {
-    const normalizedOptions =
-      typeof options === "string"
-        ? {
-            initialState: options,
-          }
-        : options;
+  PluginRuntimeEvents
+>;
 
-    super({
-      initialState: normalizedOptions.initialState ?? initialPluginRuntimeState,
-      transitions:
-        normalizedOptions.transitions ??
-        (pluginRuntimeTransitions as StateMachineTransitionTable<
-          PluginRuntimeState,
-          PluginRuntimeEvent,
-          TContext
-        >),
-      invalidTransitionMessage: "Invalid plugin runtime transition",
-      blockedTransitionMessage: "Blocked plugin runtime transition",
-      onTransition: normalizedOptions.onTransition,
-    });
-  }
+export function makePluginRuntimeLifecycleMachine(
+  initialState: PluginRuntimeState = initialPluginRuntimeState,
+): Effect.Effect<PluginRuntimeLifecycleMachine> {
+  return makeRuntimeStateMachine({
+    initialState,
+    transitions: pluginRuntimeTransitions,
+    messages: {
+      invalidTransition: "Invalid plugin runtime transition",
+      blockedTransition: "Blocked plugin runtime transition",
+    },
+  });
 }
