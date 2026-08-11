@@ -2,13 +2,13 @@ import { Effect, Exit } from "effect";
 
 import type { TooldeckApplicationAdapters } from "@/application/adapters";
 import { composeTooldeckApplication } from "@/application/composition-root";
-import { TooldeckApplicationContext } from "@/application/context";
 import { applicationErrorFromCause, runApplicationEffect } from "@/application/edge";
 import {
   type ApplicationEffect,
   type ApplicationFailure,
   tryApplicationPromise,
 } from "@/application/effect";
+import type { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
 import type { CreateTooldeckApplicationOptions } from "@/application/types";
 import type { ApplicationCommandFacade } from "@/commands/types";
 import {
@@ -39,12 +39,12 @@ class DefaultTooldeckApplication implements TooldeckApplication {
   readonly preferences: ApplicationPreferenceFacade;
   readonly history: ApplicationHistoryFacade;
 
-  private readonly context: TooldeckApplicationContext;
+  private readonly lifecycle: ApplicationLifecycleCoordinator;
 
   constructor(options: CreateTooldeckApplicationOptions) {
     const composition = composeTooldeckApplication(options);
 
-    this.context = composition.context;
+    this.lifecycle = composition.lifecycle;
     this.paths = composition.configuration.paths;
     this.commands = composition.facades.commands;
     this.plugins = composition.facades.plugins;
@@ -53,19 +53,19 @@ class DefaultTooldeckApplication implements TooldeckApplication {
   }
 
   start(): Promise<void> {
-    return this.context.start();
+    return this.lifecycle.start();
   }
 
   dispose(): Promise<void> {
-    return this.context.dispose();
+    return this.lifecycle.dispose();
   }
 
   startEffect(): ApplicationEffect<void> {
-    return this.context.startEffect();
+    return this.lifecycle.startEffect();
   }
 
   disposeEffect(): ApplicationEffect<void> {
-    return this.context.disposeEffect();
+    return this.lifecycle.disposeEffect();
   }
 }
 

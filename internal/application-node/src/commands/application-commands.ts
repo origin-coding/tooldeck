@@ -1,10 +1,9 @@
 import type { CommandResult } from "@tooldeck/protocol";
 
-import type { TooldeckApplicationContext } from "@/application/context";
 import { runApplicationEffect } from "@/application/edge";
 import { type ApplicationEffect, tryApplicationSync } from "@/application/effect";
 import { localizeApplicationCommand } from "@/application/localization";
-import { runApplicationCommand } from "@/commands/run-command";
+import { type ApplicationCommandDependencies, runApplicationCommand } from "@/commands/run-command";
 import type {
   ApplicationCommand,
   ApplicationCommandFacade,
@@ -13,7 +12,7 @@ import type {
 } from "@/commands/types";
 
 export class ApplicationCommands implements ApplicationCommandFacade {
-  constructor(private readonly context: TooldeckApplicationContext) {}
+  constructor(private readonly dependencies: ApplicationCommandDependencies) {}
 
   list(request: ListApplicationCommandsRequest = {}): Promise<ApplicationCommand[]> {
     return runApplicationEffect(this.listEffect(request));
@@ -23,8 +22,8 @@ export class ApplicationCommands implements ApplicationCommandFacade {
     request: ListApplicationCommandsRequest = {},
   ): ApplicationEffect<ApplicationCommand[]> {
     return tryApplicationSync(() => {
-      const runtime = this.context.requireRuntime();
-      const plugins = this.context.requirePlugins();
+      const runtime = this.dependencies.getRuntime();
+      const plugins = this.dependencies.getPlugins();
 
       return runtime.manifestIndex.listCommands().map((command) =>
         localizeApplicationCommand(
@@ -43,6 +42,6 @@ export class ApplicationCommands implements ApplicationCommandFacade {
   }
 
   run(request: RunApplicationCommandRequest): Promise<CommandResult> {
-    return runApplicationEffect(runApplicationCommand(this.context, request));
+    return runApplicationEffect(runApplicationCommand(this.dependencies, request));
   }
 }

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import type { TooldeckApplicationContext } from "@/application/context";
 import { ApplicationHistory } from "@/history/application-history";
 import { classifyApplicationErrorEvidence } from "@/history/error-evidence";
 import { CommandRunRepository, openTooldeckDatabase } from "@/storage";
@@ -69,9 +68,7 @@ describe("command history cleanup evidence", () => {
           1,
         );
 
-      const history = new ApplicationHistory({
-        requireCommandRuns: () => repository,
-      } as TooldeckApplicationContext);
+      const history = new ApplicationHistory({ getCommandRuns: () => repository });
       const runs = await history.listCommandRuns();
 
       expect(runs).toEqual([

@@ -4,7 +4,6 @@ import {
   type ApplicationConfiguration,
   normalizeApplicationConfiguration,
 } from "@/application/configuration";
-import { TooldeckApplicationContext } from "@/application/context";
 import type { ApplicationEffect } from "@/application/effect";
 import { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
 import {
@@ -35,7 +34,7 @@ export interface ApplicationFacades {
 
 export interface TooldeckApplicationComposition {
   readonly configuration: ApplicationConfiguration;
-  readonly context: TooldeckApplicationContext;
+  readonly lifecycle: ApplicationLifecycleCoordinator;
   readonly facades: ApplicationFacades;
 }
 
@@ -45,16 +44,11 @@ export function composeTooldeckApplication(
   const configuration = normalizeApplicationConfiguration(options);
   const resources = createApplicationResourceOwner(configuration);
   const lifecycle = new ApplicationLifecycleCoordinator(resources);
-  const context = new TooldeckApplicationContext({
-    preprocessCommandInput: configuration.preprocessCommandInput,
-    lifecycle,
-    resources,
-  });
 
   return {
     configuration,
-    context,
-    facades: createApplicationFacades(context),
+    lifecycle,
+    facades: createApplicationFacades(configuration, resources),
   };
 }
 
@@ -101,14 +95,33 @@ function createApplicationRuntime(
   });
 }
 
-function createApplicationFacades(context: TooldeckApplicationContext): ApplicationFacades {
-  const commands = new ApplicationCommands(context);
+function createApplicationFacades(
+  configuration: ApplicationConfiguration,
+  resources: ApplicationResourceOwner,
+): ApplicationFacades {
+  const commands = new ApplicationCommands({
+    getRuntime: () => resources.requireRuntime(),
+    getCommandRuns: () => resources.requireCommandRuns(),
+    getPlugins: () => resources.requirePlugins(),
+    preprocessInput: configuration.preprocessCommandInput,
+  });
 
   return {
     commands,
-    plugins: new ApplicationPlugins(context, commands),
-    preferences: new ApplicationPreferences(context),
-    history: new ApplicationHistory(context),
+    plugins: new ApplicationPlugins({
+      getRuntime: () => resources.requireRuntime(),
+      getPlugins: () => resources.requirePlugins(),
+      getPluginManagement: () => resources.requirePluginManagement(),
+      rebuildRuntime: () => resources.rebuildRuntime(),
+      disposeRuntime: () => resources.disposeRuntime(),
+      listCommands: (locale) => commands.listEffect({ locale }),
+    }),
+    preferences: new ApplicationPreferences({
+      getPreferences: () => resources.requirePreferences(),
+    }),
+    history: new ApplicationHistory({
+      getCommandRuns: () => resources.requireCommandRuns(),
+    }),
   };
 }
 
