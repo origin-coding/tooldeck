@@ -1,0 +1,22 @@
+{
+  "name": "@tooldeck/state-machine",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Private Effect-first state-machine core for Tooldeck.",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "effect": "catalog:"
+  }
+}
