@@ -24,7 +24,7 @@ import {
   combinePrimaryAndCleanupFailures,
   createApplicationCleanupError,
 } from "@/errors/application-cleanup";
-import type { ApplicationError } from "@/errors/application-error";
+import { ApplicationError } from "@/errors/application-error";
 import type { TooldeckPaths } from "@/paths";
 import { PluginManagementService } from "@/plugins/management";
 import {
@@ -40,10 +40,10 @@ interface ApplicationResourceOwnerOptions {
   readonly paths: TooldeckPaths;
   readonly pluginSources: PluginScanSource[];
   readonly commandInputCoercion: ApplicationCommandInputCoercion;
-  readonly unavailableResourceError: (name: string) => ApplicationError;
 }
 
 export class ApplicationResourceOwner {
+  private disposed = false;
   private database?: TooldeckDatabase;
   private commandRuns?: CommandRunRepository;
   private preferences?: PreferenceRepository;
@@ -100,7 +100,13 @@ export class ApplicationResourceOwner {
   }
 
   dispose(): ApplicationEffect<void> {
-    return this.release();
+    return this.release().pipe(
+      Effect.ensuring(
+        Effect.sync(() => {
+          this.disposed = true;
+        }),
+      ),
+    );
   }
 
   rebuildRuntime(): ApplicationEffect<void> {
@@ -160,7 +166,13 @@ export class ApplicationResourceOwner {
 
   private requireResource<T>(resource: T | undefined, name: string): T {
     if (!resource) {
-      throw this.options.unavailableResourceError(name);
+      throw new ApplicationError({
+        source: "application",
+        code: this.disposed ? "ERR_APPLICATION_DISPOSED" : "ERR_APPLICATION_NOT_STARTED",
+        message: this.disposed
+          ? `Tooldeck application ${name} is unavailable after disposal.`
+          : `Tooldeck application ${name} is unavailable before start.`,
+      });
     }
 
     return resource;

@@ -196,6 +196,9 @@ importers:
       '@tooldeck/runtime-node':
         specifier: workspace:*
         version: link:../runtime-node
+      '@tooldeck/state-machine':
+        specifier: workspace:*
+        version: link:../state-machine
       drizzle-orm:
         specifier: 1.0.0-rc.3
         version: 1.0.0-rc.3(effect@3.22.1)(zod@3.25.76)

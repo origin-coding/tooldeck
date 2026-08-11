@@ -1,14 +1,14 @@
 import path from "node:path";
 
 import type { CreatedRuntime, PluginScanSource } from "@tooldeck/runtime-node";
-import { Effect, Exit } from "effect";
 
 import {
   type CommandInputPreprocessor,
   identityCommandInputPreprocessor,
   type TooldeckApplicationAdapters,
 } from "@/application/adapters";
-import { type ApplicationEffect, tryApplicationSync } from "@/application/effect";
+import type { ApplicationEffect } from "@/application/effect";
+import { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
 import { ApplicationResourceOwner } from "@/application/resource-owner";
 import type {
   ApplicationCommandInputCoercion,
@@ -20,15 +20,13 @@ import { resolveTooldeckPaths, type TooldeckPaths } from "@/paths";
 import { PluginManagementService } from "@/plugins/management";
 import { CommandRunRepository, PluginRepository, PreferenceRepository } from "@/storage";
 
-type ApplicationLifecycleState = "created" | "starting" | "started" | "disposing" | "disposed";
-
 export class TooldeckApplicationContext {
   readonly paths: TooldeckPaths;
   readonly pluginSources: PluginScanSource[];
   readonly commandInputCoercion: ApplicationCommandInputCoercion;
   readonly preprocessCommandInput: CommandInputPreprocessor;
 
-  private state: ApplicationLifecycleState = "created";
+  private readonly lifecycle: ApplicationLifecycleCoordinator;
   private readonly resources: ApplicationResourceOwner;
 
   constructor(options: CreateTooldeckApplicationOptions = {}) {
@@ -48,55 +46,24 @@ export class TooldeckApplicationContext {
       paths: this.paths,
       pluginSources: this.pluginSources,
       commandInputCoercion: this.commandInputCoercion,
-      unavailableResourceError: (name) => this.createUnavailableResourceError(name),
     });
+    this.lifecycle = new ApplicationLifecycleCoordinator(this.resources);
   }
 
-  start(): ApplicationEffect<void> {
-    return Effect.suspend(() => {
-      if (this.state === "started") {
-        return Effect.void;
-      }
-
-      return Effect.gen(this, function* (this: TooldeckApplicationContext) {
-        yield* tryApplicationSync(() => {
-          this.assertCanStart();
-          this.state = "starting";
-        });
-
-        const startExit = yield* Effect.exit(this.resources.acquire());
-
-        if (Exit.isFailure(startExit)) {
-          return yield* this.resources.rollbackFailedStart(startExit.cause).pipe(
-            Effect.ensuring(
-              Effect.sync(() => {
-                this.state = "created";
-              }),
-            ),
-          );
-        }
-
-        this.state = "started";
-      });
-    });
+  start(): Promise<void> {
+    return this.lifecycle.start();
   }
 
-  dispose(): ApplicationEffect<void> {
-    return Effect.suspend(() => {
-      if (this.state === "disposed" || this.state === "disposing") {
-        return Effect.void;
-      }
+  dispose(): Promise<void> {
+    return this.lifecycle.dispose();
+  }
 
-      this.state = "disposing";
+  startEffect(): ApplicationEffect<void> {
+    return this.lifecycle.startEffect();
+  }
 
-      return this.resources.dispose().pipe(
-        Effect.ensuring(
-          Effect.sync(() => {
-            this.state = "disposed";
-          }),
-        ),
-      );
-    });
+  disposeEffect(): ApplicationEffect<void> {
+    return this.lifecycle.disposeEffect();
   }
 
   rebuildRuntime(): ApplicationEffect<void> {
@@ -125,35 +92,6 @@ export class TooldeckApplicationContext {
 
   requirePluginManagement(): PluginManagementService {
     return this.resources.requirePluginManagement();
-  }
-
-  private createUnavailableResourceError(name: string): ApplicationError {
-    return new ApplicationError({
-      source: "application",
-      code: this.state === "disposed" ? "ERR_APPLICATION_DISPOSED" : "ERR_APPLICATION_NOT_STARTED",
-      message:
-        this.state === "disposed"
-          ? `Tooldeck application ${name} is unavailable after disposal.`
-          : `Tooldeck application ${name} is unavailable before start.`,
-    });
-  }
-
-  private assertCanStart(): void {
-    if (this.state === "disposed") {
-      throw new ApplicationError({
-        source: "application",
-        code: "ERR_APPLICATION_DISPOSED",
-        message: "Tooldeck application has already been disposed.",
-      });
-    }
-
-    if (this.state !== "created") {
-      throw new ApplicationError({
-        source: "application",
-        code: "ERR_INVALID_ARGUMENT",
-        message: `Tooldeck application cannot start while it is ${this.state}.`,
-      });
-    }
   }
 }
 

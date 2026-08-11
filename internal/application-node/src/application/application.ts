@@ -15,7 +15,7 @@ import {
   captureApplicationCleanupFailure,
   combinePrimaryAndCleanupFailures,
 } from "@/errors/application-cleanup";
-import { ApplicationError, toApplicationError } from "@/errors/application-error";
+import { toApplicationError } from "@/errors/application-error";
 import { ApplicationHistory } from "@/history/application-history";
 import type { ApplicationHistoryFacade } from "@/history/types";
 import type { TooldeckPaths } from "@/paths";
@@ -43,8 +43,6 @@ class DefaultTooldeckApplication implements TooldeckApplication {
   readonly history: ApplicationHistory;
 
   private readonly context: TooldeckApplicationContext;
-  private startPromise?: Promise<void>;
-  private disposePromise?: Promise<void>;
 
   constructor(options: CreateTooldeckApplicationOptions) {
     this.context = new TooldeckApplicationContext(options);
@@ -56,53 +54,19 @@ class DefaultTooldeckApplication implements TooldeckApplication {
   }
 
   start(): Promise<void> {
-    if (this.disposePromise) {
-      return runApplicationEffect(
-        Effect.fail(
-          new ApplicationError({
-            source: "application",
-            code: "ERR_APPLICATION_DISPOSED",
-            message: "Tooldeck application is disposing or has already been disposed.",
-          }),
-        ),
-      );
-    }
-
-    if (!this.startPromise) {
-      const startPromise = runApplicationEffect(this.startEffect());
-      this.startPromise = startPromise;
-
-      void startPromise.catch(() => {
-        if (this.startPromise === startPromise && !this.disposePromise) {
-          this.startPromise = undefined;
-        }
-      });
-    }
-
-    return this.startPromise;
-  }
-
-  dispose(): Promise<void> {
-    this.disposePromise ??= this.disposeAfterStart();
-    return this.disposePromise;
-  }
-
-  startEffect(): ApplicationEffect<void> {
     return this.context.start();
   }
 
-  disposeEffect(): ApplicationEffect<void> {
+  dispose(): Promise<void> {
     return this.context.dispose();
   }
 
-  private async disposeAfterStart(): Promise<void> {
-    try {
-      await this.startPromise;
-    } catch {
-      // A failed start already releases partial resources before rejecting.
-    }
+  startEffect(): ApplicationEffect<void> {
+    return this.context.startEffect();
+  }
 
-    return runApplicationEffect(this.disposeEffect());
+  disposeEffect(): ApplicationEffect<void> {
+    return this.context.disposeEffect();
   }
 }
 

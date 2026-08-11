@@ -27,3 +27,7 @@ export class BlockedStateTransition<
 export type StateTransitionError<TState extends string = string, TEvent extends string = string> =
   | InvalidStateTransition<TState, TEvent>
   | BlockedStateTransition<TState, TEvent>;
+
+export function isStateTransitionError(error: unknown): error is StateTransitionError {
+  return error instanceof InvalidStateTransition || error instanceof BlockedStateTransition;
+}
