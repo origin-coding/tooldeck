@@ -375,6 +375,12 @@ describe("ApplicationError", () => {
         error: new Error("database close failed"),
       }),
       captureApplicationCleanupFailure({
+        phase: "rollback",
+        step: "databaseTransaction.rollback",
+        context: {},
+        error: new Error("database transaction rollback failed"),
+      }),
+      captureApplicationCleanupFailure({
         phase: "cleanup",
         step: "pluginStaging.remove",
         context: { stagingEntry: "install-example", pluginId: "dev.example.plugin" },
@@ -425,6 +431,7 @@ describe("ApplicationError", () => {
       "cleanup:applicationResources.dispose",
       "cleanup:runtime.dispose",
       "cleanup:database.close",
+      "rollback:databaseTransaction.rollback",
       "cleanup:pluginStaging.remove",
       "rollback:pluginInstall.delete",
       "rollback:pluginDirectory.remove",

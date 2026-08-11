@@ -34,6 +34,10 @@ interface ApplicationCleanupStepRegistry {
     phase: "cleanup";
     context: EmptyCleanupContext;
   };
+  "databaseTransaction.rollback": {
+    phase: "rollback";
+    context: EmptyCleanupContext;
+  };
   "pluginStaging.remove": {
     phase: "cleanup";
     context: { stagingEntry: string; pluginId?: string };

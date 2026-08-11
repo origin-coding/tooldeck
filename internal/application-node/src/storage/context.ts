@@ -1,12 +1,14 @@
 import { Context } from "effect";
 
 import type { ApplicationEffect } from "@/application/effect";
-import type { CommandRunRepository } from "@/storage/repositories/command-runs";
-import type { PluginInstallRepository } from "@/storage/repositories/plugin-installs";
-import type { PluginKvRepository } from "@/storage/repositories/plugin-kv";
-import type { PluginStateRepository } from "@/storage/repositories/plugin-states";
-import type { PluginRepository } from "@/storage/repositories/plugins";
-import type { PreferenceRepository } from "@/storage/repositories/preferences";
+import type {
+  CommandRunRepository,
+  PluginInstallRepository,
+  PluginKvRepository,
+  PluginRepository,
+  PluginStateRepository,
+  PreferenceRepository,
+} from "@/storage/repositories";
 
 export interface ApplicationRepositories {
   readonly commandRuns: CommandRunRepository;

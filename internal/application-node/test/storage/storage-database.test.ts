@@ -7,15 +7,12 @@ import {
   CommandRunRepository,
   PluginRepository,
   PluginStateRepository,
-  PreferenceRepository,
-  withRepository,
-  withTooldeckDatabase,
 } from "@/storage";
 import { migrations, runMigrations } from "@/storage/migrations";
 
 import { createDatabasePath } from "./storage-test-fixtures";
 
-describe("storage migrations and lifecycle", () => {
+describe("storage database", () => {
   it("runs the initial migration", () => {
     const database = openTooldeckDatabase({ path: createDatabasePath() });
 
@@ -215,19 +212,6 @@ describe("storage migrations and lifecycle", () => {
     expect(() => database.sqlite.prepare("select 1")).toThrow();
   });
 
-  it("runs callbacks with a managed database lifecycle", async () => {
-    let databaseFromCallback: ReturnType<typeof openTooldeckDatabase> | undefined;
-
-    const result = await withTooldeckDatabase({ path: createDatabasePath() }, (database) => {
-      databaseFromCallback = database;
-
-      return database.sqlite.prepare("select 1 as value").get();
-    });
-
-    expect(result).toMatchObject({ value: 1 });
-    expect(() => databaseFromCallback?.sqlite.prepare("select 1")).toThrow();
-  });
-
   it("closes a partial connection when database initialization fails", () => {
     const databasePath = createDatabasePath();
     const malformed = new DatabaseSync(databasePath);
@@ -284,68 +268,5 @@ describe("storage migrations and lifecycle", () => {
     } finally {
       close.mockRestore();
     }
-  });
-
-  it("preserves callback and close failures", async () => {
-    const callbackError = new Error("callback failed");
-    const closeError = new Error("close failed");
-
-    await expect(
-      withTooldeckDatabase({ path: createDatabasePath() }, (database) => {
-        const close = database.close.bind(database);
-        database.close = () => {
-          close();
-          throw closeError;
-        };
-
-        throw callbackError;
-      }),
-    ).rejects.toMatchObject({
-      source: "application",
-      code: "ERR_UNKNOWN",
-      message: "callback failed",
-      details: {
-        cleanupFailures: [
-          {
-            phase: "cleanup",
-            step: "database.close",
-            context: {},
-            error: {
-              source: "application",
-              code: "ERR_UNKNOWN",
-              message: "close failed",
-            },
-          },
-        ],
-      },
-      cause: {
-        message: "Tooldeck database callback failed and the connection did not close cleanly.",
-        cause: expect.objectContaining({ message: "callback failed", cause: callbackError }),
-      },
-    });
-  });
-
-  it("runs callbacks with a managed repository lifecycle", async () => {
-    const storagePath = createDatabasePath();
-
-    await withRepository(
-      storagePath,
-      (db) => new PreferenceRepository(db),
-      (repository) =>
-        repository.set({
-          scope: "cli",
-          key: "theme",
-          value: "system",
-          now: 1000,
-        }),
-    );
-
-    const value = await withRepository(
-      storagePath,
-      (db) => new PreferenceRepository(db),
-      (repository) => repository.get("cli", "theme"),
-    );
-
-    expect(value).toBe("system");
   });
 });
