@@ -1,12 +1,17 @@
 import type { ManifestIndex, PluginScanSource } from "@tooldeck/runtime-node";
 
 import type { ApplicationCleanupFailureDiagnostic } from "@/errors/application-cleanup";
-import type { PluginInstallRow, PluginRow, TooldeckDatabase } from "@/storage";
+import type { ApplicationRepositories, ApplicationStorageService } from "@/storage/context";
+import type { PluginInstallRow, PluginRow } from "@/storage/repositories";
 
 export interface PluginManagementServiceOptions {
-  database: TooldeckDatabase;
   installedPluginsDir: string;
   pluginSources: PluginScanSource[];
+  repositories: Pick<
+    ApplicationRepositories,
+    "pluginInstalls" | "pluginKv" | "plugins" | "pluginStates"
+  >;
+  withImmediateTransaction: ApplicationStorageService["withImmediateTransaction"];
 }
 
 export interface PluginCatalogSnapshot {

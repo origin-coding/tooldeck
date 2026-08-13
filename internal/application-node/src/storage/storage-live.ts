@@ -47,7 +47,7 @@ export function makeStorageLive(
     ApplicationStorage,
     Effect.acquireRelease(acquireDatabase(options), (database, exit) =>
       releaseDatabase(database, exit, options.onCleanupFailure),
-    ).pipe(Effect.map(makeApplicationStorage)),
+    ).pipe(Effect.map(makeApplicationStorageService)),
   );
 }
 
@@ -99,7 +99,9 @@ function releaseDatabase(
   );
 }
 
-function makeApplicationStorage(database: TooldeckDatabase): ApplicationStorageService {
+export function makeApplicationStorageService(
+  database: TooldeckDatabase,
+): ApplicationStorageService {
   const repositories: ApplicationRepositories = Object.freeze({
     commandRuns: new CommandRunRepository(database.db),
     preferences: new PreferenceRepository(database.db),

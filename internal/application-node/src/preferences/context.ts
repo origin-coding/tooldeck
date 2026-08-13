@@ -8,14 +8,20 @@ import type {
   SetApplicationPreferenceRequest,
 } from "@/preferences/facade-types";
 
-export interface PreferencesService {
-  list(request?: ListApplicationPreferencesRequest): ApplicationEffect<ApplicationPreference[]>;
-  get(request: GetApplicationPreferenceRequest): ApplicationEffect<ApplicationPreference>;
-  set(request: SetApplicationPreferenceRequest): ApplicationEffect<ApplicationPreference>;
-  delete(request: GetApplicationPreferenceRequest): ApplicationEffect<void>;
-}
-
 export class Preferences extends Context.Tag("@tooldeck/application-node/Preferences")<
   Preferences,
-  PreferencesService
+  {
+    readonly list: (
+      request?: ListApplicationPreferencesRequest,
+    ) => ApplicationEffect<ApplicationPreference[]>;
+    readonly get: (
+      request: GetApplicationPreferenceRequest,
+    ) => ApplicationEffect<ApplicationPreference>;
+    readonly set: (
+      request: SetApplicationPreferenceRequest,
+    ) => ApplicationEffect<ApplicationPreference>;
+    readonly delete: (request: GetApplicationPreferenceRequest) => ApplicationEffect<void>;
+  }
 >() {}
+
+export type PreferencesService = Context.Tag.Service<typeof Preferences>;

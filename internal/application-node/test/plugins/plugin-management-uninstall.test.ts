@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { runApplicationEffect } from "@/application/edge";
 import {
   CommandRunRepository,
   PluginInstallRepository,
@@ -86,7 +87,7 @@ describe("PluginManagementService uninstall and purge", () => {
       status: "success",
     });
 
-    expect(() => harness.service.purge(pluginId)).toThrow(
+    await expect(runApplicationEffect(harness.service.purge(pluginId))).rejects.toThrow(
       `Plugin must be uninstalled before its local data can be purged: ${pluginId}`,
     );
     expect(states.getById(pluginId)).toMatchObject({ enabled: false });
@@ -101,7 +102,7 @@ describe("PluginManagementService uninstall and purge", () => {
         kvEntries: 2,
       },
     ]);
-    expect(harness.service.purge(pluginId)).toEqual({
+    await expect(runApplicationEffect(harness.service.purge(pluginId))).resolves.toEqual({
       pluginId,
       stateRemoved: true,
       kvEntriesRemoved: 2,
@@ -115,7 +116,7 @@ describe("PluginManagementService uninstall and purge", () => {
       }),
     ]);
     expect(harness.service.listPurgeablePluginData()).toEqual([]);
-    expect(harness.service.purge(pluginId)).toEqual({
+    await expect(runApplicationEffect(harness.service.purge(pluginId))).resolves.toEqual({
       pluginId,
       stateRemoved: false,
       kvEntriesRemoved: 0,
@@ -148,7 +149,9 @@ describe("PluginManagementService uninstall and purge", () => {
       end;
     `);
 
-    expect(() => harness.service.purge(pluginId)).toThrow("forced plugin state purge failure");
+    await expect(runApplicationEffect(harness.service.purge(pluginId))).rejects.toThrow(
+      "forced plugin state purge failure",
+    );
     expect(states.getById(pluginId)).toMatchObject({ pluginId, enabled: false });
     expect(kv.listByPlugin(pluginId)).toMatchObject([
       { pluginId, key: "first", valueJson: "1" },
@@ -164,7 +167,7 @@ describe("PluginManagementService uninstall and purge", () => {
 
     harness.database.sqlite.exec("drop trigger fail_plugin_state_purge;");
 
-    expect(harness.service.purge(pluginId)).toEqual({
+    await expect(runApplicationEffect(harness.service.purge(pluginId))).resolves.toEqual({
       pluginId,
       stateRemoved: true,
       kvEntriesRemoved: 2,

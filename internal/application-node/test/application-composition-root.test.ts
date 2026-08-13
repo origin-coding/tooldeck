@@ -6,20 +6,14 @@ import { composeTooldeckApplication } from "@/application/composition-root";
 import { normalizeApplicationConfiguration } from "@/application/configuration";
 import { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
 import { ApplicationCommands } from "@/commands/application-commands";
-import type { ApplicationCommandDependencies } from "@/commands/run-command";
-import {
-  ApplicationHistory,
-  type ApplicationHistoryDependencies,
-} from "@/history/application-history";
+import type { CommandsServiceDependencies } from "@/commands/commands-live";
+import { ApplicationHistory } from "@/history/application-history";
+import type { HistoryService } from "@/history/context";
 import type { TooldeckPaths } from "@/paths";
-import {
-  type ApplicationPluginDependencies,
-  ApplicationPlugins,
-} from "@/plugins/application-plugins";
-import {
-  type ApplicationPreferenceDependencies,
-  ApplicationPreferences,
-} from "@/preferences/application-preferences";
+import { ApplicationPlugins } from "@/plugins/application-plugins";
+import type { PluginsServiceDependencies } from "@/plugins/plugins-live";
+import { ApplicationPreferences } from "@/preferences/application-preferences";
+import type { PreferencesService } from "@/preferences/context";
 
 describe("application composition root", () => {
   it("normalizes configuration before constructing application services", () => {
@@ -72,7 +66,7 @@ describe("application composition root", () => {
     ).toThrow("Installed plugin source does not match the application installed plugins path.");
   });
 
-  it("constructs lifecycle coordination and narrow domain facades without a Layer graph", async () => {
+  it("constructs lifecycle coordination and narrow domain facades", async () => {
     const paths = createPaths("composition");
     const composition = composeTooldeckApplication({ paths });
 
@@ -87,19 +81,14 @@ describe("application composition root", () => {
   });
 
   it("keeps each facade dependency contract limited to its own use cases", () => {
-    expectTypeOf<keyof ApplicationCommandDependencies>().toEqualTypeOf<
-      "getRuntime" | "getCommandRuns" | "getPlugins" | "preprocessInput"
+    expectTypeOf<keyof CommandsServiceDependencies>().toEqualTypeOf<
+      "runtime" | "getStorage" | "preprocessInput"
     >();
-    expectTypeOf<keyof ApplicationPluginDependencies>().toEqualTypeOf<
-      | "getRuntime"
-      | "getPlugins"
-      | "getPluginManagement"
-      | "rebuildRuntime"
-      | "disposeRuntime"
-      | "listCommands"
+    expectTypeOf<keyof PluginsServiceDependencies>().toEqualTypeOf<
+      "runtime" | "getStorage" | "getPluginManagement" | "commands"
     >();
-    expectTypeOf<keyof ApplicationPreferenceDependencies>().toEqualTypeOf<"getPreferences">();
-    expectTypeOf<keyof ApplicationHistoryDependencies>().toEqualTypeOf<"getCommandRuns">();
+    expectTypeOf<keyof PreferencesService>().toEqualTypeOf<"list" | "get" | "set" | "delete">();
+    expectTypeOf<keyof HistoryService>().toEqualTypeOf<"listCommandRuns">();
   });
 });
 

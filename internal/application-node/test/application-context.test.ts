@@ -1,5 +1,5 @@
 import type { CommandResult } from "@tooldeck/protocol";
-import { Effect } from "effect";
+import { Context, Effect } from "effect";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import type { ApplicationEffect, ApplicationFailure } from "@/application/effect";
@@ -14,7 +14,14 @@ import type { ApplicationCommand } from "@/commands/types";
 import { History, type HistoryService } from "@/history/context";
 import type { ApplicationCommandRun } from "@/history/types";
 import { Plugins, type PluginsService } from "@/plugins/context";
-import type { ApplicationPlugin } from "@/plugins/facade-types";
+import type {
+  ApplicationPlugin,
+  ApplicationPluginCatalog,
+  ApplicationPluginDataResidue,
+  ApplicationPluginInstallResult,
+  ApplicationPluginPurgeResult,
+  ApplicationPluginUninstallResult,
+} from "@/plugins/facade-types";
 import { Preferences, type PreferencesService } from "@/preferences/context";
 import type { ApplicationPreference } from "@/preferences/facade-types";
 import {
@@ -36,6 +43,7 @@ describe("application Context contracts", () => {
     });
 
     expectTypeOf<keyof CommandsService>().toEqualTypeOf<"list" | "run">();
+    expectTypeOf<CommandsService>().toEqualTypeOf<Context.Tag.Service<typeof Commands>>();
     expectTypeOf<keyof PluginsService>().toEqualTypeOf<
       | "list"
       | "rescan"
@@ -45,17 +53,50 @@ describe("application Context contracts", () => {
       | "listDataResidues"
       | "purgeData"
     >();
+    expectTypeOf<PluginsService>().toEqualTypeOf<Context.Tag.Service<typeof Plugins>>();
     expectTypeOf<keyof PreferencesService>().toEqualTypeOf<"list" | "get" | "set" | "delete">();
+    expectTypeOf<PreferencesService>().toEqualTypeOf<Context.Tag.Service<typeof Preferences>>();
     expectTypeOf<keyof HistoryService>().toEqualTypeOf<"listCommandRuns">();
+    expectTypeOf<HistoryService>().toEqualTypeOf<Context.Tag.Service<typeof History>>();
     expectTypeOf<ApplicationServices>().toEqualTypeOf<Commands | Plugins | Preferences | History>();
     expectTypeOf<ReturnType<CommandsService["list"]>>().toEqualTypeOf<
       ApplicationEffect<ApplicationCommand[]>
     >();
+    expectTypeOf<ReturnType<CommandsService["run"]>>().toEqualTypeOf<
+      ApplicationEffect<CommandResult>
+    >();
     expectTypeOf<ReturnType<PluginsService["list"]>>().toEqualTypeOf<
       ApplicationEffect<ApplicationPlugin[]>
     >();
+    expectTypeOf<ReturnType<PluginsService["rescan"]>>().toEqualTypeOf<
+      ApplicationEffect<ApplicationPluginCatalog>
+    >();
+    expectTypeOf<ReturnType<PluginsService["setEnabled"]>>().toEqualTypeOf<
+      ApplicationEffect<ApplicationPlugin>
+    >();
+    expectTypeOf<ReturnType<PluginsService["installPackage"]>>().toEqualTypeOf<
+      ApplicationEffect<ApplicationPluginInstallResult>
+    >();
+    expectTypeOf<ReturnType<PluginsService["uninstall"]>>().toEqualTypeOf<
+      ApplicationEffect<ApplicationPluginUninstallResult>
+    >();
+    expectTypeOf<ReturnType<PluginsService["listDataResidues"]>>().toEqualTypeOf<
+      ApplicationEffect<ApplicationPluginDataResidue[]>
+    >();
+    expectTypeOf<ReturnType<PluginsService["purgeData"]>>().toEqualTypeOf<
+      ApplicationEffect<ApplicationPluginPurgeResult>
+    >();
     expectTypeOf<ReturnType<PreferencesService["list"]>>().toEqualTypeOf<
       ApplicationEffect<ApplicationPreference[]>
+    >();
+    expectTypeOf<ReturnType<PreferencesService["get"]>>().toEqualTypeOf<
+      ApplicationEffect<ApplicationPreference>
+    >();
+    expectTypeOf<ReturnType<PreferencesService["set"]>>().toEqualTypeOf<
+      ApplicationEffect<ApplicationPreference>
+    >();
+    expectTypeOf<ReturnType<PreferencesService["delete"]>>().toEqualTypeOf<
+      ApplicationEffect<void>
     >();
     expectTypeOf<ReturnType<HistoryService["listCommandRuns"]>>().toEqualTypeOf<
       ApplicationEffect<ApplicationCommandRun[]>

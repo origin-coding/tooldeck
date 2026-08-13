@@ -2,12 +2,7 @@ import { isRuntimeError } from "@tooldeck/runtime-node";
 import { Cause, Effect, Exit } from "effect";
 
 import type { ApplicationEffect, ApplicationFailure } from "@/application/effect";
-import { tryApplicationPromise } from "@/application/effect";
 import { ApplicationError, fromRuntimeError, isApplicationError } from "@/errors/application-error";
-
-export async function runApplicationOperation<T>(operation: () => T | Promise<T>): Promise<T> {
-  return runApplicationEffect(tryApplicationPromise(async () => operation()));
-}
 
 export async function runApplicationEffect<T>(effect: ApplicationEffect<T>): Promise<T> {
   const exit = await Effect.runPromiseExit(effect);

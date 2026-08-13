@@ -26,26 +26,18 @@ import {
 import { ApplicationError } from "@/errors/application-error";
 import type { TooldeckPaths } from "@/paths";
 import type { PluginManagementService } from "@/plugins/management";
-import {
-  type CommandRunRepository,
-  openTooldeckDatabase,
-  type PluginKvRepository,
-  type PluginRepository,
-  type PreferenceRepository,
-  type TooldeckDatabase,
-} from "@/storage";
+import { openTooldeckDatabase, type TooldeckDatabase } from "@/storage";
+import type { ApplicationRepositories, ApplicationStorageService } from "@/storage/context";
 
 export interface ApplicationDatabaseServices {
-  readonly commandRuns: CommandRunRepository;
-  readonly preferences: PreferenceRepository;
-  readonly plugins: PluginRepository;
-  readonly pluginKv: PluginKvRepository;
+  readonly repositories: ApplicationRepositories;
+  readonly withImmediateTransaction: ApplicationStorageService["withImmediateTransaction"];
   readonly pluginManagement: PluginManagementService;
 }
 
 export interface ApplicationRuntimeDependencies {
   readonly parentScope: Scope.CloseableScope;
-  readonly pluginKv: PluginKvRepository;
+  readonly pluginKv: ApplicationRepositories["pluginKv"];
   readonly pluginManagement: PluginManagementService;
 }
 
@@ -129,7 +121,7 @@ export class ApplicationResourceOwner {
 
       this.runtime = yield* this.options.createRuntime({
         parentScope,
-        pluginKv: databaseServices.pluginKv,
+        pluginKv: databaseServices.repositories.pluginKv,
         pluginManagement: databaseServices.pluginManagement,
       });
     });
@@ -146,20 +138,17 @@ export class ApplicationResourceOwner {
     return this.requireResource(this.runtime, "runtime");
   }
 
-  requireCommandRuns(): CommandRunRepository {
-    return this.requireResource(this.databaseServices?.commandRuns, "command history");
-  }
-
-  requirePreferences(): PreferenceRepository {
-    return this.requireResource(this.databaseServices?.preferences, "preferences");
-  }
-
-  requirePlugins(): PluginRepository {
-    return this.requireResource(this.databaseServices?.plugins, "plugin catalog");
-  }
-
   requirePluginManagement(): PluginManagementService {
     return this.requireResource(this.databaseServices?.pluginManagement, "plugin management");
+  }
+
+  requireStorage(): ApplicationStorageService {
+    const services = this.requireDatabaseServices();
+
+    return {
+      repositories: services.repositories,
+      withImmediateTransaction: services.withImmediateTransaction,
+    };
   }
 
   private requireDatabaseServices(): ApplicationDatabaseServices {

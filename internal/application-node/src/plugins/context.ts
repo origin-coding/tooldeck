@@ -11,27 +11,31 @@ import type {
   ApplicationPluginUninstallResult,
 } from "@/plugins/facade-types";
 
-export interface PluginsService {
-  list(request?: ApplicationPluginLocaleRequest): ApplicationEffect<ApplicationPlugin[]>;
-  rescan(request?: ApplicationPluginLocaleRequest): ApplicationEffect<ApplicationPluginCatalog>;
-  setEnabled(
-    pluginId: string,
-    enabled: boolean,
-    request?: ApplicationPluginLocaleRequest,
-  ): ApplicationEffect<ApplicationPlugin>;
-  installPackage(
-    packagePath: string,
-    request?: ApplicationPluginLocaleRequest,
-  ): ApplicationEffect<ApplicationPluginInstallResult>;
-  uninstall(
-    pluginId: string,
-    request?: ApplicationPluginLocaleRequest,
-  ): ApplicationEffect<ApplicationPluginUninstallResult>;
-  listDataResidues(): ApplicationEffect<ApplicationPluginDataResidue[]>;
-  purgeData(pluginId: string): ApplicationEffect<ApplicationPluginPurgeResult>;
-}
-
 export class Plugins extends Context.Tag("@tooldeck/application-node/Plugins")<
   Plugins,
-  PluginsService
+  {
+    readonly list: (
+      request?: ApplicationPluginLocaleRequest,
+    ) => ApplicationEffect<ApplicationPlugin[]>;
+    readonly rescan: (
+      request?: ApplicationPluginLocaleRequest,
+    ) => ApplicationEffect<ApplicationPluginCatalog>;
+    readonly setEnabled: (
+      pluginId: string,
+      enabled: boolean,
+      request?: ApplicationPluginLocaleRequest,
+    ) => ApplicationEffect<ApplicationPlugin>;
+    readonly installPackage: (
+      packagePath: string,
+      request?: ApplicationPluginLocaleRequest,
+    ) => ApplicationEffect<ApplicationPluginInstallResult>;
+    readonly uninstall: (
+      pluginId: string,
+      request?: ApplicationPluginLocaleRequest,
+    ) => ApplicationEffect<ApplicationPluginUninstallResult>;
+    readonly listDataResidues: () => ApplicationEffect<ApplicationPluginDataResidue[]>;
+    readonly purgeData: (pluginId: string) => ApplicationEffect<ApplicationPluginPurgeResult>;
+  }
 >() {}
+
+export type PluginsService = Context.Tag.Service<typeof Plugins>;

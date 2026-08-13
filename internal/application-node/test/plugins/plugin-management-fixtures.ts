@@ -9,6 +9,7 @@ import { afterEach, vi } from "vitest";
 import { runApplicationEffect } from "@/application/edge";
 import { PluginManagementService } from "@/plugins/management";
 import { openTooldeckDatabase, type TooldeckDatabase } from "@/storage";
+import { makeApplicationStorageService } from "@/storage/storage-live";
 
 const databases: TooldeckDatabase[] = [];
 const tempDirs: string[] = [];
@@ -51,6 +52,7 @@ export async function createHarness(
 
   databases.push(database);
   await mkdir(builtinPluginsDir, { recursive: true });
+  const storage = makeApplicationStorageService(database);
 
   return {
     builtinPluginsDir,
@@ -58,9 +60,10 @@ export async function createHarness(
     installedPluginsDir,
     rootDir,
     service: new PluginManagementService({
-      database,
       installedPluginsDir,
       pluginSources,
+      repositories: storage.repositories,
+      withImmediateTransaction: storage.withImmediateTransaction,
     }),
   };
 }

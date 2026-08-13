@@ -8,12 +8,14 @@ import type {
   RunApplicationCommandRequest,
 } from "@/commands/types";
 
-export interface CommandsService {
-  list(request?: ListApplicationCommandsRequest): ApplicationEffect<ApplicationCommand[]>;
-  run(request: RunApplicationCommandRequest): ApplicationEffect<CommandResult>;
-}
-
 export class Commands extends Context.Tag("@tooldeck/application-node/Commands")<
   Commands,
-  CommandsService
+  {
+    readonly list: (
+      request?: ListApplicationCommandsRequest,
+    ) => ApplicationEffect<ApplicationCommand[]>;
+    readonly run: (request: RunApplicationCommandRequest) => ApplicationEffect<CommandResult>;
+  }
 >() {}
+
+export type CommandsService = Context.Tag.Service<typeof Commands>;

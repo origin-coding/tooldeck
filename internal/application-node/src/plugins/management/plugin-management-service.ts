@@ -21,13 +21,7 @@ import type {
   UninstalledPluginSummary,
 } from "@/plugins/management/types";
 import { uninstallPlugin } from "@/plugins/management/uninstall";
-import {
-  PluginInstallRepository,
-  PluginKvRepository,
-  PluginRepository,
-  PluginStateRepository,
-  type PluginRow,
-} from "@/storage";
+import type { PluginRow } from "@/storage/repositories";
 
 export class PluginManagementService {
   private readonly context: PluginManagementContext;
@@ -37,13 +31,13 @@ export class PluginManagementService {
 
     assertInstalledSourceConfiguration(options.pluginSources, installedPluginsDir);
     this.context = {
-      database: options.database,
       installedPluginsDir,
       pluginSources: options.pluginSources,
-      installs: new PluginInstallRepository(options.database.db),
-      kv: new PluginKvRepository(options.database.db),
-      plugins: new PluginRepository(options.database.db),
-      states: new PluginStateRepository(options.database.db),
+      installs: options.repositories.pluginInstalls,
+      kv: options.repositories.pluginKv,
+      plugins: options.repositories.plugins,
+      states: options.repositories.pluginStates,
+      withImmediateTransaction: options.withImmediateTransaction,
     };
   }
 
@@ -71,7 +65,7 @@ export class PluginManagementService {
     return listPurgeablePluginData(this.context);
   }
 
-  purge(pluginId: string): PurgedPluginSummary {
+  purge(pluginId: string): ApplicationEffect<PurgedPluginSummary> {
     return purgePluginData(this.context, pluginId);
   }
 }

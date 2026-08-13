@@ -1,29 +1,31 @@
 import { createRuntime, type CreatedRuntime } from "@tooldeck/runtime-node";
+import { Effect } from "effect";
 
 import {
   type ApplicationConfiguration,
   normalizeApplicationConfiguration,
 } from "@/application/configuration";
 import type { ApplicationEffect } from "@/application/effect";
+import { tryApplicationSync } from "@/application/effect";
 import { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
 import {
   type ApplicationDatabaseServices,
   type ApplicationRuntimeDependencies,
   ApplicationResourceOwner,
 } from "@/application/resource-owner";
+import type { RuntimeService } from "@/application/runtime-context";
 import type { CreateTooldeckApplicationOptions } from "@/application/types";
 import { ApplicationCommands } from "@/commands/application-commands";
+import { makeCommandsService } from "@/commands/commands-live";
 import { ApplicationHistory } from "@/history/application-history";
+import { makeHistoryService } from "@/history/history-live";
 import { ApplicationPlugins } from "@/plugins/application-plugins";
 import { PluginManagementService } from "@/plugins/management";
+import { makePluginsService } from "@/plugins/plugins-live";
 import { ApplicationPreferences } from "@/preferences/application-preferences";
-import {
-  CommandRunRepository,
-  PluginKvRepository,
-  PluginRepository,
-  PreferenceRepository,
-  type TooldeckDatabase,
-} from "@/storage";
+import { makePreferencesService } from "@/preferences/preferences-live";
+import type { PluginKvRepository, TooldeckDatabase } from "@/storage";
+import { makeApplicationStorageService } from "@/storage/storage-live";
 
 export interface ApplicationFacades {
   readonly commands: ApplicationCommands;
@@ -67,15 +69,15 @@ function createApplicationDatabaseServices(
   configuration: ApplicationConfiguration,
   database: TooldeckDatabase,
 ): ApplicationDatabaseServices {
+  const storage = makeApplicationStorageService(database);
+
   return {
-    commandRuns: new CommandRunRepository(database.db),
-    preferences: new PreferenceRepository(database.db),
-    plugins: new PluginRepository(database.db),
-    pluginKv: new PluginKvRepository(database.db),
+    ...storage,
     pluginManagement: new PluginManagementService({
-      database,
       installedPluginsDir: configuration.paths.installedPluginsDir,
       pluginSources: configuration.pluginSources,
+      repositories: storage.repositories,
+      withImmediateTransaction: storage.withImmediateTransaction,
     }),
   };
 }
@@ -99,29 +101,41 @@ function createApplicationFacades(
   configuration: ApplicationConfiguration,
   resources: ApplicationResourceOwner,
 ): ApplicationFacades {
-  const commands = new ApplicationCommands({
-    getRuntime: () => resources.requireRuntime(),
-    getCommandRuns: () => resources.requireCommandRuns(),
-    getPlugins: () => resources.requirePlugins(),
+  const runtime = makeResourceOwnerRuntimeService(resources);
+  const getStorage = () => tryApplicationSync(() => resources.requireStorage());
+  const commandsService = makeCommandsService({
+    runtime,
+    getStorage,
     preprocessInput: configuration.preprocessCommandInput,
+  });
+  const commands = new ApplicationCommands(commandsService);
+  const preferences = makePreferencesService(() =>
+    getStorage().pipe(Effect.map((storage) => storage.repositories.preferences)),
+  );
+  const plugins = makePluginsService({
+    runtime,
+    getStorage,
+    getPluginManagement: () => tryApplicationSync(() => resources.requirePluginManagement()),
+    commands: commandsService,
   });
 
   return {
     commands,
-    plugins: new ApplicationPlugins({
-      getRuntime: () => resources.requireRuntime(),
-      getPlugins: () => resources.requirePlugins(),
-      getPluginManagement: () => resources.requirePluginManagement(),
-      rebuildRuntime: () => resources.rebuildRuntime(),
-      disposeRuntime: () => resources.disposeRuntime(),
-      listCommands: (locale) => commands.listEffect({ locale }),
-    }),
-    preferences: new ApplicationPreferences({
-      getPreferences: () => resources.requirePreferences(),
-    }),
-    history: new ApplicationHistory({
-      getCommandRuns: () => resources.requireCommandRuns(),
-    }),
+    plugins: new ApplicationPlugins(plugins),
+    preferences: new ApplicationPreferences(preferences),
+    history: new ApplicationHistory(
+      makeHistoryService(() =>
+        getStorage().pipe(Effect.map((storage) => storage.repositories.commandRuns)),
+      ),
+    ),
+  };
+}
+
+function makeResourceOwnerRuntimeService(resources: ApplicationResourceOwner): RuntimeService {
+  return {
+    current: () => tryApplicationSync(() => resources.requireRuntime()),
+    rebuild: () => resources.rebuildRuntime(),
+    dispose: () => resources.disposeRuntime(),
   };
 }
 

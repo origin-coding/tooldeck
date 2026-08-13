@@ -1,3 +1,4 @@
+import type { ApplicationEffect } from "@/application/effect";
 import { ApplicationError } from "@/errors/application-error";
 import type { PluginManagementContext } from "@/plugins/management/internal";
 import type { PurgeablePluginDataSummary, PurgedPluginSummary } from "@/plugins/management/types";
@@ -27,13 +28,8 @@ export function listPurgeablePluginData(
 export function purgePluginData(
   context: PluginManagementContext,
   pluginId: string,
-): PurgedPluginSummary {
-  let transactionStarted = false;
-
-  try {
-    context.database.sqlite.exec("begin immediate;");
-    transactionStarted = true;
-
+): ApplicationEffect<PurgedPluginSummary> {
+  return context.withImmediateTransaction(() => {
     const install = context.installs.getById(pluginId);
 
     if (install) {
@@ -51,18 +47,10 @@ export function purgePluginData(
     const removedKv = context.kv.deleteByPlugin(pluginId);
     const removedState = context.states.delete(pluginId);
 
-    context.database.sqlite.exec("commit;");
-
     return {
       kvEntriesRemoved: removedKv.length,
       pluginId,
       stateRemoved: removedState !== undefined,
     };
-  } catch (error) {
-    if (transactionStarted) {
-      context.database.sqlite.exec("rollback;");
-    }
-
-    throw error;
-  }
+  });
 }
