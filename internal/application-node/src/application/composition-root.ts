@@ -1,31 +1,17 @@
-import { createRuntime, type CreatedRuntime } from "@tooldeck/runtime-node";
-import { Effect } from "effect";
-
-import {
-  type ApplicationConfiguration,
-  normalizeApplicationConfiguration,
-} from "@/application/configuration";
-import type { ApplicationEffect } from "@/application/effect";
-import { tryApplicationSync } from "@/application/effect";
+import { makeApplicationLayer } from "@/application/application-layer";
+import { ApplicationLayerOwner } from "@/application/application-layer-owner";
+import type { ApplicationConfiguration } from "@/application/configuration";
+import { normalizeApplicationConfiguration } from "@/application/configuration";
 import { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
-import {
-  type ApplicationDatabaseServices,
-  type ApplicationRuntimeDependencies,
-  ApplicationResourceOwner,
-} from "@/application/resource-owner";
-import type { RuntimeService } from "@/application/runtime-context";
 import type { CreateTooldeckApplicationOptions } from "@/application/types";
 import { ApplicationCommands } from "@/commands/application-commands";
-import { makeCommandsService } from "@/commands/commands-live";
+import { Commands, type CommandsService } from "@/commands/context";
 import { ApplicationHistory } from "@/history/application-history";
-import { makeHistoryService } from "@/history/history-live";
+import { History, type HistoryService } from "@/history/context";
 import { ApplicationPlugins } from "@/plugins/application-plugins";
-import { PluginManagementService } from "@/plugins/management";
-import { makePluginsService } from "@/plugins/plugins-live";
+import { Plugins, type PluginsService } from "@/plugins/context";
 import { ApplicationPreferences } from "@/preferences/application-preferences";
-import { makePreferencesService } from "@/preferences/preferences-live";
-import type { PluginKvRepository, TooldeckDatabase } from "@/storage";
-import { makeApplicationStorageService } from "@/storage/storage-live";
+import { Preferences, type PreferencesService } from "@/preferences/context";
 
 export interface ApplicationFacades {
   readonly commands: ApplicationCommands;
@@ -44,111 +30,62 @@ export function composeTooldeckApplication(
   options: CreateTooldeckApplicationOptions = {},
 ): TooldeckApplicationComposition {
   const configuration = normalizeApplicationConfiguration(options);
-  const resources = createApplicationResourceOwner(configuration);
-  const lifecycle = new ApplicationLifecycleCoordinator(resources);
+  const owner = new ApplicationLayerOwner({
+    makeLayer: (onCleanupFailure) => makeApplicationLayer(configuration, onCleanupFailure),
+  });
 
   return {
     configuration,
-    lifecycle,
-    facades: createApplicationFacades(configuration, resources),
+    lifecycle: new ApplicationLifecycleCoordinator(owner),
+    facades: createApplicationFacades(owner),
   };
 }
 
-function createApplicationResourceOwner(
-  configuration: ApplicationConfiguration,
-): ApplicationResourceOwner {
-  return new ApplicationResourceOwner({
-    paths: configuration.paths,
-    createDatabaseServices: (database) =>
-      createApplicationDatabaseServices(configuration, database),
-    createRuntime: (dependencies) => createApplicationRuntime(configuration, dependencies),
-  });
-}
-
-function createApplicationDatabaseServices(
-  configuration: ApplicationConfiguration,
-  database: TooldeckDatabase,
-): ApplicationDatabaseServices {
-  const storage = makeApplicationStorageService(database);
-
+function createApplicationFacades(owner: ApplicationLayerOwner): ApplicationFacades {
   return {
-    ...storage,
-    pluginManagement: new PluginManagementService({
-      installedPluginsDir: configuration.paths.installedPluginsDir,
-      pluginSources: configuration.pluginSources,
-      repositories: storage.repositories,
-      withImmediateTransaction: storage.withImmediateTransaction,
-    }),
+    commands: new ApplicationCommands(proxyCommands(owner)),
+    plugins: new ApplicationPlugins(proxyPlugins(owner)),
+    preferences: new ApplicationPreferences(proxyPreferences(owner)),
+    history: new ApplicationHistory(proxyHistory(owner)),
   };
 }
 
-function createApplicationRuntime(
-  configuration: ApplicationConfiguration,
-  dependencies: ApplicationRuntimeDependencies,
-): ApplicationEffect<CreatedRuntime> {
-  return createRuntime({
-    pluginSources: configuration.pluginSources,
-    parentScope: dependencies.parentScope,
-    coercion: configuration.commandInputCoercion,
-    createPluginStorage: (pluginId) => createPluginStorage(dependencies.pluginKv, pluginId),
-    afterScan({ manifestIndex }) {
-      dependencies.pluginManagement.syncCatalog(manifestIndex);
-    },
-  });
-}
-
-function createApplicationFacades(
-  configuration: ApplicationConfiguration,
-  resources: ApplicationResourceOwner,
-): ApplicationFacades {
-  const runtime = makeResourceOwnerRuntimeService(resources);
-  const getStorage = () => tryApplicationSync(() => resources.requireStorage());
-  const commandsService = makeCommandsService({
-    runtime,
-    getStorage,
-    preprocessInput: configuration.preprocessCommandInput,
-  });
-  const commands = new ApplicationCommands(commandsService);
-  const preferences = makePreferencesService(() =>
-    getStorage().pipe(Effect.map((storage) => storage.repositories.preferences)),
-  );
-  const plugins = makePluginsService({
-    runtime,
-    getStorage,
-    getPluginManagement: () => tryApplicationSync(() => resources.requirePluginManagement()),
-    commands: commandsService,
-  });
-
+function proxyCommands(owner: ApplicationLayerOwner): CommandsService {
   return {
-    commands,
-    plugins: new ApplicationPlugins(plugins),
-    preferences: new ApplicationPreferences(preferences),
-    history: new ApplicationHistory(
-      makeHistoryService(() =>
-        getStorage().pipe(Effect.map((storage) => storage.repositories.commandRuns)),
-      ),
-    ),
+    list: (request) => owner.use(Commands, "runtime", (service) => service.list(request)),
+    run: (request) => owner.use(Commands, "runtime", (service) => service.run(request)),
   };
 }
 
-function makeResourceOwnerRuntimeService(resources: ApplicationResourceOwner): RuntimeService {
+function proxyPlugins(owner: ApplicationLayerOwner): PluginsService {
   return {
-    current: () => tryApplicationSync(() => resources.requireRuntime()),
-    rebuild: () => resources.rebuildRuntime(),
-    dispose: () => resources.disposeRuntime(),
+    list: (request) => owner.use(Plugins, "runtime", (service) => service.list(request)),
+    rescan: (request) => owner.use(Plugins, "runtime", (service) => service.rescan(request)),
+    setEnabled: (pluginId, enabled, request) =>
+      owner.use(Plugins, "runtime", (service) => service.setEnabled(pluginId, enabled, request)),
+    installPackage: (packagePath, request) =>
+      owner.use(Plugins, "runtime", (service) => service.installPackage(packagePath, request)),
+    uninstall: (pluginId, request) =>
+      owner.use(Plugins, "runtime", (service) => service.uninstall(pluginId, request)),
+    listDataResidues: () => owner.use(Plugins, "runtime", (service) => service.listDataResidues()),
+    purgeData: (pluginId) =>
+      owner.use(Plugins, "runtime", (service) => service.purgeData(pluginId)),
   };
 }
 
-function createPluginStorage(pluginKv: PluginKvRepository, pluginId: string) {
+function proxyPreferences(owner: ApplicationLayerOwner): PreferencesService {
   return {
-    async get(key: string) {
-      return pluginKv.get(pluginId, key);
-    },
-    async set(key: string, value: unknown) {
-      pluginKv.set({ pluginId, key, value });
-    },
-    async delete(key: string) {
-      pluginKv.delete(pluginId, key);
-    },
+    list: (request) => owner.use(Preferences, "preferences", (service) => service.list(request)),
+    get: (request) => owner.use(Preferences, "preferences", (service) => service.get(request)),
+    set: (request) => owner.use(Preferences, "preferences", (service) => service.set(request)),
+    delete: (request) =>
+      owner.use(Preferences, "preferences", (service) => service.delete(request)),
+  };
+}
+
+function proxyHistory(owner: ApplicationLayerOwner): HistoryService {
+  return {
+    listCommandRuns: (request) =>
+      owner.use(History, "command history", (service) => service.listCommandRuns(request)),
   };
 }

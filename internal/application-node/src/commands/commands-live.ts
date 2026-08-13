@@ -16,7 +16,7 @@ export interface CommandsLiveOptions {
   readonly preprocessInput: CommandInputPreprocessor;
 }
 
-export interface CommandsServiceDependencies {
+interface CommandsServiceDependencies {
   readonly runtime: RuntimeService;
   readonly getStorage: () => ApplicationEffect<ApplicationStorageService>;
   readonly preprocessInput: CommandInputPreprocessor;

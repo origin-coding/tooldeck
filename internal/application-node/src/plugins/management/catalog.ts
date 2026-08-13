@@ -5,13 +5,20 @@ import { ManifestIndex, scanPluginSources } from "@tooldeck/runtime-node";
 import { ApplicationError } from "@/errors/application-error";
 import type { PluginManagementContext } from "@/plugins/management/internal";
 import type { PluginCatalogSnapshot } from "@/plugins/management/types";
-import type { PluginRow } from "@/storage";
+import type { PluginRepository, PluginRow } from "@/storage";
 
 export function syncPluginCatalog(
   context: PluginManagementContext,
   manifestIndex: ManifestIndex,
 ): PluginRow[] {
-  context.plugins.syncScannedPlugins({
+  return syncPluginRepository(context.plugins, manifestIndex);
+}
+
+export function syncPluginRepository(
+  plugins: Pick<PluginRepository, "list" | "syncScannedPlugins">,
+  manifestIndex: ManifestIndex,
+): PluginRow[] {
+  plugins.syncScannedPlugins({
     plugins: manifestIndex.listPlugins().map((plugin) => ({
       manifest: plugin.manifest,
       manifestPath: plugin.manifestPath,
@@ -20,7 +27,7 @@ export function syncPluginCatalog(
     })),
   });
 
-  return context.plugins.list();
+  return plugins.list();
 }
 
 export async function scanAndSyncPluginCatalog(

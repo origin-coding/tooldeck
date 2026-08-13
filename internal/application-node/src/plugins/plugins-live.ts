@@ -33,7 +33,7 @@ export interface PluginsLiveOptions {
   readonly pluginSources: PluginScanSource[];
 }
 
-export interface PluginsServiceDependencies {
+interface PluginsServiceDependencies {
   readonly runtime: RuntimeService;
   readonly getStorage: () => ApplicationEffect<ApplicationStorageService>;
   readonly getPluginManagement: () => ApplicationEffect<PluginManagementService>;

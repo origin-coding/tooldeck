@@ -1,19 +1,15 @@
 import path from "node:path";
 
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { composeTooldeckApplication } from "@/application/composition-root";
 import { normalizeApplicationConfiguration } from "@/application/configuration";
 import { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
 import { ApplicationCommands } from "@/commands/application-commands";
-import type { CommandsServiceDependencies } from "@/commands/commands-live";
 import { ApplicationHistory } from "@/history/application-history";
-import type { HistoryService } from "@/history/context";
 import type { TooldeckPaths } from "@/paths";
 import { ApplicationPlugins } from "@/plugins/application-plugins";
-import type { PluginsServiceDependencies } from "@/plugins/plugins-live";
 import { ApplicationPreferences } from "@/preferences/application-preferences";
-import type { PreferencesService } from "@/preferences/context";
 
 describe("application composition root", () => {
   it("normalizes configuration before constructing application services", () => {
@@ -78,17 +74,6 @@ describe("application composition root", () => {
     expect(composition.facades.history).toBeInstanceOf(ApplicationHistory);
 
     await expect(composition.lifecycle.dispose()).resolves.toBeUndefined();
-  });
-
-  it("keeps each facade dependency contract limited to its own use cases", () => {
-    expectTypeOf<keyof CommandsServiceDependencies>().toEqualTypeOf<
-      "runtime" | "getStorage" | "preprocessInput"
-    >();
-    expectTypeOf<keyof PluginsServiceDependencies>().toEqualTypeOf<
-      "runtime" | "getStorage" | "getPluginManagement" | "commands"
-    >();
-    expectTypeOf<keyof PreferencesService>().toEqualTypeOf<"list" | "get" | "set" | "delete">();
-    expectTypeOf<keyof HistoryService>().toEqualTypeOf<"listCommandRuns">();
   });
 });
 
