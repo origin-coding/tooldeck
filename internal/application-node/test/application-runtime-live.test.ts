@@ -3,11 +3,10 @@ import { RuntimeError, type CreatedRuntime } from "@tooldeck/runtime-node";
 import { Cause, Deferred, Effect, Exit, Fiber } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
-import { runApplicationEffect } from "@/application/edge";
-import { Runtime } from "@/application/runtime-context";
-import { makeRuntimeLive } from "@/application/runtime-live";
-import type { CapturedApplicationCleanupFailure } from "@/errors/application-cleanup";
-import { ApplicationError } from "@/errors/application-error";
+import { runApplicationEffect } from "@/application/effect";
+import type { CapturedApplicationCleanupFailure } from "@/errors/cleanup";
+import { ApplicationError } from "@/errors/error";
+import { makeRuntimeLive, Runtime } from "@/runtime";
 
 describe("RuntimeLive", () => {
   it("acquires one runtime and exposes only application runtime capabilities", async () => {

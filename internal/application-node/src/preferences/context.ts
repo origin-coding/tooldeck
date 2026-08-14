@@ -6,7 +6,7 @@ import type {
   GetApplicationPreferenceRequest,
   ListApplicationPreferencesRequest,
   SetApplicationPreferenceRequest,
-} from "@/preferences/facade-types";
+} from "@/preferences/types";
 
 export class Preferences extends Context.Tag("@tooldeck/application-node/Preferences")<
   Preferences,

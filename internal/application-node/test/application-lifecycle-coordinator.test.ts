@@ -5,8 +5,8 @@ import type { ApplicationFailure } from "@/application/effect";
 import {
   ApplicationLifecycleCoordinator,
   type ApplicationLifecycleResources,
-} from "@/application/lifecycle-coordinator";
-import { ApplicationError } from "@/errors/application-error";
+} from "@/application/lifecycle";
+import { ApplicationError } from "@/errors/error";
 
 describe("ApplicationLifecycleCoordinator", () => {
   it("owns start and dispose single-flight policy over narrow resources", async () => {

@@ -4,13 +4,13 @@ import { DatabaseSync } from "node:sqlite";
 import { Cause, Effect, Exit } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
-import { runApplicationEffect } from "@/application/edge";
-import type { CapturedApplicationCleanupFailure } from "@/errors/application-cleanup";
-import { ApplicationError } from "@/errors/application-error";
+import { runApplicationEffect } from "@/application/effect";
+import type { CapturedApplicationCleanupFailure } from "@/errors/cleanup";
+import { ApplicationError } from "@/errors/error";
 import { ApplicationStorage, type ApplicationStorageService } from "@/storage/context";
 import { openTooldeckDatabase } from "@/storage/database";
+import { makeStorageLive } from "@/storage/live";
 import { PreferenceRepository } from "@/storage/repositories/preferences";
-import { makeStorageLive } from "@/storage/storage-live";
 
 import { createDatabasePath } from "./storage-test-fixtures";
 

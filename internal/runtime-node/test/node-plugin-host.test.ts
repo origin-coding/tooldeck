@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { Cause, Effect, Exit, Fiber, Scope } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
+import { runRuntimeEffectPromise } from "@/effect";
 import { NodePluginHost, RuntimeCommandRegistry } from "@/index";
 
 import { createTestScope } from "./scope-test-fixtures";

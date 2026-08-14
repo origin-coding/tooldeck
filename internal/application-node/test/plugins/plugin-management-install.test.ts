@@ -6,7 +6,7 @@ import { RuntimeError } from "@tooldeck/runtime-node";
 import { Cause, Effect, Exit, Fiber } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
-import { ApplicationError } from "@/errors/application-error";
+import { ApplicationError } from "@/errors/error";
 import * as filesystem from "@/plugins/management/filesystem";
 import { PluginInstallRepository, PluginRepository, PluginStateRepository } from "@/storage";
 
@@ -17,7 +17,7 @@ import {
   writePluginProject,
 } from "./plugin-management-fixtures";
 
-describe("PluginManagementService catalog and install", () => {
+describe("plugin management catalog and install", () => {
   it("syncs the plugin catalog and manages enabled state", async () => {
     const harness = await createHarness();
 

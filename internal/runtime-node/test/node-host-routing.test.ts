@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
+import { runRuntimeEffectPromise } from "@/effect";
 import { NodePluginHost, PluginHostRegistry, RuntimeCommandRegistry } from "@/index";
 
 import { fixturePath } from "./runtime-test-fixtures";

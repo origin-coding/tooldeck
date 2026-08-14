@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { ApplicationError } from "@/errors/application-error";
+import { ApplicationError } from "@/errors/error";
 
 export const PLUGIN_MANAGEMENT_STAGING_DIR = ".staging";
 

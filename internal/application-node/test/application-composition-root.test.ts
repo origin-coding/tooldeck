@@ -2,14 +2,10 @@ import path from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { composeTooldeckApplication } from "@/application/composition-root";
+import { composeTooldeckApplication } from "@/application/composition";
 import { normalizeApplicationConfiguration } from "@/application/configuration";
-import { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
-import { ApplicationCommands } from "@/commands/application-commands";
-import { ApplicationHistory } from "@/history/application-history";
+import { ApplicationLifecycleCoordinator } from "@/application/lifecycle";
 import type { TooldeckPaths } from "@/paths";
-import { ApplicationPlugins } from "@/plugins/application-plugins";
-import { ApplicationPreferences } from "@/preferences/application-preferences";
 
 describe("application composition root", () => {
   it("normalizes configuration before constructing application services", () => {
@@ -68,10 +64,24 @@ describe("application composition root", () => {
 
     expect(composition.configuration.paths).toBe(paths);
     expect(composition.lifecycle).toBeInstanceOf(ApplicationLifecycleCoordinator);
-    expect(composition.facades.commands).toBeInstanceOf(ApplicationCommands);
-    expect(composition.facades.plugins).toBeInstanceOf(ApplicationPlugins);
-    expect(composition.facades.preferences).toBeInstanceOf(ApplicationPreferences);
-    expect(composition.facades.history).toBeInstanceOf(ApplicationHistory);
+    expect(composition.facades.commands).toMatchObject({
+      list: expect.any(Function),
+      run: expect.any(Function),
+    });
+    expect(composition.facades.plugins).toMatchObject({
+      list: expect.any(Function),
+      installPackage: expect.any(Function),
+      uninstall: expect.any(Function),
+    });
+    expect(composition.facades.preferences).toMatchObject({
+      list: expect.any(Function),
+      get: expect.any(Function),
+      set: expect.any(Function),
+      delete: expect.any(Function),
+    });
+    expect(composition.facades.history).toMatchObject({
+      listCommandRuns: expect.any(Function),
+    });
 
     await expect(composition.lifecycle.dispose()).resolves.toBeUndefined();
   });

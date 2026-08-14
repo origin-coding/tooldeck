@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { runApplicationEffect } from "@/application/edge";
+import { runApplicationEffect } from "@/application/effect";
 import {
   CommandRunRepository,
   PluginInstallRepository,
@@ -16,7 +16,7 @@ import {
   installPackageForTest,
 } from "./plugin-management-fixtures";
 
-describe("PluginManagementService uninstall and purge", () => {
+describe("plugin management uninstall and purge", () => {
   it("uninstalls managed files while preserving state, KV, and command history", async () => {
     const harness = await createHarness();
     const pluginId = "dev.example.uninstall-tools";

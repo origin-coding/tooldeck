@@ -1,9 +1,15 @@
 import path from "node:path";
 
 import { ManifestIndex, scanPluginSources } from "@tooldeck/runtime-node";
+import { Effect } from "effect";
 
-import { ApplicationError } from "@/errors/application-error";
-import type { PluginManagementContext } from "@/plugins/management/internal";
+import {
+  type ApplicationEffect,
+  tryApplicationPromise,
+  tryApplicationSync,
+} from "@/application/effect";
+import { ApplicationError } from "@/errors/error";
+import type { PluginManagementContext } from "@/plugins/management/context";
 import type { PluginCatalogSnapshot } from "@/plugins/management/types";
 import type { PluginRepository, PluginRow } from "@/storage";
 
@@ -30,39 +36,47 @@ export function syncPluginRepository(
   return plugins.list();
 }
 
-export async function scanAndSyncPluginCatalog(
+export function scanAndSyncPluginCatalog(
   context: PluginManagementContext,
-): Promise<PluginCatalogSnapshot> {
-  const manifestIndex = new ManifestIndex();
+): ApplicationEffect<PluginCatalogSnapshot> {
+  return Effect.gen(function* () {
+    const manifestIndex = new ManifestIndex();
 
-  await scanPluginSources({
-    sources: context.pluginSources,
-    manifestIndex,
+    yield* tryApplicationPromise(async () =>
+      scanPluginSources({
+        sources: context.pluginSources,
+        manifestIndex,
+      }),
+    );
+
+    return yield* tryApplicationSync(() => ({
+      manifestIndex,
+      plugins: syncPluginCatalog(context, manifestIndex),
+    }));
   });
-
-  return {
-    manifestIndex,
-    plugins: syncPluginCatalog(context, manifestIndex),
-  };
 }
 
-export async function setManagedPluginEnabled(
+export function setManagedPluginEnabled(
   context: PluginManagementContext,
   pluginId: string,
   enabled: boolean,
-): Promise<PluginRow> {
-  await scanAndSyncPluginCatalog(context);
+): ApplicationEffect<PluginRow> {
+  return Effect.gen(function* () {
+    yield* scanAndSyncPluginCatalog(context);
 
-  const plugin = context.plugins.setEnabled(pluginId, enabled);
+    return yield* tryApplicationSync(() => {
+      const plugin = context.plugins.setEnabled(pluginId, enabled);
 
-  if (!plugin) {
-    throw new ApplicationError({
-      source: "application",
-      code: "ERR_NOT_FOUND",
-      message: `Plugin is not registered: ${pluginId}`,
-      details: { pluginId },
+      if (!plugin) {
+        throw new ApplicationError({
+          source: "application",
+          code: "ERR_NOT_FOUND",
+          message: `Plugin is not registered: ${pluginId}`,
+          details: { pluginId },
+        });
+      }
+
+      return plugin;
     });
-  }
-
-  return plugin;
+  });
 }

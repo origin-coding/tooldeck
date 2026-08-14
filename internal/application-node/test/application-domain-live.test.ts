@@ -3,16 +3,15 @@ import path from "node:path";
 import { Effect, Layer } from "effect";
 import { describe, expect, it } from "vitest";
 
-import type { ApplicationRuntime, RuntimeService } from "@/application/runtime-context";
-import { Runtime } from "@/application/runtime-context";
-import { makeCommandsLive } from "@/commands/commands-live";
 import { Commands, type CommandsService } from "@/commands/context";
+import { makeCommandsLive } from "@/commands/live";
 import { History } from "@/history/context";
-import { makeHistoryLive } from "@/history/history-live";
+import { makeHistoryLive } from "@/history/live";
 import { Plugins } from "@/plugins/context";
-import { makePluginsLive } from "@/plugins/plugins-live";
+import { makePluginsLive } from "@/plugins/live";
 import { Preferences } from "@/preferences/context";
-import { makePreferencesLive } from "@/preferences/preferences-live";
+import { makePreferencesLive } from "@/preferences/live";
+import { Runtime, type ApplicationRuntime, type RuntimeService } from "@/runtime";
 import {
   type ApplicationRepositories,
   ApplicationStorage,

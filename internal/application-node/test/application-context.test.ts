@@ -3,12 +3,6 @@ import { Context, Effect } from "effect";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 import type { ApplicationEffect, ApplicationFailure } from "@/application/effect";
-import {
-  type ApplicationRuntime,
-  Runtime,
-  type RuntimeService,
-} from "@/application/runtime-context";
-import type { ApplicationServices } from "@/application/services";
 import { Commands, type CommandsService } from "@/commands/context";
 import type { ApplicationCommand } from "@/commands/types";
 import { History, type HistoryService } from "@/history/context";
@@ -21,9 +15,10 @@ import type {
   ApplicationPluginInstallResult,
   ApplicationPluginPurgeResult,
   ApplicationPluginUninstallResult,
-} from "@/plugins/facade-types";
+} from "@/plugins/types";
 import { Preferences, type PreferencesService } from "@/preferences/context";
-import type { ApplicationPreference } from "@/preferences/facade-types";
+import type { ApplicationPreference } from "@/preferences/types";
+import { type ApplicationRuntime, Runtime, type RuntimeService } from "@/runtime/context";
 import {
   type ApplicationRepositories,
   ApplicationStorage,
@@ -58,7 +53,6 @@ describe("application Context contracts", () => {
     expectTypeOf<PreferencesService>().toEqualTypeOf<Context.Tag.Service<typeof Preferences>>();
     expectTypeOf<keyof HistoryService>().toEqualTypeOf<"listCommandRuns">();
     expectTypeOf<HistoryService>().toEqualTypeOf<Context.Tag.Service<typeof History>>();
-    expectTypeOf<ApplicationServices>().toEqualTypeOf<Commands | Plugins | Preferences | History>();
     expectTypeOf<ReturnType<CommandsService["list"]>>().toEqualTypeOf<
       ApplicationEffect<ApplicationCommand[]>
     >();

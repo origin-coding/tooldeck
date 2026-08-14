@@ -9,7 +9,7 @@ import type {
   ApplicationPluginLocaleRequest,
   ApplicationPluginPurgeResult,
   ApplicationPluginUninstallResult,
-} from "@/plugins/facade-types";
+} from "@/plugins/types";
 
 export class Plugins extends Context.Tag("@tooldeck/application-node/Plugins")<
   Plugins,

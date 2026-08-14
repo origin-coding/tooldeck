@@ -5,7 +5,7 @@ import type { RunCommandOutput } from "@tooldeck/runtime-node";
 import { Cause, Effect, Exit } from "effect";
 
 import type { CommandInputPreprocessor } from "@/application/adapters";
-import { applicationErrorFromCause } from "@/application/edge";
+import { applicationErrorFromCause } from "@/application/effect";
 import {
   type ApplicationEffect,
   type ApplicationFailure,
@@ -13,10 +13,10 @@ import {
   tryApplicationSync,
 } from "@/application/effect";
 import { localizeApplicationCommandResult } from "@/application/localization";
-import type { ApplicationRuntime } from "@/application/runtime-context";
 import type { RunApplicationCommandRequest } from "@/commands/types";
-import { ApplicationError } from "@/errors/application-error";
-import { toApplicationErrorTransport } from "@/errors/application-error-transport";
+import { ApplicationError } from "@/errors/error";
+import { toApplicationErrorTransport } from "@/errors/transport";
+import type { ApplicationRuntime } from "@/runtime/context";
 import type { CommandRunRepository, PluginRepository } from "@/storage";
 
 export interface ApplicationCommandDependencies {

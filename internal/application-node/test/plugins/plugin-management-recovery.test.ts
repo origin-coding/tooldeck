@@ -14,7 +14,7 @@ import {
   installPackageForTest,
 } from "./plugin-management-fixtures";
 
-describe("PluginManagementService recovery and safety", () => {
+describe("plugin management recovery and safety", () => {
   it("keeps a plugin logically uninstalled when quarantine cleanup partially fails", async () => {
     const harness = await createHarness();
     const pluginId = "dev.example.cleanup-failure";

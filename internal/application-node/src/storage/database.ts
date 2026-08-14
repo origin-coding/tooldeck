@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/node-sqlite";
 import {
   captureApplicationCleanupFailure,
   combinePrimaryAndCleanupFailures,
-} from "@/errors/application-cleanup";
+} from "@/errors/cleanup";
 import { runMigrations } from "@/storage/migrations";
 import * as schema from "@/storage/schema";
 

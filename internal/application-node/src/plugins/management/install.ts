@@ -4,8 +4,8 @@ import { unpackTooldeckPackage } from "@tooldeck/plugin-package";
 import { scanPluginDirectory } from "@tooldeck/runtime-node";
 import { Effect, Exit } from "effect";
 
-import { applicationErrorFromCause } from "@/application/edge";
 import {
+  applicationErrorFromCause,
   type ApplicationEffect,
   tryApplicationPromise,
   tryApplicationSync,
@@ -15,16 +15,16 @@ import {
   type CapturedApplicationCleanupFailure,
   combinePrimaryAndCleanupFailures,
   createApplicationCleanupError,
-} from "@/errors/application-cleanup";
-import { ApplicationError } from "@/errors/application-error";
+} from "@/errors/cleanup";
+import { ApplicationError } from "@/errors/error";
 import { scanAndSyncPluginCatalog } from "@/plugins/management/catalog";
+import type { PluginManagementContext } from "@/plugins/management/context";
 import { movePath, pathExists, removePath } from "@/plugins/management/filesystem";
 import {
   closeInstallStagingScope,
   makeInstallStagingScope,
   type InstallStagingScope,
 } from "@/plugins/management/install-scope";
-import type { PluginManagementContext } from "@/plugins/management/internal";
 import { captureOperationFailureEffect } from "@/plugins/management/operation-rollback";
 import { resolveInstalledPluginDir } from "@/plugins/management/paths";
 import type { InstalledPluginSummary } from "@/plugins/management/types";
@@ -135,9 +135,7 @@ function executeInstall(
     );
     yield* interruptCheckpoint(restore);
 
-    const currentCatalog = yield* tryApplicationPromise(async () =>
-      scanAndSyncPluginCatalog(context),
-    );
+    const currentCatalog = yield* scanAndSyncPluginCatalog(context);
     yield* interruptCheckpoint(restore);
 
     yield* tryApplicationPromise(async () =>
@@ -167,9 +165,7 @@ function executeInstall(
     mutationState.createdInstall = createdInstall;
     yield* interruptCheckpoint(restore);
 
-    const updatedCatalog = yield* tryApplicationPromise(async () =>
-      scanAndSyncPluginCatalog(context),
-    );
+    const updatedCatalog = yield* scanAndSyncPluginCatalog(context);
     yield* interruptCheckpoint(restore);
     const plugin = updatedCatalog.plugins.find((entry) => entry.id === pluginId);
 
@@ -278,7 +274,7 @@ function rollbackInstall(
 
     if ((mutationState.moveAttempted || mutationState.createdInstall) && pluginId) {
       yield* captureOperationFailureEffect(
-        tryApplicationPromise(async () => scanAndSyncPluginCatalog(context)),
+        scanAndSyncPluginCatalog(context),
         cleanupFailures,
         (error) =>
           captureApplicationCleanupFailure({

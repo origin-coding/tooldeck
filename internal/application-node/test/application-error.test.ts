@@ -9,7 +9,7 @@ import {
   captureApplicationCleanupFailure,
   combinePrimaryAndCleanupFailures,
   type ApplicationCleanupFailureDiagnostic,
-} from "@/errors/application-cleanup";
+} from "@/errors/cleanup";
 import {
   ApplicationError,
   fromRuntimeError,

@@ -1,9 +1,9 @@
 import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { ApplicationHistory } from "@/history/application-history";
+import { runApplicationEffect } from "@/application/effect";
 import { classifyApplicationErrorEvidence } from "@/history/error-evidence";
-import { makeHistoryService } from "@/history/history-live";
+import { makeHistoryService } from "@/history/live";
 import { CommandRunRepository, openTooldeckDatabase } from "@/storage";
 
 import { createDatabasePath } from "../storage/storage-test-fixtures";
@@ -70,8 +70,8 @@ describe("command history cleanup evidence", () => {
           1,
         );
 
-      const history = new ApplicationHistory(makeHistoryService(() => Effect.succeed(repository)));
-      const runs = await history.listCommandRuns();
+      const history = makeHistoryService(() => Effect.succeed(repository));
+      const runs = await runApplicationEffect(history.listCommandRuns());
 
       expect(runs).toEqual([
         expect.objectContaining({

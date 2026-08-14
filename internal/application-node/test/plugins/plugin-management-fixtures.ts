@@ -4,12 +4,26 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { packTooldeckPlugin } from "@tooldeck/plugin-package";
+import { Effect } from "effect";
 import { afterEach, vi } from "vitest";
 
-import { runApplicationEffect } from "@/application/edge";
-import { PluginManagementService } from "@/plugins/management";
-import { openTooldeckDatabase, type TooldeckDatabase } from "@/storage";
-import { makeApplicationStorageService } from "@/storage/storage-live";
+import { type ApplicationEffect, runApplicationEffect } from "@/application/effect";
+import {
+  installPluginPackage,
+  listPurgeablePluginData,
+  makePluginManagementContext,
+  purgePluginData,
+  scanAndSyncPluginCatalog,
+  setManagedPluginEnabled,
+  uninstallPlugin,
+  type InstalledPluginSummary,
+  type PluginCatalogSnapshot,
+  type PurgeablePluginDataSummary,
+  type PurgedPluginSummary,
+  type UninstalledPluginSummary,
+} from "@/plugins/management";
+import { openTooldeckDatabase, type PluginRow, type TooldeckDatabase } from "@/storage";
+import { makeApplicationStorageService } from "@/storage/live";
 
 const databases: TooldeckDatabase[] = [];
 const tempDirs: string[] = [];
@@ -31,7 +45,16 @@ interface Harness {
   database: TooldeckDatabase;
   installedPluginsDir: string;
   rootDir: string;
-  service: PluginManagementService;
+  service: PluginManagementTestService;
+}
+
+interface PluginManagementTestService {
+  scanAndSyncCatalog(): Promise<PluginCatalogSnapshot>;
+  setEnabled(pluginId: string, enabled: boolean): Promise<PluginRow>;
+  installPackage(packagePath: string): ApplicationEffect<InstalledPluginSummary>;
+  uninstall(pluginId: string): Promise<UninstalledPluginSummary>;
+  listPurgeablePluginData(): PurgeablePluginDataSummary[];
+  purge(pluginId: string): ApplicationEffect<PurgedPluginSummary>;
 }
 
 export async function createHarness(
@@ -53,22 +76,31 @@ export async function createHarness(
   databases.push(database);
   await mkdir(builtinPluginsDir, { recursive: true });
   const storage = makeApplicationStorageService(database);
+  const management = makePluginManagementContext({
+    installedPluginsDir,
+    pluginSources,
+    repositories: storage.repositories,
+    withImmediateTransaction: storage.withImmediateTransaction,
+  });
 
   return {
     builtinPluginsDir,
     database,
     installedPluginsDir,
     rootDir,
-    service: new PluginManagementService({
-      installedPluginsDir,
-      pluginSources,
-      repositories: storage.repositories,
-      withImmediateTransaction: storage.withImmediateTransaction,
-    }),
+    service: {
+      scanAndSyncCatalog: () => runApplicationEffect(scanAndSyncPluginCatalog(management)),
+      setEnabled: (pluginId, enabled) =>
+        runApplicationEffect(setManagedPluginEnabled(management, pluginId, enabled)),
+      installPackage: (packagePath) => installPluginPackage(management, packagePath),
+      uninstall: (pluginId) => runApplicationEffect(uninstallPlugin(management, pluginId)),
+      listPurgeablePluginData: () => Effect.runSync(listPurgeablePluginData(management)),
+      purge: (pluginId) => purgePluginData(management, pluginId),
+    },
   };
 }
 
-export function installPackageForTest(service: PluginManagementService, packagePath: string) {
+export function installPackageForTest(service: PluginManagementTestService, packagePath: string) {
   return runApplicationEffect(service.installPackage(packagePath));
 }
 
