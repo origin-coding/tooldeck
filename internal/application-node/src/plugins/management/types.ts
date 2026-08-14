@@ -1,13 +1,7 @@
-import type { ManifestIndex, PluginScanSource } from "@tooldeck/runtime-node";
+import type { ManifestIndex } from "@tooldeck/runtime-node";
 
-import type { ApplicationCleanupFailureDiagnostic } from "@/errors/application-cleanup";
-import type { PluginInstallRow, PluginRow, TooldeckDatabase } from "@/storage";
-
-export interface PluginManagementServiceOptions {
-  database: TooldeckDatabase;
-  installedPluginsDir: string;
-  pluginSources: PluginScanSource[];
-}
+import type { ApplicationCleanupFailureDiagnostic } from "@/errors/cleanup";
+import type { PluginInstallRow, PluginRow } from "@/storage/repositories";
 
 export interface PluginCatalogSnapshot {
   manifestIndex: ManifestIndex;

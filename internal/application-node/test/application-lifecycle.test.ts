@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { makeApplicationLifecycleMachine } from "@/application/application-lifecycle";
-import { runApplicationEffect } from "@/application/edge";
+import { runApplicationEffect } from "@/application/effect";
+import { makeApplicationLifecycleMachine } from "@/application/lifecycle";
 
 describe("Application lifecycle", () => {
   it("transitions through successful startup and disposal", async () => {

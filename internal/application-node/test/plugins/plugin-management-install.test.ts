@@ -6,9 +6,8 @@ import { RuntimeError } from "@tooldeck/runtime-node";
 import { Cause, Effect, Exit, Fiber } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
-import { ApplicationError } from "@/errors/application-error";
+import { ApplicationError } from "@/errors/error";
 import * as filesystem from "@/plugins/management/filesystem";
-import { PluginInstallRepository, PluginRepository, PluginStateRepository } from "@/storage";
 
 import {
   createHarness,
@@ -17,7 +16,7 @@ import {
   writePluginProject,
 } from "./plugin-management-fixtures";
 
-describe("PluginManagementService catalog and install", () => {
+describe("plugin management catalog and install", () => {
   it("syncs the plugin catalog and manages enabled state", async () => {
     const harness = await createHarness();
 
@@ -37,7 +36,7 @@ describe("PluginManagementService catalog and install", () => {
       enabled: true,
     });
     expect(disabled.enabled).toBe(false);
-    expect(new PluginStateRepository(harness.database.db).getById(disabled.id)).toMatchObject({
+    expect(harness.repositories.pluginStates.getById(disabled.id)).toMatchObject({
       enabled: false,
     });
   });
@@ -50,7 +49,7 @@ describe("PluginManagementService catalog and install", () => {
       commandId: "installed.run",
       runtimeSource: 'throw new Error("runtime entry must not be imported during install");\n',
     });
-    const states = new PluginStateRepository(harness.database.db);
+    const states = harness.repositories.pluginStates;
 
     states.setEnabled("dev.example.installed-tools", false);
 
@@ -68,9 +67,7 @@ describe("PluginManagementService catalog and install", () => {
     });
     expect(result.install.packageDigest).toMatch(/^[a-f0-9]{64}$/);
     expect(existsSync(result.install.manifestPath)).toBe(true);
-    expect(new PluginInstallRepository(harness.database.db).getById(result.plugin.id)).toEqual(
-      result.install,
-    );
+    expect(harness.repositories.pluginInstalls.getById(result.plugin.id)).toEqual(result.install);
   });
 
   it("rejects command conflicts and removes the staging directory", async () => {
@@ -91,7 +88,7 @@ describe("PluginManagementService catalog and install", () => {
       "Command id conflict: shared.run",
     );
     expect(
-      new PluginInstallRepository(harness.database.db).getById("dev.example.conflicting-tools"),
+      harness.repositories.pluginInstalls.getById("dev.example.conflicting-tools"),
     ).toBeUndefined();
     expect(
       existsSync(path.join(harness.installedPluginsDir, "dev.example.conflicting-tools")),
@@ -117,7 +114,7 @@ describe("PluginManagementService catalog and install", () => {
     await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       `Plugin manifest is already indexed: ${pluginId}`,
     );
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toBeUndefined();
     expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
@@ -135,9 +132,7 @@ describe("PluginManagementService catalog and install", () => {
     await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       `Plugin is already installed: ${pluginId}`,
     );
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toEqual(
-      firstInstall.install,
-    );
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toEqual(firstInstall.install);
     expect(existsSync(firstInstall.install.installDir)).toBe(true);
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
@@ -154,9 +149,7 @@ describe("PluginManagementService catalog and install", () => {
     await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       "Unsupported installed plugin runtime: wasm",
     );
-    expect(
-      new PluginInstallRepository(harness.database.db).getById("dev.example.wasm-tools"),
-    ).toBeUndefined();
+    expect(harness.repositories.pluginInstalls.getById("dev.example.wasm-tools")).toBeUndefined();
     expect(existsSync(path.join(harness.installedPluginsDir, "dev.example.wasm-tools"))).toBe(
       false,
     );
@@ -172,8 +165,8 @@ describe("PluginManagementService catalog and install", () => {
       source: "application",
       code: "ERR_UNKNOWN",
     });
-    expect(new PluginInstallRepository(harness.database.db).list()).toEqual([]);
-    expect(new PluginRepository(harness.database.db).list()).toEqual([]);
+    expect(harness.repositories.pluginInstalls.list()).toEqual([]);
+    expect(harness.repositories.plugins.list()).toEqual([]);
     expect(await readdir(harness.installedPluginsDir)).toEqual([".staging"]);
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
@@ -222,7 +215,7 @@ describe("PluginManagementService catalog and install", () => {
       commandId: "storage-failure.run",
     });
 
-    harness.database.sqlite.exec(`
+    harness.executeSql(`
       create trigger fail_plugin_install
       before insert on plugin_installs
       begin
@@ -237,7 +230,7 @@ describe("PluginManagementService catalog and install", () => {
       false,
     );
     expect(
-      new PluginInstallRepository(harness.database.db).getById("dev.example.storage-failure"),
+      harness.repositories.pluginInstalls.getById("dev.example.storage-failure"),
     ).toBeUndefined();
   });
 
@@ -259,8 +252,8 @@ describe("PluginManagementService catalog and install", () => {
     await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       "forced post-move failure",
     );
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
-    expect(new PluginRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.plugins.getById(pluginId)).toBeUndefined();
     expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
@@ -273,26 +266,25 @@ describe("PluginManagementService catalog and install", () => {
       pluginId,
       commandId: "rescan-failure.run",
     });
-    const originalSync = PluginRepository.prototype.syncScannedPlugins;
+    const plugins = harness.repositories.plugins;
+    const originalSync = plugins.syncScannedPlugins.bind(plugins);
     let syncCallCount = 0;
 
-    vi.spyOn(PluginRepository.prototype, "syncScannedPlugins").mockImplementation(
-      function (this: PluginRepository, options) {
-        syncCallCount += 1;
+    vi.spyOn(plugins, "syncScannedPlugins").mockImplementation((options) => {
+      syncCallCount += 1;
 
-        if (syncCallCount === 2) {
-          throw new Error("forced final rescan failure");
-        }
+      if (syncCallCount === 2) {
+        throw new Error("forced final rescan failure");
+      }
 
-        return originalSync.call(this, options);
-      },
-    );
+      return originalSync(options);
+    });
 
     await expect(installPackageForTest(harness.service, packagePath)).rejects.toThrow(
       "forced final rescan failure",
     );
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
-    expect(new PluginRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.plugins.getById(pluginId)).toBeUndefined();
     expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
     await expect(harness.service.scanAndSyncCatalog()).resolves.toMatchObject({ plugins: [] });
@@ -334,8 +326,8 @@ describe("PluginManagementService catalog and install", () => {
     if (Exit.isFailure(exit)) {
       expect(Cause.isInterrupted(exit.cause)).toBe(true);
     }
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
-    expect(new PluginRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.plugins.getById(pluginId)).toBeUndefined();
     expect(existsSync(path.join(harness.installedPluginsDir, pluginId))).toBe(false);
     expect(await readdir(path.join(harness.installedPluginsDir, ".staging"))).toEqual([]);
   });
@@ -348,24 +340,23 @@ describe("PluginManagementService catalog and install", () => {
       pluginId,
       commandId: "rollback-attempt-all.run",
     });
-    const originalSync = PluginRepository.prototype.syncScannedPlugins;
+    const plugins = harness.repositories.plugins;
+    const originalSync = plugins.syncScannedPlugins.bind(plugins);
     let syncCallCount = 0;
 
-    vi.spyOn(PluginRepository.prototype, "syncScannedPlugins").mockImplementation(
-      function (this: PluginRepository, options) {
-        syncCallCount += 1;
+    vi.spyOn(plugins, "syncScannedPlugins").mockImplementation((options) => {
+      syncCallCount += 1;
 
-        if (syncCallCount === 2) {
-          throw new RuntimeError({
-            code: "ERR_NOT_FOUND",
-            message: "forced known final rescan failure",
-          });
-        }
+      if (syncCallCount === 2) {
+        throw new RuntimeError({
+          code: "ERR_NOT_FOUND",
+          message: "forced known final rescan failure",
+        });
+      }
 
-        return originalSync.call(this, options);
-      },
-    );
-    vi.spyOn(PluginInstallRepository.prototype, "delete").mockImplementationOnce(() => {
+      return originalSync(options);
+    });
+    vi.spyOn(harness.repositories.pluginInstalls, "delete").mockImplementationOnce(() => {
       throw new ApplicationError({
         source: "application",
         code: "ERR_INVALID_ARGUMENT",

@@ -1,11 +1,11 @@
 import { performance } from "node:perf_hooks";
 
 import type { CommandResult, JsonObject } from "@tooldeck/protocol";
-import type { CreatedRuntime, RunCommandOutput } from "@tooldeck/runtime-node";
+import type { RunCommandOutput } from "@tooldeck/runtime-node";
 import { Cause, Effect, Exit } from "effect";
 
 import type { CommandInputPreprocessor } from "@/application/adapters";
-import { applicationErrorFromCause } from "@/application/edge";
+import { applicationErrorFromCause } from "@/application/effect";
 import {
   type ApplicationEffect,
   type ApplicationFailure,
@@ -14,20 +14,21 @@ import {
 } from "@/application/effect";
 import { localizeApplicationCommandResult } from "@/application/localization";
 import type { RunApplicationCommandRequest } from "@/commands/types";
-import { ApplicationError } from "@/errors/application-error";
-import { toApplicationErrorTransport } from "@/errors/application-error-transport";
+import { ApplicationError } from "@/errors/error";
+import { toApplicationErrorTransport } from "@/errors/transport";
+import type { ApplicationRuntime } from "@/runtime/context";
 import type { CommandRunRepository, PluginRepository } from "@/storage";
 
 export interface ApplicationCommandDependencies {
-  readonly getRuntime: () => Pick<CreatedRuntime, "manifestIndex" | "pluginManager" | "runCommand">;
-  readonly getCommandRuns: () => Pick<CommandRunRepository, "create">;
-  readonly getPlugins: () => Pick<PluginRepository, "getById">;
+  readonly getRuntime: () => ApplicationEffect<ApplicationRuntime>;
+  readonly getCommandRuns: () => ApplicationEffect<Pick<CommandRunRepository, "create">>;
+  readonly getPlugins: () => ApplicationEffect<Pick<PluginRepository, "getById">>;
   readonly preprocessInput: CommandInputPreprocessor;
 }
 
 interface RunCommandResources {
   commandRuns: Pick<CommandRunRepository, "create">;
-  runtime: Pick<CreatedRuntime, "manifestIndex" | "pluginManager" | "runCommand">;
+  runtime: ApplicationRuntime;
   pluginId: string | undefined;
 }
 
@@ -78,13 +79,13 @@ function resolveRunCommandResources(
   dependencies: ApplicationCommandDependencies,
   request: RunApplicationCommandRequest,
 ): ApplicationEffect<RunCommandResources> {
-  return tryApplicationSync(() => {
-    assertRunCommandRequest(request);
-
-    const runtime = dependencies.getRuntime();
+  return Effect.gen(function* () {
+    yield* tryApplicationSync(() => assertRunCommandRequest(request));
+    const runtime = yield* dependencies.getRuntime();
+    const commandRuns = yield* dependencies.getCommandRuns();
 
     return {
-      commandRuns: dependencies.getCommandRuns(),
+      commandRuns,
       runtime,
       pluginId: runtime.manifestIndex.getCommandOwner(request.commandId),
     };
@@ -131,15 +132,17 @@ function assertCommandPluginEnabled(
   resources: RunCommandResources,
   commandId: string,
 ): ApplicationEffect<void> {
-  return tryApplicationSync(() =>
-    assertPluginEnabled({
-      commandId,
-      pluginId: resources.pluginId,
-      enabled: resources.pluginId
-        ? dependencies.getPlugins().getById(resources.pluginId)?.enabled
-        : undefined,
-    }),
-  );
+  return Effect.gen(function* () {
+    const plugins = yield* dependencies.getPlugins();
+
+    return yield* tryApplicationSync(() =>
+      assertPluginEnabled({
+        commandId,
+        pluginId: resources.pluginId,
+        enabled: resources.pluginId ? plugins.getById(resources.pluginId)?.enabled : undefined,
+      }),
+    );
+  });
 }
 
 function completeCommand(

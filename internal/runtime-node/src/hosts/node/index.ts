@@ -1,1 +1,1 @@
-export * from "@/hosts/node/node-plugin-host";
+export * from "@/hosts/node/host";

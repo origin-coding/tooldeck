@@ -13,14 +13,14 @@ export type {
   ListApplicationCommandsRequest,
   RunApplicationCommandRequest,
 } from "@/commands/types";
-export * from "@/errors/application-error";
+export * from "@/errors/error";
 export type {
   ApplicationCleanupFailureDiagnostic,
   ApplicationCleanupFailureErrorDiagnostic,
   ApplicationCleanupStep,
   ApplicationMappedRuntimeCleanupStep,
-} from "@/errors/application-cleanup";
-export * from "@/errors/application-error-transport";
+} from "@/errors/cleanup";
+export * from "@/errors/transport";
 export * from "@/history/error-evidence";
 export type {
   ApplicationCommandRun,
@@ -45,12 +45,12 @@ export type {
   ApplicationPluginLocaleRequest,
   ApplicationPluginPurgeResult,
   ApplicationPluginUninstallResult,
-} from "@/plugins/facade-types";
+} from "@/plugins/types";
 export type {
   ApplicationPreference,
   ApplicationPreferenceFacade,
   GetApplicationPreferenceRequest,
   ListApplicationPreferencesRequest,
   SetApplicationPreferenceRequest,
-} from "@/preferences/facade-types";
-export type { PreferenceScope } from "@/preferences/preferences";
+} from "@/preferences/types";
+export type { PreferenceScope } from "@/preferences/definitions";

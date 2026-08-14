@@ -1,5 +1,5 @@
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -16,7 +16,6 @@ import {
   type TooldeckPaths,
   withTooldeckApplication,
 } from "@/index";
-import { CommandRunRepository } from "@/storage";
 
 const applications: TooldeckApplication[] = [];
 const tempDirs: string[] = [];
@@ -270,6 +269,105 @@ describe("Tooldeck application facade", () => {
     );
   });
 
+  it("preserves catalog state and history across runtime rebuilds and catalog removal", async () => {
+    const rootDir = createTempDir();
+    const paths = createPaths(rootDir);
+    await writeFixturePlugin(paths.builtinPluginsDir);
+    const application = createTooldeckApplication({ paths });
+
+    applications.push(application);
+    await application.start();
+
+    await application.commands.run({
+      commandId: "fixture.echo",
+      input: { text: "before-rebuild" },
+      source: "baseline-before-rebuild",
+    });
+    await expect(application.plugins.list()).resolves.toMatchObject([
+      {
+        id: "dev.tooldeck.fixture",
+        enabled: true,
+        runtimeState: "active",
+      },
+    ]);
+
+    await expect(application.plugins.rescan()).resolves.toMatchObject({
+      commands: [
+        {
+          id: "fixture.echo",
+          pluginEnabled: true,
+          pluginRuntimeState: "inactive",
+        },
+      ],
+      plugins: [
+        {
+          id: "dev.tooldeck.fixture",
+          enabled: true,
+          runtimeState: "inactive",
+        },
+      ],
+    });
+
+    await application.plugins.setEnabled("dev.tooldeck.fixture", false);
+    await expect(application.plugins.rescan()).resolves.toMatchObject({
+      commands: [
+        {
+          id: "fixture.echo",
+          pluginEnabled: false,
+          pluginRuntimeState: "inactive",
+        },
+      ],
+      plugins: [
+        {
+          id: "dev.tooldeck.fixture",
+          enabled: false,
+          runtimeState: "inactive",
+        },
+      ],
+    });
+    await expect(
+      application.commands.run({
+        commandId: "fixture.echo",
+        input: { text: "disabled" },
+        source: "baseline-disabled-gate",
+      }),
+    ).rejects.toSatisfy((error: unknown) => isApplicationError(error, "ERR_PLUGIN_DISABLED"));
+
+    await application.plugins.setEnabled("dev.tooldeck.fixture", true);
+    await application.commands.run({
+      commandId: "fixture.echo",
+      input: { text: "after-rebuild" },
+      source: "baseline-after-rebuild",
+    });
+
+    await rm(path.join(paths.builtinPluginsDir, "fixture"), { recursive: true });
+    await expect(application.plugins.rescan()).resolves.toEqual({ commands: [], plugins: [] });
+    await expect(application.history.listCommandRuns()).resolves.toMatchObject([
+      {
+        commandId: "fixture.echo",
+        pluginId: "dev.tooldeck.fixture",
+        source: "baseline-after-rebuild",
+        status: "success",
+      },
+      {
+        commandId: "fixture.echo",
+        pluginId: "dev.tooldeck.fixture",
+        source: "baseline-disabled-gate",
+        status: "error",
+        error: {
+          source: "application",
+          code: "ERR_PLUGIN_DISABLED",
+        },
+      },
+      {
+        commandId: "fixture.echo",
+        pluginId: "dev.tooldeck.fixture",
+        source: "baseline-before-rebuild",
+        status: "success",
+      },
+    ]);
+  });
+
   it("records result and thrown failures while preserving command failure over history failure", async () => {
     const rootDir = createTempDir();
     const paths = createPaths(rootDir);
@@ -334,37 +432,42 @@ describe("Tooldeck application facade", () => {
       },
     ]);
 
-    const create = vi.spyOn(CommandRunRepository.prototype, "create").mockImplementationOnce(() => {
-      throw new Error("forced command history failure");
-    });
-
+    const database = new DatabaseSync(paths.databasePath);
     try {
-      const error = await application.commands
-        .run({
-          commandId: "fixture.missing",
-          input: { text: "throw" },
-          source: "dual-failure-test",
-        })
-        .catch((caught) => caught);
-
-      expect(error).toMatchObject({
-        source: "runtime",
-        code: "ERR_COMMAND_NOT_FOUND",
-        cause: {
-          message: "Command execution and command history persistence both failed.",
-          errors: [
-            expect.objectContaining({ source: "runtime", code: "ERR_COMMAND_NOT_FOUND" }),
-            expect.objectContaining({
-              source: "application",
-              code: "ERR_UNKNOWN",
-              message: "forced command history failure",
-            }),
-          ],
-        },
-      });
+      database.exec(`
+        create trigger fail_command_history
+        before insert on command_runs
+        begin
+          select raise(abort, 'forced command history failure');
+        end;
+      `);
     } finally {
-      create.mockRestore();
+      database.close();
     }
+
+    const error = await application.commands
+      .run({
+        commandId: "fixture.missing",
+        input: { text: "throw" },
+        source: "dual-failure-test",
+      })
+      .catch((caught) => caught);
+
+    expect(error).toMatchObject({
+      source: "runtime",
+      code: "ERR_COMMAND_NOT_FOUND",
+      cause: {
+        message: "Command execution and command history persistence both failed.",
+        errors: [
+          expect.objectContaining({ source: "runtime", code: "ERR_COMMAND_NOT_FOUND" }),
+          expect.objectContaining({
+            source: "application",
+            code: "ERR_UNKNOWN",
+            message: "forced command history failure",
+          }),
+        ],
+      },
+    });
   });
 
   it("scopes startup and cleanup with withTooldeckApplication", async () => {

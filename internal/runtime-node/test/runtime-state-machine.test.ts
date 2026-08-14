@@ -2,8 +2,8 @@ import type { StateTransitionTable } from "@tooldeck/state-machine";
 import { Deferred, Effect, Exit, Fiber } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { runRuntimeEffectPromise, runRuntimeEffectSync } from "@/effects/runtime-effect";
-import { makeRuntimeStateMachine } from "@/lifecycle/runtime-state-machine";
+import { runRuntimeEffectPromise, runRuntimeEffectSync } from "@/effect";
+import { makeRuntimeStateMachine } from "@/lifecycle/state-machine";
 
 type TestState = "idle" | "ready" | "done";
 

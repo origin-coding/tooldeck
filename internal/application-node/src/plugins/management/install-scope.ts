@@ -8,7 +8,7 @@ import { type ApplicationEffect, tryApplicationPromise } from "@/application/eff
 import {
   captureApplicationCleanupFailure,
   type CapturedApplicationCleanupFailure,
-} from "@/errors/application-cleanup";
+} from "@/errors/cleanup";
 import { removePath } from "@/plugins/management/filesystem";
 import {
   PLUGIN_MANAGEMENT_STAGING_DIR,

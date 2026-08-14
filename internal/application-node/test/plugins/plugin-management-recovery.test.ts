@@ -5,7 +5,6 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import * as filesystem from "@/plugins/management/filesystem";
-import { PluginInstallRepository } from "@/storage";
 
 import {
   createHarness,
@@ -14,7 +13,7 @@ import {
   installPackageForTest,
 } from "./plugin-management-fixtures";
 
-describe("PluginManagementService recovery and safety", () => {
+describe("plugin management recovery and safety", () => {
   it("keeps a plugin logically uninstalled when quarantine cleanup partially fails", async () => {
     const harness = await createHarness();
     const pluginId = "dev.example.cleanup-failure";
@@ -54,7 +53,7 @@ describe("PluginManagementService recovery and safety", () => {
       pluginId,
     });
     expect(existsSync(installed.install.installDir)).toBe(false);
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toBeUndefined();
     expect((await harness.service.scanAndSyncCatalog()).plugins).toEqual([]);
     expect(stagingEntries).toHaveLength(1);
     expect(stagingEntries[0]).toMatch(/^uninstall-/);
@@ -80,7 +79,7 @@ describe("PluginManagementService recovery and safety", () => {
     const result = await harness.service.uninstall(pluginId);
 
     expect(result.filesMissing).toBe(true);
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toBeUndefined();
     expect((await harness.service.scanAndSyncCatalog()).plugins).toEqual([]);
   });
 
@@ -91,7 +90,7 @@ describe("PluginManagementService recovery and safety", () => {
 
     await mkdir(outsideDir, { recursive: true });
     await writeFile(path.join(outsideDir, "keep.txt"), "keep", "utf8");
-    new PluginInstallRepository(harness.database.db).create({
+    harness.repositories.pluginInstalls.create({
       pluginId,
       version: "0.1.0",
       installDir: outsideDir,
@@ -105,7 +104,7 @@ describe("PluginManagementService recovery and safety", () => {
       "Installed plugin path does not match its managed location",
     );
     expect(existsSync(path.join(outsideDir, "keep.txt"))).toBe(true);
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeDefined();
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toBeDefined();
   });
 
   it("restores files and the install record when post-uninstall scanning fails", async () => {
@@ -144,9 +143,7 @@ describe("PluginManagementService recovery and safety", () => {
       },
     });
     expect(existsSync(installed.install.installDir)).toBe(true);
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toEqual(
-      installed.install,
-    );
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toEqual(installed.install);
   });
 
   it("records failed directory and install restoration before catalog reconciliation", async () => {
@@ -177,7 +174,7 @@ describe("PluginManagementService recovery and safety", () => {
 
       await originalMovePath(sourcePath, destinationPath);
     });
-    vi.spyOn(PluginInstallRepository.prototype, "create").mockImplementationOnce(() => {
+    vi.spyOn(harness.repositories.pluginInstalls, "create").mockImplementationOnce(() => {
       throw new Error("forced install restore failure");
     });
 
@@ -224,7 +221,7 @@ describe("PluginManagementService recovery and safety", () => {
       },
     });
     expect(moveCallCount).toBe(2);
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toBeUndefined();
   });
 
   it("rejects uninstall for plugins without managed install records", async () => {

@@ -1,7 +1,7 @@
 import { Effect, Exit, Scope } from "effect";
 import { describe, expect, it } from "vitest";
 
-import { runRuntimeEffectPromise } from "@/effects/runtime-effect";
+import { runRuntimeEffectPromise } from "@/effect";
 import {
   createRuntime,
   NodePluginHost,

@@ -11,7 +11,7 @@ import type {
   ApplicationPluginSource,
   CreateTooldeckApplicationOptions,
 } from "@/application/types";
-import { ApplicationError } from "@/errors/application-error";
+import { ApplicationError } from "@/errors/error";
 import { resolveTooldeckPaths, type TooldeckPaths } from "@/paths";
 
 export interface ApplicationConfiguration {

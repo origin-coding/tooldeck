@@ -1,25 +1,11 @@
 import path from "node:path";
 
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { composeTooldeckApplication } from "@/application/composition-root";
+import { composeTooldeckApplication } from "@/application/composition";
 import { normalizeApplicationConfiguration } from "@/application/configuration";
-import { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
-import { ApplicationCommands } from "@/commands/application-commands";
-import type { ApplicationCommandDependencies } from "@/commands/run-command";
-import {
-  ApplicationHistory,
-  type ApplicationHistoryDependencies,
-} from "@/history/application-history";
+import { ApplicationLifecycleCoordinator } from "@/application/lifecycle";
 import type { TooldeckPaths } from "@/paths";
-import {
-  type ApplicationPluginDependencies,
-  ApplicationPlugins,
-} from "@/plugins/application-plugins";
-import {
-  type ApplicationPreferenceDependencies,
-  ApplicationPreferences,
-} from "@/preferences/application-preferences";
 
 describe("application composition root", () => {
   it("normalizes configuration before constructing application services", () => {
@@ -72,34 +58,32 @@ describe("application composition root", () => {
     ).toThrow("Installed plugin source does not match the application installed plugins path.");
   });
 
-  it("constructs lifecycle coordination and narrow domain facades without a Layer graph", async () => {
+  it("constructs lifecycle coordination and narrow domain facades", async () => {
     const paths = createPaths("composition");
     const composition = composeTooldeckApplication({ paths });
 
     expect(composition.configuration.paths).toBe(paths);
     expect(composition.lifecycle).toBeInstanceOf(ApplicationLifecycleCoordinator);
-    expect(composition.facades.commands).toBeInstanceOf(ApplicationCommands);
-    expect(composition.facades.plugins).toBeInstanceOf(ApplicationPlugins);
-    expect(composition.facades.preferences).toBeInstanceOf(ApplicationPreferences);
-    expect(composition.facades.history).toBeInstanceOf(ApplicationHistory);
+    expect(composition.facades.commands).toMatchObject({
+      list: expect.any(Function),
+      run: expect.any(Function),
+    });
+    expect(composition.facades.plugins).toMatchObject({
+      list: expect.any(Function),
+      installPackage: expect.any(Function),
+      uninstall: expect.any(Function),
+    });
+    expect(composition.facades.preferences).toMatchObject({
+      list: expect.any(Function),
+      get: expect.any(Function),
+      set: expect.any(Function),
+      delete: expect.any(Function),
+    });
+    expect(composition.facades.history).toMatchObject({
+      listCommandRuns: expect.any(Function),
+    });
 
     await expect(composition.lifecycle.dispose()).resolves.toBeUndefined();
-  });
-
-  it("keeps each facade dependency contract limited to its own use cases", () => {
-    expectTypeOf<keyof ApplicationCommandDependencies>().toEqualTypeOf<
-      "getRuntime" | "getCommandRuns" | "getPlugins" | "preprocessInput"
-    >();
-    expectTypeOf<keyof ApplicationPluginDependencies>().toEqualTypeOf<
-      | "getRuntime"
-      | "getPlugins"
-      | "getPluginManagement"
-      | "rebuildRuntime"
-      | "disposeRuntime"
-      | "listCommands"
-    >();
-    expectTypeOf<keyof ApplicationPreferenceDependencies>().toEqualTypeOf<"getPreferences">();
-    expectTypeOf<keyof ApplicationHistoryDependencies>().toEqualTypeOf<"getCommandRuns">();
   });
 });
 

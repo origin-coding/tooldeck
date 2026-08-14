@@ -1,25 +1,26 @@
 import { Effect, Exit } from "effect";
 
 import type { TooldeckApplicationAdapters } from "@/application/adapters";
-import { composeTooldeckApplication } from "@/application/composition-root";
-import { applicationErrorFromCause, runApplicationEffect } from "@/application/edge";
+import { composeTooldeckApplication } from "@/application/composition";
 import {
+  applicationErrorFromCause,
   type ApplicationEffect,
   type ApplicationFailure,
+  runApplicationEffect,
   tryApplicationPromise,
 } from "@/application/effect";
-import type { ApplicationLifecycleCoordinator } from "@/application/lifecycle-coordinator";
+import type { ApplicationLifecycleCoordinator } from "@/application/lifecycle";
 import type { CreateTooldeckApplicationOptions } from "@/application/types";
 import type { ApplicationCommandFacade } from "@/commands/types";
 import {
   captureApplicationCleanupFailure,
   combinePrimaryAndCleanupFailures,
-} from "@/errors/application-cleanup";
-import { toApplicationError } from "@/errors/application-error";
+} from "@/errors/cleanup";
+import { toApplicationError } from "@/errors/error";
 import type { ApplicationHistoryFacade } from "@/history/types";
 import type { TooldeckPaths } from "@/paths";
-import type { ApplicationPluginFacade } from "@/plugins/facade-types";
-import type { ApplicationPreferenceFacade } from "@/preferences/facade-types";
+import type { ApplicationPluginFacade } from "@/plugins/types";
+import type { ApplicationPreferenceFacade } from "@/preferences/types";
 
 export interface TooldeckApplication {
   readonly paths: TooldeckPaths;

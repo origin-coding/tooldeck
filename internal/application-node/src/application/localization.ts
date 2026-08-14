@@ -17,7 +17,7 @@ import {
 } from "@tooldeck/runtime-node";
 
 import type { ApplicationCommand } from "@/commands/types";
-import type { ApplicationPlugin } from "@/plugins/facade-types";
+import type { ApplicationPlugin } from "@/plugins/types";
 
 export function localizeApplicationCommand(
   command: ApplicationCommand,
