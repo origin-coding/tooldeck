@@ -16,7 +16,6 @@ import {
   type TooldeckPaths,
   withTooldeckApplication,
 } from "@/index";
-import { CommandRunRepository } from "@/storage";
 
 const applications: TooldeckApplication[] = [];
 const tempDirs: string[] = [];
@@ -433,37 +432,42 @@ describe("Tooldeck application facade", () => {
       },
     ]);
 
-    const create = vi.spyOn(CommandRunRepository.prototype, "create").mockImplementationOnce(() => {
-      throw new Error("forced command history failure");
-    });
-
+    const database = new DatabaseSync(paths.databasePath);
     try {
-      const error = await application.commands
-        .run({
-          commandId: "fixture.missing",
-          input: { text: "throw" },
-          source: "dual-failure-test",
-        })
-        .catch((caught) => caught);
-
-      expect(error).toMatchObject({
-        source: "runtime",
-        code: "ERR_COMMAND_NOT_FOUND",
-        cause: {
-          message: "Command execution and command history persistence both failed.",
-          errors: [
-            expect.objectContaining({ source: "runtime", code: "ERR_COMMAND_NOT_FOUND" }),
-            expect.objectContaining({
-              source: "application",
-              code: "ERR_UNKNOWN",
-              message: "forced command history failure",
-            }),
-          ],
-        },
-      });
+      database.exec(`
+        create trigger fail_command_history
+        before insert on command_runs
+        begin
+          select raise(abort, 'forced command history failure');
+        end;
+      `);
     } finally {
-      create.mockRestore();
+      database.close();
     }
+
+    const error = await application.commands
+      .run({
+        commandId: "fixture.missing",
+        input: { text: "throw" },
+        source: "dual-failure-test",
+      })
+      .catch((caught) => caught);
+
+    expect(error).toMatchObject({
+      source: "runtime",
+      code: "ERR_COMMAND_NOT_FOUND",
+      cause: {
+        message: "Command execution and command history persistence both failed.",
+        errors: [
+          expect.objectContaining({ source: "runtime", code: "ERR_COMMAND_NOT_FOUND" }),
+          expect.objectContaining({
+            source: "application",
+            code: "ERR_UNKNOWN",
+            message: "forced command history failure",
+          }),
+        ],
+      },
+    });
   });
 
   it("scopes startup and cleanup with withTooldeckApplication", async () => {

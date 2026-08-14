@@ -19,6 +19,7 @@ import type {
 import { Preferences, type PreferencesService } from "@/preferences/context";
 import type { ApplicationPreference } from "@/preferences/types";
 import { type ApplicationRuntime, Runtime, type RuntimeService } from "@/runtime/context";
+import * as storageModule from "@/storage";
 import {
   type ApplicationRepositories,
   ApplicationStorage,
@@ -132,6 +133,7 @@ describe("application Context contracts", () => {
     expect(Plugins.key).toBe("@tooldeck/application-node/Plugins");
     expect(Preferences.key).toBe("@tooldeck/application-node/Preferences");
     expect(History.key).toBe("@tooldeck/application-node/History");
+    expect(Object.keys(storageModule)).toEqual(["makeStorageLive"]);
   });
 });
 

@@ -3,12 +3,6 @@ import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { runApplicationEffect } from "@/application/effect";
-import {
-  CommandRunRepository,
-  PluginInstallRepository,
-  PluginKvRepository,
-  PluginStateRepository,
-} from "@/storage";
 
 import {
   createHarness,
@@ -26,9 +20,9 @@ describe("plugin management uninstall and purge", () => {
       commandId: "uninstall.run",
     });
     const installed = await installPackageForTest(harness.service, packagePath);
-    const states = new PluginStateRepository(harness.database.db);
-    const kv = new PluginKvRepository(harness.database.db);
-    const runs = new CommandRunRepository(harness.database.db);
+    const states = harness.repositories.pluginStates;
+    const kv = harness.repositories.pluginKv;
+    const runs = harness.repositories.commandRuns;
 
     await harness.service.setEnabled(pluginId, false);
     kv.set({ pluginId, key: "answer", value: 42 });
@@ -47,7 +41,7 @@ describe("plugin management uninstall and purge", () => {
     expect(result.cleanupPending).toBe(false);
     expect(result.cleanupFailures).toEqual([]);
     expect(existsSync(installed.install.installDir)).toBe(false);
-    expect(new PluginInstallRepository(harness.database.db).getById(pluginId)).toBeUndefined();
+    expect(harness.repositories.pluginInstalls.getById(pluginId)).toBeUndefined();
     expect(catalog.plugins.find((plugin) => plugin.id === pluginId)).toBeUndefined();
     expect(states.getById(pluginId)).toMatchObject({ enabled: false });
     expect(kv.get(pluginId, "answer")).toBe(42);
@@ -71,9 +65,9 @@ describe("plugin management uninstall and purge", () => {
       pluginId,
       commandId: "purge.run",
     });
-    const states = new PluginStateRepository(harness.database.db);
-    const kv = new PluginKvRepository(harness.database.db);
-    const runs = new CommandRunRepository(harness.database.db);
+    const states = harness.repositories.pluginStates;
+    const kv = harness.repositories.pluginKv;
+    const runs = harness.repositories.commandRuns;
 
     await installPackageForTest(harness.service, packagePath);
     await harness.service.setEnabled(pluginId, false);
@@ -131,8 +125,8 @@ describe("plugin management uninstall and purge", () => {
       pluginId,
       commandId: "atomic-purge.run",
     });
-    const states = new PluginStateRepository(harness.database.db);
-    const kv = new PluginKvRepository(harness.database.db);
+    const states = harness.repositories.pluginStates;
+    const kv = harness.repositories.pluginKv;
 
     await installPackageForTest(harness.service, packagePath);
     await harness.service.setEnabled(pluginId, false);
@@ -140,7 +134,7 @@ describe("plugin management uninstall and purge", () => {
     kv.set({ pluginId, key: "second", value: 2 });
     await harness.service.uninstall(pluginId);
 
-    harness.database.sqlite.exec(`
+    harness.executeSql(`
       create trigger fail_plugin_state_purge
       before delete on plugin_states
       when old.plugin_id = '${pluginId}'
@@ -165,7 +159,7 @@ describe("plugin management uninstall and purge", () => {
       },
     ]);
 
-    harness.database.sqlite.exec("drop trigger fail_plugin_state_purge;");
+    harness.executeSql("drop trigger fail_plugin_state_purge;");
 
     await expect(runApplicationEffect(harness.service.purge(pluginId))).resolves.toEqual({
       pluginId,

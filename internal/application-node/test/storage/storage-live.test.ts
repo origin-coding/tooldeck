@@ -8,11 +8,9 @@ import { runApplicationEffect } from "@/application/effect";
 import type { CapturedApplicationCleanupFailure } from "@/errors/cleanup";
 import { ApplicationError } from "@/errors/error";
 import { ApplicationStorage, type ApplicationStorageService } from "@/storage/context";
-import { openTooldeckDatabase } from "@/storage/database";
 import { makeStorageLive } from "@/storage/live";
-import { PreferenceRepository } from "@/storage/repositories/preferences";
 
-import { createDatabasePath } from "./storage-test-fixtures";
+import { createDatabasePath, withTestStorage } from "./storage-test-fixtures";
 
 describe("StorageLive", () => {
   it("owns one repository graph for the lifetime of a scoped Layer", async () => {
@@ -76,17 +74,13 @@ describe("StorageLive", () => {
       }).pipe(Effect.provide(makeStorageLive({ path: databasePath }))),
     );
 
-    const database = openTooldeckDatabase({ path: databasePath });
-
-    try {
-      expect(new PreferenceRepository(database.db).getRow("cli", "theme")).toMatchObject({
+    await withTestStorage(({ repositories }) => {
+      expect(repositories.preferences.getRow("cli", "theme")).toMatchObject({
         scope: "cli",
         key: "theme",
         valueJson: JSON.stringify("dark"),
       });
-    } finally {
-      database.close();
-    }
+    }, databasePath);
   });
 
   it("rolls back failed immediate transactions without replacing the primary failure", async () => {
@@ -114,13 +108,9 @@ describe("StorageLive", () => {
       ),
     ).rejects.toBe(primaryError);
 
-    const database = openTooldeckDatabase({ path: databasePath });
-
-    try {
-      expect(new PreferenceRepository(database.db).getRow("cli", "theme")).toBeUndefined();
-    } finally {
-      database.close();
-    }
+    await withTestStorage(({ repositories }) => {
+      expect(repositories.preferences.getRow("cli", "theme")).toBeUndefined();
+    }, databasePath);
   });
 
   it("preserves rollback failures as structured diagnostics", async () => {

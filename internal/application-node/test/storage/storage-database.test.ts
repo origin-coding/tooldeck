@@ -2,15 +2,10 @@ import { DatabaseSync } from "node:sqlite";
 
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  openTooldeckDatabase,
-  CommandRunRepository,
-  PluginRepository,
-  PluginStateRepository,
-} from "@/storage";
+import { openTooldeckDatabase } from "@/storage/database";
 import { migrations, runMigrations } from "@/storage/migrations";
 
-import { createDatabasePath } from "./storage-test-fixtures";
+import { createDatabasePath, withTestStorage } from "./storage-test-fixtures";
 
 describe("storage database", () => {
   it("runs the initial migration", () => {
@@ -67,7 +62,7 @@ describe("storage database", () => {
     }
   });
 
-  it("migrates legacy plugin enabled values into plugin states", () => {
+  it("migrates legacy plugin enabled values into plugin states", async () => {
     const databasePath = createDatabasePath();
     const sqlite = new DatabaseSync(databasePath);
 
@@ -100,11 +95,9 @@ describe("storage database", () => {
       sqlite.close();
     }
 
-    const database = openTooldeckDatabase({ path: databasePath });
-
-    try {
-      const plugins = new PluginRepository(database.db);
-      const states = new PluginStateRepository(database.db);
+    await withTestStorage(({ repositories }) => {
+      const plugins = repositories.plugins;
+      const states = repositories.pluginStates;
 
       expect(states.getById("dev.tooldeck.disabled")).toMatchObject({
         pluginId: "dev.tooldeck.disabled",
@@ -116,16 +109,12 @@ describe("storage database", () => {
         id: "dev.tooldeck.disabled",
         enabled: false,
       });
-    } finally {
-      database.close();
-    }
+    }, databasePath);
   });
 
-  it("creates and lists command runs from newest to oldest", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new CommandRunRepository(database.db);
+  it("creates and lists command runs from newest to oldest", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.commandRuns;
 
       repository.create({
         id: "run-old",
@@ -163,16 +152,12 @@ describe("storage database", () => {
       });
       expect(runs[0]?.errorJson).toBe(JSON.stringify({ message: "Invalid JSON" }));
       expect(runs[1]?.inputJson).toBe(JSON.stringify({ text: '{"a":1}' }));
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("filters recent command runs by command id", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new CommandRunRepository(database.db);
+  it("filters recent command runs by command id", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.commandRuns;
 
       repository.create({
         id: "format-old",
@@ -199,9 +184,7 @@ describe("storage database", () => {
       const runs = repository.listRecent({ commandId: "json.format" });
 
       expect(runs.map((run) => run.id)).toEqual(["format-new", "format-old"]);
-    } finally {
-      database.close();
-    }
+    });
   });
 
   it("closes the SQLite connection", () => {

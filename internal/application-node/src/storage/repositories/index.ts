@@ -1,21 +1,25 @@
-export { CommandRunRepository } from "@/storage/repositories/command-runs";
 export type {
+  CommandRunRepository,
   CreateCommandRunInput,
   ListCommandRunsOptions,
 } from "@/storage/repositories/command-runs";
-export { PluginInstallRepository } from "@/storage/repositories/plugin-installs";
-export type { CreatePluginInstallInput } from "@/storage/repositories/plugin-installs";
-export { PluginKvRepository } from "@/storage/repositories/plugin-kv";
-export type { SetPluginKvInput } from "@/storage/repositories/plugin-kv";
-export { PluginRepository } from "@/storage/repositories/plugins";
 export type {
+  CreatePluginInstallInput,
+  PluginInstallRepository,
+} from "@/storage/repositories/plugin-installs";
+export type { PluginKvRepository, SetPluginKvInput } from "@/storage/repositories/plugin-kv";
+export type {
+  PluginRepository,
   PluginSourceKind,
   SyncScannedPluginsInput,
   UpsertPluginInput,
 } from "@/storage/repositories/plugins";
-export { PluginStateRepository } from "@/storage/repositories/plugin-states";
-export { PreferenceRepository } from "@/storage/repositories/preferences";
-export type { PreferenceScope, SetPreferenceInput } from "@/storage/repositories/preferences";
+export type { PluginStateRepository } from "@/storage/repositories/plugin-states";
+export type {
+  PreferenceRepository,
+  PreferenceScope,
+  SetPreferenceInput,
+} from "@/storage/repositories/preferences";
 export type {
   CommandRunRow,
   PluginInstallRow,

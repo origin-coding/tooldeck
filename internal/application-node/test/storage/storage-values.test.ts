@@ -1,20 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  openTooldeckDatabase,
-  PluginKvRepository,
-  PreferenceRepository,
-  type PreferenceRow,
-} from "@/storage";
+import type { PreferenceRow } from "@/storage";
 
-import { createDatabasePath } from "./storage-test-fixtures";
+import { withTestStorage } from "./storage-test-fixtures";
 
 describe("plugin and preference values", () => {
-  it("stores plugin KV values scoped by plugin id", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PluginKvRepository(database.db);
+  it("stores plugin KV values scoped by plugin id", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.pluginKv;
 
       repository.set({
         pluginId: "dev.tooldeck.json-tools",
@@ -68,16 +61,12 @@ describe("plugin and preference values", () => {
       expect(repository.listByPlugin("dev.tooldeck.json-tools")).toEqual([]);
       expect(repository.deleteByPlugin("dev.tooldeck.json-tools")).toEqual([]);
       expect(repository.get("dev.tooldeck.other", "indent")).toBe(4);
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("rejects plugin KV values that are not JSON serializable", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PluginKvRepository(database.db);
+  it("rejects plugin KV values that are not JSON serializable", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.pluginKv;
 
       expect(() =>
         repository.set({
@@ -86,16 +75,12 @@ describe("plugin and preference values", () => {
           value: undefined,
         }),
       ).toThrow("Plugin KV value must be JSON serializable");
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("stores preferences scoped by app or shared namespace", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PreferenceRepository(database.db);
+  it("stores preferences scoped by app or shared namespace", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.preferences;
 
       repository.set({
         scope: "desktop",
@@ -126,16 +111,12 @@ describe("plugin and preference values", () => {
         updatedAt: 2000,
       });
       expect(repository.list("desktop").map((row: PreferenceRow) => row.key)).toEqual(["theme"]);
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("deletes preferences by scope and key", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PreferenceRepository(database.db);
+  it("deletes preferences by scope and key", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.preferences;
 
       repository.set({
         scope: "desktop",
@@ -145,16 +126,12 @@ describe("plugin and preference values", () => {
       repository.delete("desktop", "sidebarCollapsed");
 
       expect(repository.get("desktop", "sidebarCollapsed")).toBeUndefined();
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("rejects preferences that are not JSON serializable", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PreferenceRepository(database.db);
+  it("rejects preferences that are not JSON serializable", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.preferences;
 
       expect(() =>
         repository.set({
@@ -163,8 +140,6 @@ describe("plugin and preference values", () => {
           value: undefined,
         }),
       ).toThrow("Preference value must be JSON serializable");
-    } finally {
-      database.close();
-    }
+    });
   });
 });

@@ -1,20 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  openTooldeckDatabase,
-  PluginInstallRepository,
-  PluginRepository,
-  PluginStateRepository,
-} from "@/storage";
-
-import { createDatabasePath, createPluginManifest } from "./storage-test-fixtures";
+import { createPluginManifest, withTestStorage } from "./storage-test-fixtures";
 
 describe("plugin storage records", () => {
-  it("upserts scanned plugins and preserves enabled state", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PluginRepository(database.db);
+  it("upserts scanned plugins and preserves enabled state", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.plugins;
 
       repository.upsertScannedPlugin({
         manifest: {
@@ -65,16 +56,12 @@ describe("plugin storage records", () => {
       });
       expect(repository.listEnabled()).toHaveLength(0);
       expect(repository.list()).toHaveLength(1);
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("stores scanned plugin source metadata", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PluginRepository(database.db);
+  it("stores scanned plugin source metadata", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.plugins;
 
       const plugin = repository.upsertScannedPlugin({
         manifest: createPluginManifest("dev.example.installed", "Installed", "0.1.0"),
@@ -90,16 +77,12 @@ describe("plugin storage records", () => {
         installDir: "installed-plugins/dev.example.installed",
         enabled: true,
       });
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("syncs scanned plugins and deletes plugins missing from the scan", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PluginRepository(database.db);
+  it("syncs scanned plugins and deletes plugins missing from the scan", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.plugins;
 
       repository.upsertScannedPlugin({
         manifest: createPluginManifest("dev.tooldeck.old-plugin", "Old Plugin", "0.0.1"),
@@ -131,16 +114,12 @@ describe("plugin storage records", () => {
         "dev.tooldeck.json-tools",
       ]);
       expect(repository.getById("dev.tooldeck.old-plugin")).toBeUndefined();
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("syncs an empty scan by clearing the plugin registry", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PluginRepository(database.db);
+  it("syncs an empty scan by clearing the plugin registry", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.plugins;
 
       repository.upsertScannedPlugin({
         manifest: createPluginManifest("dev.tooldeck.json-tools", "JSON Tools", "0.0.1"),
@@ -150,16 +129,12 @@ describe("plugin storage records", () => {
 
       expect(repository.syncScannedPlugins({ plugins: [], now: 2000 })).toEqual([]);
       expect(repository.list()).toEqual([]);
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("updates plugin enabled state by id", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PluginRepository(database.db);
+  it("updates plugin enabled state by id", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.plugins;
 
       repository.upsertScannedPlugin({
         manifest: createPluginManifest("dev.tooldeck.json-tools", "JSON Tools", "0.0.1"),
@@ -174,17 +149,13 @@ describe("plugin storage records", () => {
         updatedAt: 2000,
       });
       expect(repository.setEnabled("dev.tooldeck.missing", true, 3000)).toBeUndefined();
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("stores plugin enabled state outside the scanned plugin catalog", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const plugins = new PluginRepository(database.db);
-      const states = new PluginStateRepository(database.db);
+  it("stores plugin enabled state outside the scanned plugin catalog", async () => {
+    await withTestStorage(({ repositories }) => {
+      const plugins = repositories.plugins;
+      const states = repositories.pluginStates;
 
       plugins.upsertScannedPlugin({
         manifest: createPluginManifest("dev.tooldeck.json-tools", "JSON Tools", "0.0.1"),
@@ -202,16 +173,12 @@ describe("plugin storage records", () => {
       expect(states.delete("dev.tooldeck.json-tools")).toMatchObject({
         pluginId: "dev.tooldeck.json-tools",
       });
-    } finally {
-      database.close();
-    }
+    });
   });
 
-  it("creates, lists, gets, and deletes plugin install records", () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-
-    try {
-      const repository = new PluginInstallRepository(database.db);
+  it("creates, lists, gets, and deletes plugin install records", async () => {
+    await withTestStorage(({ repositories }) => {
+      const repository = repositories.pluginInstalls;
 
       const created = repository.create({
         pluginId: "dev.example.installed",
@@ -234,8 +201,6 @@ describe("plugin storage records", () => {
       expect(repository.list()).toEqual([created]);
       expect(repository.delete("dev.example.installed")).toMatchObject(created);
       expect(repository.getById("dev.example.installed")).toBeUndefined();
-    } finally {
-      database.close();
-    }
+    });
   });
 });

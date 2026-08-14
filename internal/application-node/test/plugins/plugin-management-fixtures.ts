@@ -2,9 +2,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 
 import { packTooldeckPlugin } from "@tooldeck/plugin-package";
-import { Effect } from "effect";
+import { Context, Effect, ExecutionStrategy, Exit, Layer, Scope } from "effect";
 import { afterEach, vi } from "vitest";
 
 import { type ApplicationEffect, runApplicationEffect } from "@/application/effect";
@@ -22,17 +23,18 @@ import {
   type PurgedPluginSummary,
   type UninstalledPluginSummary,
 } from "@/plugins/management";
-import { openTooldeckDatabase, type PluginRow, type TooldeckDatabase } from "@/storage";
-import { makeApplicationStorageService } from "@/storage/live";
+import type { PluginRow } from "@/storage";
+import { type ApplicationRepositories, ApplicationStorage } from "@/storage/context";
+import { makeStorageLive } from "@/storage/live";
 
-const databases: TooldeckDatabase[] = [];
+const scopes: Scope.CloseableScope[] = [];
 const tempDirs: string[] = [];
 
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks();
 
-  for (const database of databases.splice(0)) {
-    database.close();
+  for (const scope of scopes.splice(0)) {
+    await Effect.runPromise(Scope.close(scope, Exit.succeed(undefined)));
   }
 
   for (const dir of tempDirs.splice(0)) {
@@ -42,8 +44,9 @@ afterEach(() => {
 
 interface Harness {
   builtinPluginsDir: string;
-  database: TooldeckDatabase;
+  executeSql(sql: string): void;
   installedPluginsDir: string;
+  repositories: ApplicationRepositories;
   rootDir: string;
   service: PluginManagementTestService;
 }
@@ -66,16 +69,20 @@ export async function createHarness(
   const rootDir = options.rootDir ?? createTempDir();
   const builtinPluginsDir = path.join(rootDir, "builtin-plugins");
   const installedPluginsDir = path.join(rootDir, "installed-plugins");
-  const database = openTooldeckDatabase({ path: path.join(rootDir, "tooldeck.sqlite") });
+  const databasePath = path.join(rootDir, "tooldeck.sqlite");
   const pluginSources = [
     { kind: "builtin" as const, path: builtinPluginsDir },
     { kind: "installed" as const, path: installedPluginsDir },
     ...(options.externalDir ? [{ kind: "external" as const, path: options.externalDir }] : []),
   ];
 
-  databases.push(database);
   await mkdir(builtinPluginsDir, { recursive: true });
-  const storage = makeApplicationStorageService(database);
+  const scope = Effect.runSync(Scope.make(ExecutionStrategy.sequential));
+  scopes.push(scope);
+  const storageContext = await runApplicationEffect(
+    Layer.buildWithScope(makeStorageLive({ path: databasePath }), scope),
+  );
+  const storage = Context.get(storageContext, ApplicationStorage);
   const management = makePluginManagementContext({
     installedPluginsDir,
     pluginSources,
@@ -85,8 +92,9 @@ export async function createHarness(
 
   return {
     builtinPluginsDir,
-    database,
+    executeSql: (sql) => executeSql(databasePath, sql),
     installedPluginsDir,
+    repositories: storage.repositories,
     rootDir,
     service: {
       scanAndSyncCatalog: () => runApplicationEffect(scanAndSyncPluginCatalog(management)),
@@ -98,6 +106,16 @@ export async function createHarness(
       purge: (pluginId) => purgePluginData(management, pluginId),
     },
   };
+}
+
+function executeSql(databasePath: string, sql: string): void {
+  const sqlite = new DatabaseSync(databasePath);
+
+  try {
+    sqlite.exec(sql);
+  } finally {
+    sqlite.close();
+  }
 }
 
 export function installPackageForTest(service: PluginManagementTestService, packagePath: string) {

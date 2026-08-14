@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 import { runApplicationEffect } from "@/application/effect";
 import { classifyApplicationErrorEvidence } from "@/history/error-evidence";
 import { makeHistoryService } from "@/history/live";
-import { CommandRunRepository, openTooldeckDatabase } from "@/storage";
+import { openTooldeckDatabase } from "@/storage/database";
 
-import { createDatabasePath } from "../storage/storage-test-fixtures";
+import { createDatabasePath, withTestStorage } from "../storage/storage-test-fixtures";
 
 describe("command history cleanup evidence", () => {
   it("classifies canonical diagnostics and legacy cleanup shapes without conversion", () => {
@@ -44,8 +44,8 @@ describe("command history cleanup evidence", () => {
   });
 
   it("returns legacy error JSON as raw evidence and leaves its SQLite bytes unchanged", async () => {
-    const database = openTooldeckDatabase({ path: createDatabasePath() });
-    const repository = new CommandRunRepository(database.db);
+    const databasePath = createDatabasePath();
+    const database = openTooldeckDatabase({ path: databasePath });
     const legacyJson =
       '{ "tag":"ApplicationError", "source":"application", "code":"ERR_UNKNOWN", "message":"legacy", "details":{"cleanupFailure":{"message":"close failed"}} }';
 
@@ -69,8 +69,12 @@ describe("command history cleanup evidence", () => {
           null,
           1,
         );
+    } finally {
+      database.close();
+    }
 
-      const history = makeHistoryService(() => Effect.succeed(repository));
+    await withTestStorage(async ({ repositories }) => {
+      const history = makeHistoryService(() => Effect.succeed(repositories.commandRuns));
       const runs = await runApplicationEffect(history.listCommandRuns());
 
       expect(runs).toEqual([
@@ -86,13 +90,18 @@ describe("command history cleanup evidence", () => {
           },
         }),
       ]);
+    }, databasePath);
+
+    const verificationDatabase = openTooldeckDatabase({ path: databasePath });
+
+    try {
       expect(
-        database.sqlite
+        verificationDatabase.sqlite
           .prepare("select error_json as errorJson from command_runs where id = ?")
           .get("legacy-run"),
       ).toEqual({ errorJson: legacyJson });
     } finally {
-      database.close();
+      verificationDatabase.close();
     }
   });
 });

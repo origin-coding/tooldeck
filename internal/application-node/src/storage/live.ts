@@ -27,14 +27,12 @@ import {
   type TooldeckDatabase,
   type TooldeckDatabaseOptions,
 } from "@/storage/database";
-import {
-  CommandRunRepository,
-  PluginInstallRepository,
-  PluginKvRepository,
-  PluginRepository,
-  PluginStateRepository,
-  PreferenceRepository,
-} from "@/storage/repositories";
+import { CommandRunRepository } from "@/storage/repositories/command-runs";
+import { PluginInstallRepository } from "@/storage/repositories/plugin-installs";
+import { PluginKvRepository } from "@/storage/repositories/plugin-kv";
+import { PluginStateRepository } from "@/storage/repositories/plugin-states";
+import { PluginRepository } from "@/storage/repositories/plugins";
+import { PreferenceRepository } from "@/storage/repositories/preferences";
 
 export interface StorageLiveOptions extends TooldeckDatabaseOptions {
   readonly onCleanupFailure?: (failure: CapturedApplicationCleanupFailure) => void;
@@ -99,9 +97,7 @@ function releaseDatabase(
   );
 }
 
-export function makeApplicationStorageService(
-  database: TooldeckDatabase,
-): ApplicationStorageService {
+function makeApplicationStorageService(database: TooldeckDatabase): ApplicationStorageService {
   const repositories: ApplicationRepositories = Object.freeze({
     commandRuns: new CommandRunRepository(database.db),
     preferences: new PreferenceRepository(database.db),
