@@ -1,6 +1,8 @@
 import type { TooldeckApplication } from "@tooldeck/application-node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { internalBoundaryFailureFixtures } from "../../../../tests/fixtures/internal-schema-boundaries";
+
 const electron = vi.hoisted(() => ({
   handle: vi.fn(),
   removeHandler: vi.fn(),
@@ -157,4 +159,110 @@ describe("registerTooldeckIpc", () => {
     expect(electron.removeHandler).toHaveBeenCalledTimes(1);
     expect(electron.removeHandler).toHaveBeenCalledWith("tooldeck:list-commands");
   });
+
+  it("registers every request-bearing IPC channel covered by the shared fixtures", () => {
+    const handlers = new Map<string, (...args: unknown[]) => unknown>();
+
+    electron.handle.mockImplementation((channel, handler) => handlers.set(channel, handler));
+    registerTooldeckIpc(createRejectingApplication().application);
+
+    const coveredChannels = new Set(
+      internalBoundaryFailureFixtures.flatMap((fixture) =>
+        fixture.desktopChannel ? [fixture.desktopChannel] : [],
+      ),
+    );
+
+    expect(coveredChannels).toEqual(
+      new Set([
+        "tooldeck:list-commands",
+        "tooldeck:run-command",
+        "tooldeck:list-plugins",
+        "tooldeck:set-plugin-enabled",
+        "tooldeck:install-plugin-package",
+        "tooldeck:uninstall-plugin",
+        "tooldeck:purge-plugin-data",
+        "tooldeck:rescan-plugins",
+        "tooldeck:get-preference",
+        "tooldeck:set-preference",
+        "tooldeck:list-command-runs",
+      ]),
+    );
+    expect([...coveredChannels].every((channel) => handlers.has(channel))).toBe(true);
+  });
+
+  // These are executable RED contracts. Remove `.fails` as each central IPC
+  // decoder lands and invalid requests stop reaching Application handlers.
+  for (const fixture of internalBoundaryFailureFixtures.filter(
+    (candidate) => candidate.desktopChannel !== undefined,
+  )) {
+    it.fails(`decodes IPC requests before dispatch: ${fixture.id}`, async () => {
+      const handlers = new Map<string, (...args: unknown[]) => unknown>();
+      const { application, calls } = createRejectingApplication();
+
+      electron.handle.mockImplementation((channel, handler) => handlers.set(channel, handler));
+      registerTooldeckIpc(application);
+
+      const handler = handlers.get(fixture.desktopChannel!);
+      const result = await handler?.({}, fixture.request);
+
+      expect(calls.every((call) => call.mock.calls.length === 0)).toBe(true);
+      expect(result).toMatchObject({
+        ok: false,
+        error: {
+          tag: "ApplicationError",
+          source: "application",
+          code: "ERR_INVALID_ARGUMENT",
+          details: {
+            operation: fixture.operation,
+            issues: expect.arrayContaining([
+              expect.objectContaining({
+                path: fixture.expectedPath,
+              }),
+            ]),
+          },
+        },
+      });
+      expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+    });
+  }
 });
+
+function createRejectingApplication(): {
+  application: TooldeckApplication;
+  calls: ReturnType<typeof vi.fn>[];
+} {
+  const calls: ReturnType<typeof vi.fn>[] = [];
+  const reject = () => {
+    const operation = vi.fn().mockRejectedValue(new Error("Application handler must not run."));
+    calls.push(operation);
+    return operation;
+  };
+
+  return {
+    application: {
+      commands: {
+        list: reject(),
+        run: reject(),
+      },
+      plugins: {
+        list: reject(),
+        listDataResidues: reject(),
+        setEnabled: reject(),
+        installPackage: reject(),
+        uninstall: reject(),
+        purgeData: reject(),
+        rescan: reject(),
+      },
+      preferences: {
+        list: reject(),
+        get: reject(),
+        set: reject(),
+        delete: reject(),
+      },
+      history: {
+        listCommandRuns: reject(),
+      },
+    } as unknown as TooldeckApplication,
+    calls,
+  };
+}
