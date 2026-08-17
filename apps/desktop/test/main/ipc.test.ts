@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import type { TooldeckApplication } from "@tooldeck/application-node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +27,7 @@ describe("registerTooldeckIpc", () => {
 
   it("forwards domain operations and returns JSON-safe success envelopes", async () => {
     const handlers = new Map<string, (...args: unknown[]) => unknown>();
+    const packagePath = path.resolve("plugins", "plugin.tdplugin");
     const installPackage = vi.fn().mockResolvedValue({
       status: "installed-refresh-failed",
       installedPluginId: "dev.example.plugin",
@@ -44,7 +47,7 @@ describe("registerTooldeckIpc", () => {
       handlers.get("tooldeck:install-plugin-package")?.(
         {},
         {
-          packagePath: "C:\\plugins\\plugin.tdplugin",
+          packagePath,
           locale: "zh-CN",
         },
       ),
@@ -57,7 +60,7 @@ describe("registerTooldeckIpc", () => {
         refreshError: "refresh failed",
       },
     });
-    expect(installPackage).toHaveBeenCalledWith("C:\\plugins\\plugin.tdplugin", {
+    expect(installPackage).toHaveBeenCalledWith(packagePath, {
       locale: "zh-CN",
     });
   });
