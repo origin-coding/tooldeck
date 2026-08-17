@@ -107,6 +107,10 @@ Keep package dependencies layered by public contract and private implementation:
   TPP data contracts: manifest, command definitions, JSON Schema types,
   ContentBlock, CommandResult, LocalizedString, and JSON value types.
 
+@tooldeck/json-schema
+  Public Effect-neutral Draft-07 execution: scoped Ajv engines, Tooldeck profile
+  compilation, opaque validators, JSON-safe copying, and neutral validation issues.
+
 @tooldeck/sdk-node
   Public Node plugin authoring contract: definePlugin, PluginContext,
   CommandHandler, CommandRegistry, Disposable, PluginStorage, and ToolboxPlugin.
@@ -142,6 +146,7 @@ Dependency direction should stay one-way:
 ```text
 protocol <- sdk-node <- runtime-node <- application-node <- CLI/Desktop main
 state-machine <- runtime-node <- application-node
+protocol <- json-schema <- runtime-node
 protocol <- plugin-package <- plugin-tools
 plugin-package + runtime-node -> application-node
 ```
@@ -163,6 +168,9 @@ Rules for dependency changes:
 12. `@tooldeck/state-machine` owns transition state and sequencing only. Runtime/Application
     wrappers own error mapping, while resource ownership, rollback, cleanup, and single-flight
     policy remain outside the machine.
+13. `@tooldeck/json-schema` may depend only on public `@tooldeck/protocol` data and Ajv. It
+    must remain Effect-neutral, use caller-scoped engines rather than a global singleton, and
+    must not expose Ajv types through public exports or generated declarations.
 
 ## Architecture Rules
 

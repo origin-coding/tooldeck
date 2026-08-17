@@ -1,0 +1,215 @@
+import {
+  commandInputSchemaProfileV1Id,
+  commandInputV1Schema,
+  commandOutputSchemaProfileV1Id,
+  commandOutputV1Schema,
+  manifestV1Schema,
+  type CommandResult,
+  type JsonObject,
+  type PluginManifest,
+  type TooldeckInputJsonSchema,
+  type TooldeckOutputJsonSchema,
+} from "@tooldeck/protocol";
+import type { ValidateFunction } from "ajv";
+
+import type { JsonSchemaCompilationResult, JsonSchemaDocument, JsonSchemaIssue } from "./contracts";
+import type { TooldeckJsonSchemaEngine } from "./engine";
+import {
+  createInputAjv,
+  createOutputAjv,
+  createProfileAjv,
+  createStaticDraft07Ajv,
+} from "./internal/ajv";
+import { compiledValidator, compileWithAjv, validateSchemaProfile } from "./internal/compile";
+import { normalizeCommandInputSchema } from "./internal/input-schema";
+import { createCompilationIssue } from "./internal/issues";
+import { cloneJsonValue, isJsonObject } from "./internal/json";
+import {
+  collectInputSchemaSemanticIssues,
+  collectManifestSemanticIssues,
+} from "./internal/semantics";
+
+interface ProtocolValidators {
+  inputProfile: ValidateFunction;
+  outputProfile: ValidateFunction;
+  manifest: ValidateFunction<PluginManifest>;
+}
+
+type ProtocolInitialization =
+  | { initialized: true; validators: ProtocolValidators }
+  | { initialized: false; issues: JsonSchemaIssue[] };
+
+export function createTooldeckJsonSchemaEngine(): TooldeckJsonSchemaEngine {
+  const profileAjv = createProfileAjv();
+  const strictInputAjv = createInputAjv(false);
+  const cliInputAjv = createInputAjv(true);
+  const outputAjv = createOutputAjv();
+  const protocol = initializeProtocolValidators();
+  let manifestCompilation: JsonSchemaCompilationResult<PluginManifest> | undefined;
+
+  return {
+    compileManifest() {
+      manifestCompilation ??= compileManifest(protocol);
+      return manifestCompilation;
+    },
+
+    compileCommandInput(schema, mode) {
+      if (!protocol.initialized) {
+        return initializationFailure(protocol);
+      }
+
+      return compileCommandInput(
+        protocol.validators.inputProfile,
+        mode === "cli" ? cliInputAjv : strictInputAjv,
+        schema,
+      );
+    },
+
+    compileCommandOutput(schema) {
+      if (!protocol.initialized) {
+        return initializationFailure(protocol);
+      }
+
+      return compileCommandOutput(protocol.validators.outputProfile, outputAjv, schema);
+    },
+
+    compileDraft07<T>(schema: JsonSchemaDocument) {
+      const cloned = cloneSchemaDocument(schema);
+
+      if (!cloned.compiled) {
+        return cloned;
+      }
+
+      return compileWithAjv<T>(createStaticDraft07Ajv(), cloned.schema);
+    },
+  };
+
+  function initializeProtocolValidators(): ProtocolInitialization {
+    try {
+      profileAjv.addSchema(commandInputV1Schema);
+      profileAjv.addSchema(commandOutputV1Schema);
+
+      const inputProfile = profileAjv.getSchema(commandInputSchemaProfileV1Id);
+      const outputProfile = profileAjv.getSchema(commandOutputSchemaProfileV1Id);
+
+      if (!inputProfile || !outputProfile) {
+        return {
+          initialized: false,
+          issues: [createCompilationIssue(new Error("Protocol profile was not registered"))],
+        };
+      }
+
+      return {
+        initialized: true,
+        validators: {
+          inputProfile,
+          outputProfile,
+          manifest: profileAjv.compile<PluginManifest>(manifestV1Schema),
+        },
+      };
+    } catch (error) {
+      return { initialized: false, issues: [createCompilationIssue(error)] };
+    }
+  }
+}
+
+function compileManifest(
+  protocol: ProtocolInitialization,
+): JsonSchemaCompilationResult<PluginManifest> {
+  if (!protocol.initialized) {
+    return initializationFailure(protocol);
+  }
+
+  return compiledValidator(protocol.validators.manifest, collectManifestSemanticIssues);
+}
+
+function compileCommandInput(
+  profile: ValidateFunction,
+  ajv: ReturnType<typeof createInputAjv>,
+  schema: TooldeckInputJsonSchema,
+): JsonSchemaCompilationResult<JsonObject> {
+  const cloned = cloneSchemaDocument(schema as unknown as JsonSchemaDocument);
+
+  if (!cloned.compiled) {
+    return cloned;
+  }
+
+  const profileIssues = validateSchemaProfile(profile, cloned.schema);
+
+  if (profileIssues.length > 0) {
+    return { compiled: false, issues: profileIssues };
+  }
+
+  if (!isJsonObject(cloned.schema)) {
+    return invalidSchemaRoot("Command input Schema must be an object");
+  }
+
+  const semanticIssues = collectInputSchemaSemanticIssues(cloned.schema);
+
+  if (semanticIssues.length > 0) {
+    return { compiled: false, issues: semanticIssues };
+  }
+
+  const normalized = normalizeCommandInputSchema(
+    cloned.schema as unknown as TooldeckInputJsonSchema,
+  );
+
+  return compileWithAjv<JsonObject>(ajv, normalized);
+}
+
+function compileCommandOutput(
+  profile: ValidateFunction,
+  ajv: ReturnType<typeof createOutputAjv>,
+  schema: TooldeckOutputJsonSchema,
+): JsonSchemaCompilationResult<CommandResult> {
+  const cloned = cloneSchemaDocument(schema as unknown as JsonSchemaDocument);
+
+  if (!cloned.compiled) {
+    return cloned;
+  }
+
+  const profileIssues = validateSchemaProfile(profile, cloned.schema);
+
+  if (profileIssues.length > 0) {
+    return { compiled: false, issues: profileIssues };
+  }
+
+  return compileWithAjv<CommandResult>(ajv, cloned.schema);
+}
+
+function cloneSchemaDocument(
+  schema: JsonSchemaDocument,
+): { compiled: true; schema: JsonSchemaDocument } | { compiled: false; issues: JsonSchemaIssue[] } {
+  const cloned = cloneJsonValue(schema);
+
+  if (!cloned.valid) {
+    return { compiled: false, issues: cloned.issues };
+  }
+
+  if (typeof cloned.value === "boolean" || isJsonObject(cloned.value)) {
+    return { compiled: true, schema: cloned.value };
+  }
+
+  return invalidSchemaRoot("JSON Schema must be an object or boolean");
+}
+
+function invalidSchemaRoot(message: string): { compiled: false; issues: JsonSchemaIssue[] } {
+  return {
+    compiled: false,
+    issues: [
+      {
+        instancePath: "",
+        propertyPath: "",
+        keyword: "schema",
+        message,
+        expected: ["object", "boolean"],
+      },
+    ],
+  };
+}
+
+function initializationFailure<T>(
+  initialization: Extract<ProtocolInitialization, { initialized: false }>,
+): JsonSchemaCompilationResult<T> {
+  return { compiled: false, issues: initialization.issues };
+}
