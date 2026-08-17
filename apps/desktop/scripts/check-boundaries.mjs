@@ -23,9 +23,9 @@ const allowedRendererApiMethods = [
 
 const checks = [
   {
-    name: "CLI and Desktop surfaces must not import Effect",
+    name: "CLI, Desktop renderer, and Desktop preload must not import Effect",
     pattern: String.raw`(?:from\s+["']effect(?:/[^"']*)?["']|import\(["']effect(?:/[^"']*)?["']\))`,
-    paths: ["src", "../cli/src"],
+    paths: ["src/renderer", "src/preload", "../cli/src"],
     expect: "no-match",
   },
   {
@@ -67,6 +67,13 @@ const checks = [
 ];
 
 const failures = [];
+
+assertMatchesOnlyInFiles({
+  name: "Desktop main may import Effect only in its request codec boundary",
+  pattern: String.raw`(?:from\s+["']effect(?:/[^"']*)?["']|import\(["']effect(?:/[^"']*)?["']\))`,
+  paths: ["src/main"],
+  allowedFiles: ["src/main/ipc/request-codecs.ts"],
+});
 
 for (const check of checks) {
   const matches = findMatches(check.pattern, check.paths);
@@ -139,6 +146,25 @@ function assertRequiredMatch({ name, pattern, paths }) {
 
   if (matches.length === 0) {
     failures.push(`${name}\nExpected at least one match for: ${pattern}`);
+  }
+}
+
+function assertMatchesOnlyInFiles({ name, pattern, paths, allowedFiles }) {
+  const matches = findMatches(pattern, paths);
+  const allowed = new Set(allowedFiles.map((filePath) => path.normalize(filePath)));
+  const unexpected = matches.filter((match) => {
+    const relativePath = path.relative(desktopRoot, match.filePath);
+    return !allowed.has(relativePath);
+  });
+
+  if (matches.length === 0 || unexpected.length > 0) {
+    failures.push(
+      `${name}\nAllowed: ${allowedFiles.join(", ")}\n${
+        unexpected.length > 0
+          ? unexpected.map(formatMatch).join("\n")
+          : `Expected at least one match for: ${pattern}`
+      }`,
+    );
   }
 }
 

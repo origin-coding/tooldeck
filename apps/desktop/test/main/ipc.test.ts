@@ -190,12 +190,10 @@ describe("registerTooldeckIpc", () => {
     expect([...coveredChannels].every((channel) => handlers.has(channel))).toBe(true);
   });
 
-  // These are executable RED contracts. Remove `.fails` as each central IPC
-  // decoder lands and invalid requests stop reaching Application handlers.
   for (const fixture of internalBoundaryFailureFixtures.filter(
     (candidate) => candidate.desktopChannel !== undefined,
   )) {
-    it.fails(`decodes IPC requests before dispatch: ${fixture.id}`, async () => {
+    it(`decodes IPC requests before dispatch: ${fixture.id}`, async () => {
       const handlers = new Map<string, (...args: unknown[]) => unknown>();
       const { application, calls } = createRejectingApplication();
 
