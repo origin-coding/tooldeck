@@ -226,7 +226,7 @@ describe("generate command type files", () => {
             title: "Format JSON",
             inputSchema: {
               $ref: "./schemas/json-format-input.schema.json",
-            },
+            } as never,
           },
         ]),
       ),

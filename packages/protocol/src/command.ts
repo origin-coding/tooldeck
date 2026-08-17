@@ -1,6 +1,6 @@
 import type { LocalizedString } from "./i18n";
 import type { JsonObject, JsonValue } from "./json";
-import type { TooldeckInputJsonSchema, TooldeckJsonSchema } from "./schema";
+import type { TooldeckInputJsonSchema, TooldeckOutputJsonSchema } from "./schema";
 
 export type CommandUiLayoutV1 = "stacked" | "split";
 
@@ -14,7 +14,7 @@ export interface CommandDefinitionV1 {
   description?: LocalizedString;
   "x-ui"?: CommandUiV1;
   inputSchema?: TooldeckInputJsonSchema;
-  outputSchema?: TooldeckJsonSchema;
+  outputSchema?: TooldeckOutputJsonSchema;
 }
 
 export type CommandStatusV1 = "success" | "error";

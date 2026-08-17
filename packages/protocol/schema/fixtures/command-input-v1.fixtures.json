@@ -1,0 +1,173 @@
+{
+  "valid": [
+    {
+      "name": "supported keyword families and extensions",
+      "schema": {
+        "type": "object",
+        "required": ["text"],
+        "additionalProperties": false,
+        "minProperties": 1,
+        "maxProperties": 8,
+        "title": "Example input",
+        "description": "Exercises the supported command input profile.",
+        "examples": [{ "text": "hello" }],
+        "x-i18n": {
+          "title": "schema.example.title",
+          "description": "schema.example.description"
+        },
+        "x-ui": {
+          "fieldOrder": ["text", "count", "tags"]
+        },
+        "properties": {
+          "text": {
+            "type": "string",
+            "enum": ["hello", "world"],
+            "default": "hello",
+            "minLength": 1,
+            "maxLength": 20,
+            "pattern": "^[a-z]+$",
+            "readOnly": false,
+            "writeOnly": false,
+            "deprecated": false,
+            "x-i18n": {
+              "enumLabels": {
+                "hello": "schema.example.hello",
+                "world": "schema.example.world"
+              }
+            },
+            "x-enumLabels": {
+              "hello": "Hello",
+              "world": "World"
+            },
+            "x-ui": {
+              "control": "select",
+              "placeholder": {
+                "key": "schema.example.placeholder",
+                "default": "Choose a value"
+              }
+            }
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10,
+            "exclusiveMinimum": -1,
+            "exclusiveMaximum": 11,
+            "multipleOf": 1,
+            "const": 2,
+            "x-ui": {
+              "control": "number"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["alpha", "beta"]
+            },
+            "minItems": 0,
+            "maxItems": 4,
+            "uniqueItems": true,
+            "x-ui": {
+              "control": "multiSelect"
+            }
+          },
+          "options": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              }
+            }
+          },
+          "accepted": true,
+          "rejected": false
+        },
+        "allOf": [
+          {
+            "properties": {
+              "mode": {
+                "type": "null"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "root is not an object Schema",
+      "schema": {
+        "type": "array"
+      }
+    },
+    {
+      "name": "type arrays are unsupported",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    {
+      "name": "composition branches are unsupported",
+      "schema": {
+        "type": "object",
+        "oneOf": [{ "required": ["value"] }]
+      }
+    },
+    {
+      "name": "references are unsupported",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/definitions/value"
+          }
+        }
+      }
+    },
+    {
+      "name": "tuple items are unsupported",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": [{ "type": "string" }]
+          }
+        }
+      }
+    },
+    {
+      "name": "nested x-ui is unsupported",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "options": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string",
+                "x-ui": {
+                  "control": "text"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "undeclared keywords are unsupported",
+      "schema": {
+        "type": "object",
+        "format": "custom"
+      }
+    }
+  ]
+}
