@@ -47,10 +47,8 @@ describe("Application request decoding contract", () => {
     });
   }
 
-  // These are executable RED contracts. Remove `.fails` as each Schema-backed
-  // decoder lands and the corresponding contract starts passing.
   for (const fixture of internalBoundaryFailureFixtures) {
-    it.fails(`rejects invalid request data with a stable path: ${fixture.id}`, async () => {
+    it(`rejects invalid request data with a stable path: ${fixture.id}`, async () => {
       await expect(
         invokeApplicationBoundary(application, fixture.operation, fixture.request),
       ).rejects.toMatchObject({

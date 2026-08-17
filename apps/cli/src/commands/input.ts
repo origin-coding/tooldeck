@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from "@tooldeck/protocol";
+import type { JsonObject } from "@tooldeck/protocol";
 
 type RawCliScalarOptionValue = string | boolean;
 type RawCliOptionValue = RawCliScalarOptionValue | RawCliScalarOptionValue[];
@@ -59,7 +59,7 @@ export function parseRawCommandInputFromCliArgs(options: {
     }
   }
 
-  return input as Record<string, JsonValue>;
+  return input;
 }
 
 function setInputOption(

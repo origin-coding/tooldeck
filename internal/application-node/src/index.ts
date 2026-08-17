@@ -54,3 +54,7 @@ export type {
   SetApplicationPreferenceRequest,
 } from "@/preferences/types";
 export type { PreferenceScope } from "@/preferences/definitions";
+export type {
+  ApplicationValidationIssue,
+  ApplicationValidationIssueCode,
+} from "@/validation/types";

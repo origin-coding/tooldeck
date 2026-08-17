@@ -9,6 +9,7 @@ import type {
   ApplicationCleanupFailureDiagnostic,
   ApplicationCleanupFailureErrorDiagnostic,
 } from "@/errors/cleanup";
+import type { ApplicationValidationIssue } from "@/validation/types";
 
 export type ApplicationErrorSource = "application" | "runtime";
 
@@ -36,6 +37,8 @@ export interface ApplicationErrorOptions {
 
 export type ApplicationErrorDetails = JsonObject & {
   cleanupFailures?: ApplicationCleanupFailureDiagnostic[];
+  operation?: string;
+  issues?: ApplicationValidationIssue[];
 };
 
 const applicationErrorCodes = new Set<ApplicationErrorCode>([

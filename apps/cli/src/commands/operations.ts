@@ -67,13 +67,24 @@ export function runCliCommandWithStorage(options: RunCliCommandOptions): Promise
         commandId: options.commandId,
         input,
         source: "cli",
-        recordHistory: historyPreference.value as boolean,
+        recordHistory: requireBooleanPreferenceValue(
+          historyPreference.value,
+          "command.history.enabled",
+        ),
       });
     },
     {
       commandInputCoercion: "cli",
     },
   );
+}
+
+function requireBooleanPreferenceValue(value: unknown, key: string): boolean {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  throw new Error(`CLI preference ${key} must be a boolean.`);
 }
 
 function formatListedCommand(command: ApplicationCommand): ListedCliCommand {

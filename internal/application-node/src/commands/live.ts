@@ -5,12 +5,14 @@ import type { ApplicationEffect } from "@/application/effect";
 import { localizeApplicationCommand } from "@/application/localization";
 import { Commands, type CommandsService } from "@/commands/context";
 import { type ApplicationCommandDependencies, runApplicationCommand } from "@/commands/run-command";
+import { ListApplicationCommandsRequestSchema } from "@/commands/schema";
 import type {
   ListApplicationCommandsRequest,
   RunApplicationCommandRequest,
 } from "@/commands/types";
 import { Runtime, type RuntimeService } from "@/runtime/context";
 import { ApplicationStorage, type ApplicationStorageService } from "@/storage/context";
+import { decodeApplicationRequest } from "@/validation/effect-schema";
 
 export interface CommandsLiveOptions {
   readonly preprocessInput: CommandInputPreprocessor;
@@ -53,6 +55,11 @@ export function makeCommandsService(dependencies: CommandsServiceDependencies): 
   return Object.freeze({
     list: (request: ListApplicationCommandsRequest = {}) =>
       Effect.gen(function* () {
+        const decoded = yield* decodeApplicationRequest(
+          ListApplicationCommandsRequestSchema,
+          request,
+          "commands.list",
+        );
         const runtime = yield* dependencies.runtime.current();
         const storage = yield* dependencies.getStorage();
 
@@ -67,7 +74,7 @@ export function makeCommandsService(dependencies: CommandsServiceDependencies): 
               definition: command.definition,
             },
             runtime.manifestIndex.getPlugin(command.pluginId),
-            request.locale,
+            decoded.locale,
           ),
         );
       }),
