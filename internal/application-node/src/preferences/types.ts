@@ -19,7 +19,7 @@ export interface GetApplicationPreferenceRequest {
 }
 
 export interface SetApplicationPreferenceRequest extends GetApplicationPreferenceRequest {
-  value: JsonValue;
+  value: unknown;
 }
 
 export interface ListApplicationPreferencesRequest {

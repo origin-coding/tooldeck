@@ -1,9 +1,9 @@
 import type { TooldeckApplication } from "@tooldeck/application-node";
 
-import type { ListCommandsRequest, RunCommandRequest } from "@/shared/api";
 import { desktopIpcChannels } from "@/shared/ipc";
 
 import { toDesktopCommand } from "../desktop-contract/catalog";
+import { decodeListCommandsRequest, decodeRunCommandRequest } from "./codecs/requests";
 import type { DesktopIpcRegistrar } from "./register";
 
 export function registerCommandsIpc(
@@ -11,7 +11,7 @@ export function registerCommandsIpc(
   application: TooldeckApplication,
 ): void {
   registrar.register(desktopIpcChannels.commands.list, async (value) => {
-    const request = value as ListCommandsRequest | undefined;
+    const request = decodeListCommandsRequest(value);
     const [commands, plugins] = await Promise.all([
       application.commands.list(request),
       application.plugins.list(request),
@@ -21,7 +21,7 @@ export function registerCommandsIpc(
     return commands.map((command) => toDesktopCommand(command, pluginsById.get(command.pluginId)));
   });
   registrar.register(desktopIpcChannels.commands.run, (value) => {
-    const request = value as RunCommandRequest;
+    const request = decodeRunCommandRequest(value);
 
     return application.commands.run({
       ...request,

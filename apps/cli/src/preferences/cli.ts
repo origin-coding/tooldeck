@@ -12,8 +12,8 @@ import {
   getCliPreference,
   listCliPreferences,
   parsePreferenceJson,
+  requireCliOutputFormat,
   setCliPreference,
-  type CliOutputFormat,
 } from "./operations";
 import { printPreferenceList, printPreferenceValue } from "./output";
 
@@ -103,7 +103,7 @@ export function definePreferenceCommand(options: CreateCliCommandOptions) {
           });
           const outputFormat =
             preference.key === "output.format"
-              ? (preference.value as CliOutputFormat)
+              ? requireCliOutputFormat(preference.value)
               : await getCliOutputFormat({ storagePath });
 
           printPreferenceList([preference], outputFormat);

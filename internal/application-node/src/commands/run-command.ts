@@ -13,11 +13,13 @@ import {
   tryApplicationSync,
 } from "@/application/effect";
 import { localizeApplicationCommandResult } from "@/application/localization";
+import { RunApplicationCommandRequestSchema } from "@/commands/schema";
 import type { RunApplicationCommandRequest } from "@/commands/types";
 import { ApplicationError } from "@/errors/error";
 import { toApplicationErrorTransport } from "@/errors/transport";
 import type { ApplicationRuntime } from "@/runtime/context";
 import type { CommandRunRepository, PluginRepository } from "@/storage";
+import { decodeApplicationRequest } from "@/validation/effect-schema";
 
 export interface ApplicationCommandDependencies {
   readonly getRuntime: () => ApplicationEffect<ApplicationRuntime>;
@@ -48,15 +50,20 @@ export function runApplicationCommand(
   dependencies: ApplicationCommandDependencies,
   request: RunApplicationCommandRequest,
 ): ApplicationEffect<CommandResult> {
-  return Effect.suspend(() => {
+  return Effect.gen(function* () {
+    const decoded = yield* decodeApplicationRequest(
+      RunApplicationCommandRequestSchema,
+      request,
+      "commands.run",
+    );
     const state: RunCommandState = {
       startedAt: performance.now(),
-      source: request?.source ?? "application",
-      recordHistory: request?.recordHistory ?? true,
-      historyInput: request?.input ?? {},
+      source: decoded.source ?? "application",
+      recordHistory: decoded.recordHistory ?? true,
+      historyInput: decoded.input ?? {},
     };
 
-    return runCommandWorkflow(dependencies, request, state);
+    return yield* runCommandWorkflow(dependencies, decoded, state);
   });
 }
 
@@ -80,7 +87,6 @@ function resolveRunCommandResources(
   request: RunApplicationCommandRequest,
 ): ApplicationEffect<RunCommandResources> {
   return Effect.gen(function* () {
-    yield* tryApplicationSync(() => assertRunCommandRequest(request));
     const runtime = yield* dependencies.getRuntime();
     const commandRuns = yield* dependencies.getCommandRuns();
 
@@ -217,18 +223,6 @@ function completeFailedCommand(
 
     return yield* Effect.fail(primaryError);
   });
-}
-
-function assertRunCommandRequest(
-  request: RunApplicationCommandRequest,
-): asserts request is RunApplicationCommandRequest {
-  if (!request || typeof request.commandId !== "string" || request.commandId.length === 0) {
-    throw new ApplicationError({
-      source: "application",
-      code: "ERR_INVALID_ARGUMENT",
-      message: "Running a command requires a command id.",
-    });
-  }
 }
 
 function assertPluginEnabled(options: {

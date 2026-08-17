@@ -1,5 +1,4 @@
 import type { ApplicationPreference, PreferenceScope } from "@tooldeck/application-node";
-import type { JsonValue } from "@tooldeck/protocol";
 
 import { withCliApplication } from "../application";
 import { serializeError } from "../serialize-error";
@@ -59,10 +58,12 @@ export function getCliPreference(options: GetCliPreferenceOptions): Promise<unkn
 export async function getCliOutputFormat(options: {
   storagePath: string;
 }): Promise<CliOutputFormat> {
-  return (await getCliPreference({
-    key: "output.format",
-    storagePath: options.storagePath,
-  })) as CliOutputFormat;
+  return requireCliOutputFormat(
+    await getCliPreference({
+      key: "output.format",
+      storagePath: options.storagePath,
+    }),
+  );
 }
 
 export function setCliPreference(options: SetCliPreferenceOptions): Promise<ListedCliPreference> {
@@ -71,11 +72,19 @@ export function setCliPreference(options: SetCliPreferenceOptions): Promise<List
     const updated = await application.preferences.set({
       scope: preference.scope,
       key: preference.key,
-      value: options.value as JsonValue,
+      value: options.value,
     });
 
     return formatListedPreference(updated);
   });
+}
+
+export function requireCliOutputFormat(value: unknown): CliOutputFormat {
+  if (value === "text" || value === "json") {
+    return value;
+  }
+
+  throw new Error("CLI output format preference must be text or json.");
 }
 
 export function deleteCliPreference(options: DeleteCliPreferenceOptions): Promise<void> {

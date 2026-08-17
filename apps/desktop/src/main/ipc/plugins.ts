@@ -1,18 +1,17 @@
 import type { ApplicationPluginCatalog, TooldeckApplication } from "@tooldeck/application-node";
 
-import type {
-  DesktopPluginInstallResult,
-  DesktopPluginUninstallResult,
-  InstallPluginPackageIpcRequest,
-  ListPluginsRequest,
-  PurgePluginDataRequest,
-  RescanPluginsRequest,
-  SetPluginEnabledRequest,
-  UninstallPluginRequest,
-} from "@/shared/api";
+import type { DesktopPluginInstallResult, DesktopPluginUninstallResult } from "@/shared/api";
 import { desktopIpcChannels } from "@/shared/ipc";
 
 import { toDesktopCommand, toDesktopPlugin } from "../desktop-contract/catalog";
+import {
+  decodeInstallPluginPackageRequest,
+  decodeListPluginsRequest,
+  decodePurgePluginDataRequest,
+  decodeRescanPluginsRequest,
+  decodeSetPluginEnabledRequest,
+  decodeUninstallPluginRequest,
+} from "./codecs/requests";
 import type { DesktopIpcRegistrar } from "./register";
 
 export function registerPluginsIpc(
@@ -20,13 +19,13 @@ export function registerPluginsIpc(
   application: TooldeckApplication,
 ): void {
   registrar.register(desktopIpcChannels.plugins.list, async (value) =>
-    (await application.plugins.list(value as ListPluginsRequest | undefined)).map(toDesktopPlugin),
+    (await application.plugins.list(decodeListPluginsRequest(value))).map(toDesktopPlugin),
   );
   registrar.register(desktopIpcChannels.plugins.listDataResidues, () =>
     application.plugins.listDataResidues(),
   );
   registrar.register(desktopIpcChannels.plugins.setEnabled, async (value) => {
-    const request = value as SetPluginEnabledRequest;
+    const request = decodeSetPluginEnabledRequest(value);
 
     return toDesktopPlugin(
       await application.plugins.setEnabled(request.pluginId, request.enabled, {
@@ -35,7 +34,7 @@ export function registerPluginsIpc(
     );
   });
   registrar.register(desktopIpcChannels.plugins.installPackage, async (value) => {
-    const request = value as InstallPluginPackageIpcRequest;
+    const request = decodeInstallPluginPackageRequest(value);
     const installed = await application.plugins.installPackage(request.packagePath, {
       locale: request.locale,
     });
@@ -57,7 +56,7 @@ export function registerPluginsIpc(
     } satisfies DesktopPluginInstallResult;
   });
   registrar.register(desktopIpcChannels.plugins.uninstall, async (value) => {
-    const request = value as UninstallPluginRequest;
+    const request = decodeUninstallPluginRequest(value);
     const uninstalled = await application.plugins.uninstall(request.pluginId, {
       locale: request.locale,
     });
@@ -72,7 +71,7 @@ export function registerPluginsIpc(
     } satisfies DesktopPluginUninstallResult;
   });
   registrar.register(desktopIpcChannels.plugins.purgeData, async (value) => {
-    const request = value as PurgePluginDataRequest;
+    const request = decodePurgePluginDataRequest(value);
     const purged = await application.plugins.purgeData(request.pluginId);
 
     return {
@@ -83,7 +82,7 @@ export function registerPluginsIpc(
     };
   });
   registrar.register(desktopIpcChannels.plugins.rescan, async (value) =>
-    toDesktopCatalog(await application.plugins.rescan(value as RescanPluginsRequest | undefined)),
+    toDesktopCatalog(await application.plugins.rescan(decodeRescanPluginsRequest(value))),
   );
 }
 

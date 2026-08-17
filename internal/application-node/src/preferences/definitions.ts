@@ -1,6 +1,3 @@
-export type JsonPrimitive = string | number | boolean | null;
-export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
-
 export type PreferenceScope = "cli" | "desktop" | "shared";
 
 export type SharedPreferenceKey = "locale";
@@ -74,47 +71,4 @@ export function getPreferenceDefinition(
   return preferenceDefinitions.find(
     (definition) => definition.scope === scope && definition.key === key,
   );
-}
-
-export function requirePreferenceDefinition(
-  scope: PreferenceScope,
-  key: string,
-): PreferenceDefinition {
-  const definition = getPreferenceDefinition(scope, key);
-
-  if (!definition) {
-    throw new Error(
-      `Unsupported preference key: ${scope}.${key}\nSupported preference keys: ${preferenceDefinitions
-        .map((known) => `${known.scope}.${known.key}`)
-        .join(", ")}`,
-    );
-  }
-
-  return definition;
-}
-
-export function validatePreferenceValue(
-  scope: PreferenceScope,
-  key: string,
-  value: unknown,
-): JsonValue {
-  const definition = requirePreferenceDefinition(scope, key);
-
-  if (definition.valueType === "boolean") {
-    if (typeof value !== "boolean") {
-      throw new TypeError(`Preference ${key} must be a boolean value`);
-    }
-
-    return value;
-  }
-
-  if (typeof value !== "string") {
-    throw new TypeError(`Preference ${key} must be a string value`);
-  }
-
-  if (!definition.values?.includes(value)) {
-    throw new TypeError(`Preference ${key} must be one of: ${definition.values?.join(", ") ?? ""}`);
-  }
-
-  return value;
 }

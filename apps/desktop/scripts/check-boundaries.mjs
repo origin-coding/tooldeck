@@ -23,9 +23,9 @@ const allowedRendererApiMethods = [
 
 const checks = [
   {
-    name: "CLI and Desktop surfaces must not import Effect",
+    name: "CLI, Desktop renderer, and Desktop preload must not import Effect",
     pattern: String.raw`(?:from\s+["']effect(?:/[^"']*)?["']|import\(["']effect(?:/[^"']*)?["']\))`,
-    paths: ["src", "../cli/src"],
+    paths: ["src/renderer", "src/preload", "../cli/src"],
     expect: "no-match",
   },
   {
@@ -67,6 +67,19 @@ const checks = [
 ];
 
 const failures = [];
+
+assertMatchesOnlyInFiles({
+  name: "Desktop main may import Effect only in its request codec boundary",
+  pattern: String.raw`(?:from\s+["']effect(?:/[^"']*)?["']|import\(["']effect(?:/[^"']*)?["']\))`,
+  paths: ["src/main"],
+  allowedFiles: ["src/main/ipc/codecs/requests.ts"],
+});
+assertOnlyAllowedNamedImports({
+  name: "Desktop request codecs may use only the approved synchronous Effect symbols",
+  filePath: "src/main/ipc/codecs/requests.ts",
+  moduleName: "effect",
+  allowedSymbols: ["Either", "ParseResult", "Schema"],
+});
 
 for (const check of checks) {
   const matches = findMatches(check.pattern, check.paths);
@@ -139,6 +152,59 @@ function assertRequiredMatch({ name, pattern, paths }) {
 
   if (matches.length === 0) {
     failures.push(`${name}\nExpected at least one match for: ${pattern}`);
+  }
+}
+
+function assertMatchesOnlyInFiles({ name, pattern, paths, allowedFiles }) {
+  const matches = findMatches(pattern, paths);
+  const allowed = new Set(allowedFiles.map((filePath) => path.normalize(filePath)));
+  const unexpected = matches.filter((match) => {
+    const relativePath = path.relative(desktopRoot, match.filePath);
+    return !allowed.has(relativePath);
+  });
+
+  if (matches.length === 0 || unexpected.length > 0) {
+    failures.push(
+      `${name}\nAllowed: ${allowedFiles.join(", ")}\n${
+        unexpected.length > 0
+          ? unexpected.map(formatMatch).join("\n")
+          : `Expected at least one match for: ${pattern}`
+      }`,
+    );
+  }
+}
+
+function assertOnlyAllowedNamedImports({ name, filePath, moduleName, allowedSymbols }) {
+  const absolutePath = path.resolve(desktopRoot, filePath);
+  const lines = readFileSync(absolutePath, "utf8").split(/\r?\n/);
+  const escapedModuleName = escapeRegExp(moduleName);
+  const moduleReference = new RegExp(
+    String.raw`(?:from\s+["']${escapedModuleName}(?:/[^"']*)?["']|import\(["']${escapedModuleName}(?:/[^"']*)?["']\))`,
+  );
+  const namedImport = new RegExp(
+    String.raw`^\s*import\s+\{\s*([^}]+?)\s*\}\s+from\s+["']${escapedModuleName}["'];?\s*$`,
+  );
+  const references = lines.filter((line) => moduleReference.test(line));
+  const match = references.length === 1 ? references[0].match(namedImport) : undefined;
+  const importedSymbols = match
+    ? match[1]
+        .split(",")
+        .map((symbol) => symbol.trim())
+        .filter(Boolean)
+    : [];
+  const allowed = new Set(allowedSymbols);
+  const imported = new Set(importedSymbols);
+  const extra = importedSymbols.filter(
+    (symbol) => symbol.includes(" as ") || symbol.startsWith("type ") || !allowed.has(symbol),
+  );
+  const missing = allowedSymbols.filter((symbol) => !imported.has(symbol));
+
+  if (!match || extra.length > 0 || missing.length > 0) {
+    failures.push(
+      `${name}\nFile: ${filePath}\nAllowed: ${allowedSymbols.join(", ")}\nFound: ${
+        importedSymbols.join(", ") || "(no single-line named import)"
+      }`,
+    );
   }
 }
 
@@ -242,4 +308,8 @@ function collectFiles(targetPath) {
 function formatMatch(match) {
   const relativePath = path.relative(desktopRoot, match.filePath).replaceAll(path.sep, "/");
   return `${relativePath}:${match.lineNumber}:${match.text}`;
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

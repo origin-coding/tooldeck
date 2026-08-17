@@ -1,5 +1,3 @@
-import path from "node:path";
-
 import type { LocalizedString } from "@tooldeck/protocol";
 import type { PluginScanSource } from "@tooldeck/runtime-node";
 import { Effect, Exit, Layer } from "effect";
@@ -23,6 +21,13 @@ import {
   uninstallPlugin,
   type PluginManagementContext,
 } from "@/plugins/management";
+import {
+  ApplicationPluginLocaleRequestSchema,
+  InstallApplicationPluginPackageRequestSchema,
+  PurgeApplicationPluginDataRequestSchema,
+  SetApplicationPluginEnabledRequestSchema,
+  UninstallApplicationPluginRequestSchema,
+} from "@/plugins/schema";
 import type {
   ApplicationInstalledPlugin,
   ApplicationPlugin,
@@ -34,6 +39,7 @@ import type {
 } from "@/plugins/types";
 import { Runtime, type RuntimeService } from "@/runtime/context";
 import { ApplicationStorage, type ApplicationStorageService } from "@/storage/context";
+import { decodeApplicationRequest } from "@/validation/effect-schema";
 
 export interface PluginsLiveOptions {
   readonly installedPluginsDir: string;
@@ -77,7 +83,14 @@ export function makePluginsLive(
 
 function makePluginsService(dependencies: PluginsServiceDependencies): PluginsService {
   const list = (request: ApplicationPluginLocaleRequest = {}) =>
-    listPlugins(dependencies, request.locale);
+    Effect.gen(function* () {
+      const decoded = yield* decodeApplicationRequest(
+        ApplicationPluginLocaleRequestSchema,
+        request,
+        "plugins.list",
+      );
+      return yield* listPlugins(dependencies, decoded.locale);
+    });
 
   const listDataResidues = (): ApplicationEffect<ApplicationPluginDataResidue[]> =>
     listPurgeablePluginData(dependencies.management);
@@ -92,26 +105,38 @@ function makePluginsService(dependencies: PluginsServiceDependencies): PluginsSe
   return Object.freeze({
     list,
     rescan: (request: ApplicationPluginLocaleRequest = {}) =>
-      dependencies.runtime.rebuild().pipe(Effect.zipRight(createCatalog(request.locale))),
+      Effect.gen(function* () {
+        const decoded = yield* decodeApplicationRequest(
+          ApplicationPluginLocaleRequestSchema,
+          request,
+          "plugins.rescan",
+        );
+        yield* dependencies.runtime.rebuild();
+        return yield* createCatalog(decoded.locale);
+      }),
     setEnabled: (
       pluginId: string,
       enabled: boolean,
       request: ApplicationPluginLocaleRequest = {},
     ) =>
       Effect.gen(function* () {
-        yield* tryApplicationSync(() => assertPluginId(pluginId, "enable or disable"));
-        yield* setManagedPluginEnabled(dependencies.management, pluginId, enabled);
+        const decoded = yield* decodeApplicationRequest(
+          SetApplicationPluginEnabledRequestSchema,
+          { ...request, pluginId, enabled },
+          "plugins.setEnabled",
+        );
+        yield* setManagedPluginEnabled(dependencies.management, decoded.pluginId, decoded.enabled);
         yield* dependencies.runtime.rebuild();
-        const plugins = yield* list(request);
-        const plugin = plugins.find((candidate) => candidate.id === pluginId);
+        const plugins = yield* list({ locale: decoded.locale });
+        const plugin = plugins.find((candidate) => candidate.id === decoded.pluginId);
 
         if (!plugin) {
           return yield* Effect.fail(
             new ApplicationError({
               source: "application",
               code: "ERR_NOT_FOUND",
-              message: `Plugin is not registered: ${pluginId}`,
-              details: { pluginId },
+              message: `Plugin is not registered: ${decoded.pluginId}`,
+              details: { pluginId: decoded.pluginId },
             }),
           );
         }
@@ -120,8 +145,12 @@ function makePluginsService(dependencies: PluginsServiceDependencies): PluginsSe
       }),
     installPackage: (packagePath: string, request: ApplicationPluginLocaleRequest = {}) =>
       Effect.gen(function* () {
-        yield* tryApplicationSync(() => assertPackagePath(packagePath));
-        const installed = yield* installPluginPackage(dependencies.management, packagePath);
+        const decoded = yield* decodeApplicationRequest(
+          InstallApplicationPluginPackageRequestSchema,
+          { ...request, packagePath },
+          "plugins.installPackage",
+        );
+        const installed = yield* installPluginPackage(dependencies.management, decoded.packagePath);
         const refreshExit = yield* Effect.exit(dependencies.runtime.rebuild());
 
         if (Exit.isFailure(refreshExit)) {
@@ -141,15 +170,19 @@ function makePluginsService(dependencies: PluginsServiceDependencies): PluginsSe
           packageName: installed.install.packageName,
           install: formatPluginInstall(installed.install),
           plugin: formatInstalledPlugin(installed.plugin),
-          catalog: yield* createCatalog(request.locale),
+          catalog: yield* createCatalog(decoded.locale),
         };
       }),
     uninstall: (pluginId: string, request: ApplicationPluginLocaleRequest = {}) =>
       Effect.gen(function* () {
-        yield* tryApplicationSync(() => assertPluginId(pluginId, "uninstall"));
+        const decoded = yield* decodeApplicationRequest(
+          UninstallApplicationPluginRequestSchema,
+          { ...request, pluginId },
+          "plugins.uninstall",
+        );
         yield* dependencies.runtime.dispose();
         const uninstallExit = yield* Effect.exit(
-          uninstallPlugin(dependencies.management, pluginId),
+          uninstallPlugin(dependencies.management, decoded.pluginId),
         );
 
         if (Exit.isFailure(uninstallExit)) {
@@ -179,15 +212,19 @@ function makePluginsService(dependencies: PluginsServiceDependencies): PluginsSe
           filesMissing: uninstallExit.value.filesMissing,
           pluginId: uninstallExit.value.pluginId,
           install: formatPluginInstall(uninstallExit.value.install),
-          catalog: yield* createCatalog(request.locale),
+          catalog: yield* createCatalog(decoded.locale),
           residues: yield* listDataResidues(),
         };
       }),
     listDataResidues,
     purgeData: (pluginId: string): ApplicationEffect<ApplicationPluginPurgeResult> =>
       Effect.gen(function* () {
-        yield* tryApplicationSync(() => assertPluginId(pluginId, "purge data for"));
-        const purged = yield* purgePluginData(dependencies.management, pluginId);
+        const decoded = yield* decodeApplicationRequest(
+          PurgeApplicationPluginDataRequestSchema,
+          { pluginId },
+          "plugins.purgeData",
+        );
+        const purged = yield* purgePluginData(dependencies.management, decoded.pluginId);
         return { ...purged, residues: yield* listDataResidues() };
       }),
   });
@@ -236,16 +273,6 @@ function listPlugins(
         });
     });
   });
-}
-
-function assertPackagePath(packagePath: string): void {
-  if (typeof packagePath !== "string" || !path.isAbsolute(packagePath)) {
-    throw new ApplicationError({
-      source: "application",
-      code: "ERR_INVALID_ARGUMENT",
-      message: "Plugin installation requires an absolute package path.",
-    });
-  }
 }
 
 function formatPluginInstall(install: ApplicationPluginInstall): ApplicationPluginInstall {
@@ -300,14 +327,4 @@ function assertPluginSourceKind(value: string): ApplicationPlugin["sourceKind"] 
     code: "ERR_INVALID_ARGUMENT",
     message: `Unsupported plugin source kind: ${value}`,
   });
-}
-
-function assertPluginId(pluginId: string, operation: string): void {
-  if (typeof pluginId !== "string" || pluginId.length === 0) {
-    throw new ApplicationError({
-      source: "application",
-      code: "ERR_INVALID_ARGUMENT",
-      message: `Plugin ${operation} operation requires a plugin id.`,
-    });
-  }
 }
