@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft-07/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://tooldeck.dev/schemas/manifest-v1.schema.json",
   "title": "Tooldeck Plugin Manifest v1",
   "description": "Manifest schema for Tooldeck Plugin Protocol v1.",
@@ -123,7 +123,7 @@
           "$ref": "#/definitions/tooldeckInputJsonSchema"
         },
         "outputSchema": {
-          "$ref": "#/definitions/tooldeckJsonSchema"
+          "$ref": "#/definitions/tooldeckOutputJsonSchema"
         }
       }
     },
@@ -138,199 +138,10 @@
       }
     },
     "tooldeckInputJsonSchema": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/tooldeckJsonSchema"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "x-ui": {
-              "$ref": "#/definitions/jsonSchemaUi"
-            },
-            "properties": {
-              "type": "object",
-              "additionalProperties": {
-                "$ref": "#/definitions/tooldeckInputFieldJsonSchemaDefinition"
-              }
-            }
-          }
-        }
-      ]
+      "$ref": "https://tooldeck.dev/schemas/command-input-v1.schema.json"
     },
-    "tooldeckInputFieldJsonSchemaDefinition": {
-      "oneOf": [
-        {
-          "type": "boolean"
-        },
-        {
-          "$ref": "#/definitions/tooldeckInputFieldJsonSchema"
-        }
-      ]
-    },
-    "tooldeckInputFieldJsonSchema": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/tooldeckJsonSchema"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "x-ui": {
-              "$ref": "#/definitions/jsonSchemaFieldUi"
-            }
-          }
-        }
-      ]
-    },
-    "tooldeckJsonSchema": {
-      "allOf": [
-        {
-          "$ref": "https://json-schema.org/draft-07/schema"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "x-i18n": {
-              "$ref": "#/definitions/jsonSchemaI18n"
-            }
-          }
-        }
-      ]
-    },
-    "jsonSchemaI18n": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "title": {
-          "type": "string"
-        },
-        "description": {
-          "type": "string"
-        },
-        "enumLabels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "jsonSchemaUi": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "fieldOrder": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "uniqueItems": true
-        }
-      }
-    },
-    "jsonSchemaFieldUi": {
-      "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["control"],
-          "properties": {
-            "control": {
-              "const": "text"
-            },
-            "placeholder": {
-              "$ref": "#/definitions/localizedString"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["control"],
-          "properties": {
-            "control": {
-              "const": "textarea"
-            },
-            "rows": {
-              "type": "number"
-            },
-            "placeholder": {
-              "$ref": "#/definitions/localizedString"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["control"],
-          "properties": {
-            "control": {
-              "const": "number"
-            },
-            "placeholder": {
-              "$ref": "#/definitions/localizedString"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["control"],
-          "properties": {
-            "control": {
-              "const": "checkbox"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["control"],
-          "properties": {
-            "control": {
-              "const": "radio"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["control"],
-          "properties": {
-            "control": {
-              "const": "select"
-            },
-            "placeholder": {
-              "$ref": "#/definitions/localizedString"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["control"],
-          "properties": {
-            "control": {
-              "const": "checkboxGroup"
-            }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["control"],
-          "properties": {
-            "control": {
-              "const": "multiSelect"
-            },
-            "placeholder": {
-              "$ref": "#/definitions/localizedString"
-            }
-          }
-        }
-      ]
+    "tooldeckOutputJsonSchema": {
+      "$ref": "https://tooldeck.dev/schemas/command-output-v1.schema.json"
     }
   }
 }

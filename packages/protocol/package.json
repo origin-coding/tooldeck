@@ -19,7 +19,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./schema/manifest-v1.schema.json": "./schema/manifest-v1.schema.json"
+    "./schema/manifest-v1.schema.json": "./schema/manifest-v1.schema.json",
+    "./schema/command-input-v1.schema.json": "./schema/command-input-v1.schema.json",
+    "./schema/command-output-v1.schema.json": "./schema/command-output-v1.schema.json",
+    "./schema/fixtures/command-input-v1.fixtures.json": "./schema/fixtures/command-input-v1.fixtures.json",
+    "./schema/fixtures/command-output-v1.fixtures.json": "./schema/fixtures/command-output-v1.fixtures.json"
   },
   "publishConfig": {
     "access": "public"
@@ -27,8 +31,5 @@
   "scripts": {
     "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@types/json-schema": "^7.0.15"
   }
 }

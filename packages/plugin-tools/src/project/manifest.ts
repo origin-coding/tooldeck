@@ -157,7 +157,7 @@ function createRuntimeManifestSchema(): object {
   const schema = structuredClone(manifestV1Schema) as {
     definitions?: {
       tooldeckInputJsonSchema?: unknown;
-      tooldeckJsonSchema?: unknown;
+      tooldeckOutputJsonSchema?: unknown;
     };
   };
 
@@ -167,10 +167,10 @@ function createRuntimeManifestSchema(): object {
       description:
         "A command input JSON Schema object. Full JSON Schema validation is deferred to command input handling.",
     };
-    schema.definitions.tooldeckJsonSchema = {
+    schema.definitions.tooldeckOutputJsonSchema = {
       type: "object",
       description:
-        "A JSON Schema object. Full JSON Schema validation is deferred to command input handling.",
+        "A command output JSON Schema object. Full validation is deferred to command schema compilation.",
     };
   }
 

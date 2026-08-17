@@ -21,10 +21,12 @@ type generation.
 import type { CommandResult, ContentBlock, TooldeckPluginManifest } from "@tooldeck/protocol";
 ```
 
-The manifest JSON Schema is also exported:
+The three public JSON Schema artifacts are also exported:
 
 ```text
 @tooldeck/protocol/schema/manifest-v1.schema.json
+@tooldeck/protocol/schema/command-input-v1.schema.json
+@tooldeck/protocol/schema/command-output-v1.schema.json
 ```
 
 Plugin projects can reference it from `manifest.json`:
@@ -34,6 +36,12 @@ Plugin projects can reference it from `manifest.json`:
   "$schema": "./node_modules/@tooldeck/protocol/schema/manifest-v1.schema.json"
 }
 ```
+
+`manifest-v1` references the input and output profiles from each command definition.
+Command input uses Tooldeck's object-input profile, including defaults, localization,
+and supported form hints. The optional command output profile validates the complete
+normalized `CommandResult` as an additional, non-mutating contract; Tooldeck always
+validates the built-in `CommandResult` / `ContentBlock` structure first.
 
 ## Protocol Boundaries
 

@@ -1,0 +1,151 @@
+{
+  "valid": [
+    {
+      "name": "complete CommandResult assertions",
+      "schema": {
+        "type": "object",
+        "required": ["status", "blocks"],
+        "additionalProperties": false,
+        "minProperties": 2,
+        "maxProperties": 3,
+        "title": "Successful text result",
+        "description": "Adds command-specific constraints to CommandResult.",
+        "examples": [{ "status": "success", "blocks": [] }],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["success"],
+            "const": "success",
+            "minLength": 1,
+            "maxLength": 20,
+            "pattern": "^success$"
+          },
+          "blocks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type"],
+              "properties": {
+                "type": {
+                  "const": "text"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "internal": false
+              }
+            },
+            "minItems": 0,
+            "maxItems": 4,
+            "uniqueItems": true
+          },
+          "error": true
+        },
+        "allOf": [
+          {
+            "properties": {
+              "status": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "properties": {
+              "blocks": {
+                "type": "array"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "numeric assertion family",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "exclusiveMinimum": -1,
+            "exclusiveMaximum": 11,
+            "multipleOf": 0.5
+          }
+        }
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "root type is required",
+      "schema": {
+        "properties": {}
+      }
+    },
+    {
+      "name": "root must validate an object",
+      "schema": {
+        "type": "array"
+      }
+    },
+    {
+      "name": "default is unsupported",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "default": "success"
+          }
+        }
+      }
+    },
+    {
+      "name": "Tooldeck extensions are unsupported",
+      "schema": {
+        "type": "object",
+        "x-i18n": {
+          "title": "schema.output.title"
+        }
+      }
+    },
+    {
+      "name": "composition branches are unsupported",
+      "schema": {
+        "type": "object",
+        "oneOf": [{ "required": ["status"] }]
+      }
+    },
+    {
+      "name": "references are unsupported",
+      "schema": {
+        "type": "object",
+        "$ref": "#/definitions/result"
+      }
+    },
+    {
+      "name": "formats are unsupported",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    {
+      "name": "type arrays are unsupported",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  ]
+}

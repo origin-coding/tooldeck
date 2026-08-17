@@ -319,11 +319,7 @@ importers:
         specifier: 'catalog:'
         version: 25.9.1
 
-  packages/protocol:
-    dependencies:
-      '@types/json-schema':
-        specifier: ^7.0.15
-        version: 7.0.15
+  packages/protocol: {}
 
   packages/sdk-node:
     dependencies:
