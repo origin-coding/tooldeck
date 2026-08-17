@@ -4,7 +4,6 @@ import type { DesktopPluginInstallResult, DesktopPluginUninstallResult } from "@
 import { desktopIpcChannels } from "@/shared/ipc";
 
 import { toDesktopCommand, toDesktopPlugin } from "../desktop-contract/catalog";
-import type { DesktopIpcRegistrar } from "./register";
 import {
   decodeInstallPluginPackageRequest,
   decodeListPluginsRequest,
@@ -12,7 +11,8 @@ import {
   decodeRescanPluginsRequest,
   decodeSetPluginEnabledRequest,
   decodeUninstallPluginRequest,
-} from "./request-codecs";
+} from "./codecs/requests";
+import type { DesktopIpcRegistrar } from "./register";
 
 export function registerPluginsIpc(
   registrar: DesktopIpcRegistrar,

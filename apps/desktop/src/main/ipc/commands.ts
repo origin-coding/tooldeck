@@ -3,8 +3,8 @@ import type { TooldeckApplication } from "@tooldeck/application-node";
 import { desktopIpcChannels } from "@/shared/ipc";
 
 import { toDesktopCommand } from "../desktop-contract/catalog";
+import { decodeListCommandsRequest, decodeRunCommandRequest } from "./codecs/requests";
 import type { DesktopIpcRegistrar } from "./register";
-import { decodeListCommandsRequest, decodeRunCommandRequest } from "./request-codecs";
 
 export function registerCommandsIpc(
   registrar: DesktopIpcRegistrar,

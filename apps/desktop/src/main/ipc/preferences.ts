@@ -3,8 +3,8 @@ import type { TooldeckApplication } from "@tooldeck/application-node";
 import { desktopIpcChannels } from "@/shared/ipc";
 
 import { toDesktopPreference } from "../desktop-contract/catalog";
+import { decodeGetPreferenceRequest, decodeSetPreferenceRequest } from "./codecs/requests";
 import type { DesktopIpcRegistrar } from "./register";
-import { decodeGetPreferenceRequest, decodeSetPreferenceRequest } from "./request-codecs";
 
 export function registerPreferencesIpc(
   registrar: DesktopIpcRegistrar,
