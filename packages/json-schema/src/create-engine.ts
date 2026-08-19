@@ -20,6 +20,7 @@ import {
   createProfileAjv,
   createStaticDraft07Ajv,
 } from "./internal/ajv";
+import { collectSchemaCompilationIssues } from "./internal/compilation-issues";
 import {
   compilationError,
   compiledValidator,
@@ -27,7 +28,7 @@ import {
   validateSchemaProfile,
 } from "./internal/compile";
 import { normalizeCommandInputSchema } from "./internal/input-schema";
-import { createCompilationIssue } from "./internal/issues";
+import { compareIssues, createCompilationIssue, deduplicateIssues } from "./internal/issues";
 import { cloneJsonValue, isJsonObject } from "./internal/json";
 import {
   classifyInputProfileIssues,
@@ -88,6 +89,12 @@ export function createTooldeckJsonSchemaEngine(): TooldeckJsonSchemaEngine {
 
       if (!cloned.compiled) {
         return cloned;
+      }
+
+      const compilationIssues = collectSchemaCompilationIssues(cloned.schema);
+
+      if (compilationIssues.length > 0) {
+        return { compiled: false, error: compilationError(compilationIssues) };
       }
 
       return compileWithAjv<T>(createStaticDraft07Ajv(), cloned.schema);
@@ -158,7 +165,12 @@ function compileCommandInput(
     return invalidSchemaRoot("Command input Schema must be an object");
   }
 
-  const semanticIssues = collectInputSchemaSemanticIssues(cloned.schema);
+  const semanticIssues = deduplicateIssues(
+    [
+      ...collectInputSchemaSemanticIssues(cloned.schema),
+      ...collectSchemaCompilationIssues(cloned.schema),
+    ].sort(compareIssues),
+  );
 
   if (semanticIssues.length > 0) {
     return { compiled: false, error: compilationError(semanticIssues) };
@@ -186,6 +198,12 @@ function compileCommandOutput(
 
   if (profileIssues.length > 0) {
     return { compiled: false, error: compilationError(profileIssues) };
+  }
+
+  const compilationIssues = collectSchemaCompilationIssues(cloned.schema);
+
+  if (compilationIssues.length > 0) {
+    return { compiled: false, error: compilationError(compilationIssues) };
   }
 
   return compileWithAjv<CommandResult>(ajv, cloned.schema);

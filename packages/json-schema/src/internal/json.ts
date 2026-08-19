@@ -143,7 +143,12 @@ function cloneAtPath(
         return property;
       }
 
-      cloned[key] = property.value;
+      Object.defineProperty(cloned, key, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: property.value,
+      });
     }
 
     return { valid: true, value: cloned };
@@ -214,7 +219,8 @@ function describeValue(value: unknown): string {
   return typeof value;
 }
 
-function parseJsonPointer(pointer: string): string[] | undefined {
+/** @internal */
+export function parseJsonPointer(pointer: string): string[] | undefined {
   if (pointer === "") {
     return [];
   }

@@ -109,6 +109,35 @@ describe("Tooldeck Schema profile compilation", () => {
     expect(engine.compileManifest()).toBe(engine.compileManifest());
   });
 
+  it("does not accept manifest fields inherited through a __proto__ JSON property", () => {
+    const compilation = createTooldeckJsonSchemaEngine().compileManifest();
+
+    expect(compilation.compiled).toBe(true);
+
+    if (!compilation.compiled) {
+      return;
+    }
+
+    const manifest = JSON.parse(`{
+      "__proto__": {
+        "schemaVersion": "1.0",
+        "id": "dev.example.polluted",
+        "name": "Polluted",
+        "version": "1.0.0",
+        "runtime": { "kind": "node", "entry": "./dist/index.js" }
+      }
+    }`) as unknown;
+    const result = compilation.validator.validate(manifest);
+
+    expect(result.valid).toBe(false);
+    expect(result.valid ? [] : result.error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "json-schema.required", propertyPath: "id" }),
+        expect.objectContaining({ code: "json-schema.required", propertyPath: "runtime" }),
+      ]),
+    );
+  });
+
   it("rejects enum labels that do not map to the same Schema enum", () => {
     const result = createTooldeckJsonSchemaEngine().compileCommandInput(
       {
@@ -166,6 +195,18 @@ describe("Tooldeck Schema profile compilation", () => {
       type: "object",
       "x-ui": { fieldOrder: ["blocks"] },
     } as TooldeckOutputJsonSchema);
+    const unsupportedControlProperty = engine.compileCommandInput(
+      {
+        type: "object",
+        properties: {
+          flag: {
+            type: "boolean",
+            "x-ui": { control: "checkbox", placeholder: "Unsupported" },
+          },
+        },
+      } as TooldeckInputJsonSchema,
+      "strict",
+    );
 
     expect(unsupportedRootUi.compiled ? [] : unsupportedRootUi.error.issues).toContainEqual(
       expect.objectContaining({ code: "tooldeck.input-ui.unsupported-property" }),
@@ -175,6 +216,81 @@ describe("Tooldeck Schema profile compilation", () => {
     );
     expect(forbiddenOutputUi.compiled ? [] : forbiddenOutputUi.error.issues).toContainEqual(
       expect.objectContaining({ code: "tooldeck.output-ui.forbidden" }),
+    );
+    expect(
+      unsupportedControlProperty.compiled
+        ? []
+        : unsupportedControlProperty.error.issues.filter(
+            (issue) => issue.code === "tooldeck.input-ui.control.unsupported-property",
+          ),
+    ).toHaveLength(1);
+  });
+
+  it("uses the manifest structure rather than nested Schema property names for UI context", () => {
+    const compilation = createTooldeckJsonSchemaEngine().compileManifest();
+
+    expect(compilation.compiled).toBe(true);
+
+    if (!compilation.compiled) {
+      return;
+    }
+
+    const manifest = {
+      schemaVersion: "1.0",
+      id: "dev.example.schema-context",
+      name: "Schema context",
+      version: "1.0.0",
+      runtime: { kind: "node", entry: "./dist/index.js" },
+      contributes: {
+        commands: [
+          {
+            id: "context.input",
+            title: "Input context",
+            inputSchema: {
+              type: "object",
+              properties: {
+                inputSchema: {
+                  type: "boolean",
+                  "x-ui": { control: "checkbox", placeholder: "Unsupported" },
+                },
+              },
+            },
+          },
+          {
+            id: "context.output",
+            title: "Output context",
+            outputSchema: {
+              type: "object",
+              properties: {
+                inputSchema: {
+                  type: "string",
+                  "x-ui": { fieldOrder: [] },
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+    const result = compilation.validator.validate(manifest);
+
+    expect(result.valid).toBe(false);
+
+    if (result.valid) {
+      return;
+    }
+
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        code: "tooldeck.input-ui.control.unsupported-property",
+        propertyPath: "contributes.commands[0].inputSchema.properties.inputSchema.x-ui.placeholder",
+      }),
+    );
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        code: "tooldeck.output-ui.forbidden",
+        propertyPath: "contributes.commands[1].outputSchema.properties.inputSchema.x-ui",
+      }),
     );
   });
 });

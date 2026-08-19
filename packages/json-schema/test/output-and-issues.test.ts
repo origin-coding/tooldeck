@@ -155,4 +155,30 @@ describe("output and neutral Draft-07 validation", () => {
     expect(result.validator.validate({ id: "value" }).valid).toBe(true);
     expect(result.validator.validate({ id: "" }).valid).toBe(false);
   });
+
+  it("reports invalid patterns inside Draft-07 definitions and patternProperties", () => {
+    const result = createTooldeckJsonSchemaEngine().compileDraft07({
+      type: "object",
+      definitions: {
+        value: {
+          type: "string",
+          pattern: "[",
+        },
+      },
+      patternProperties: {
+        "(": { type: "string" },
+      },
+    });
+
+    expect(result.compiled ? [] : result.error.issues).toEqual([
+      expect.objectContaining({
+        code: "schema.invalid-pattern",
+        propertyPath: "definitions.value.pattern",
+      }),
+      expect.objectContaining({
+        code: "schema.invalid-pattern",
+        propertyPath: 'patternProperties["("]',
+      }),
+    ]);
+  });
 });

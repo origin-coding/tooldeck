@@ -131,7 +131,7 @@ describe("ManifestIndex", () => {
           issues: [
             expect.objectContaining({
               code: "schema.invalid-pattern",
-              propertyPath: "contributes.commands[0].inputSchema",
+              propertyPath: "contributes.commands[0].inputSchema.properties.value.pattern",
             }),
           ],
         },

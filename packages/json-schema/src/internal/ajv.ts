@@ -31,6 +31,7 @@ function createAjv(options: { coerceTypes: boolean; useDefaults: boolean }): Ajv
     allErrors: true,
     coerceTypes: options.coerceTypes,
     logger: false,
+    ownProperties: true,
     removeAdditional: false,
     strictNumbers: true,
     strictRequired: false,

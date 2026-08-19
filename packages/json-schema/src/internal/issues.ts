@@ -14,7 +14,25 @@ export function normalizeAjvErrors(
   errors: readonly ErrorObject[],
   rootValue: JsonValue,
 ): JsonSchemaIssue[] {
-  return errors.map((error) => normalizeAjvError(error, rootValue)).sort(compareIssues);
+  return deduplicateIssues(
+    errors.map((error) => normalizeAjvError(error, rootValue)).sort(compareIssues),
+  );
+}
+
+/** @internal */
+export function deduplicateIssues(issues: JsonSchemaIssue[]): JsonSchemaIssue[] {
+  const seen = new Set<string>();
+
+  return issues.filter((issue) => {
+    const fingerprint = JSON.stringify(issue);
+
+    if (seen.has(fingerprint)) {
+      return false;
+    }
+
+    seen.add(fingerprint);
+    return true;
+  });
 }
 
 /** @internal */
@@ -74,9 +92,10 @@ export function compareIssues(left: JsonSchemaIssue, right: JsonSchemaIssue): nu
 
 function normalizeAjvError(error: ErrorObject, rootValue: JsonValue): JsonSchemaIssue {
   const relatedProperty = readRelatedProperty(error);
-  const propertyPointer = relatedProperty
-    ? appendJsonPointer(error.instancePath, relatedProperty)
-    : error.instancePath;
+  const propertyPointer =
+    relatedProperty === undefined
+      ? error.instancePath
+      : appendJsonPointer(error.instancePath, relatedProperty);
   const expected = readExpected(error);
   const actual = readActual(error, rootValue, propertyPointer);
 

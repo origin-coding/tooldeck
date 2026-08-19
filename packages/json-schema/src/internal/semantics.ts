@@ -3,6 +3,7 @@ import type { JsonObject, JsonValue, PluginManifest } from "@tooldeck/protocol";
 import type { JsonSchemaIssue, JsonSchemaIssueCode } from "../contracts";
 import { compareIssues } from "./issues";
 import { appendJsonPointer, escapeJsonPointer, jsonPointerToPropertyPath } from "./json";
+import { walkJsonSchema } from "./schema-walk";
 
 const fieldControls = new Set([
   "text",
@@ -42,7 +43,7 @@ export function collectInputSchemaSemanticIssues(
 
   collectFieldOrderIssues(schema, basePointer, issues);
   collectDirectFieldUiIssues(schema, basePointer, issues);
-  walkSchema(schema, basePointer, (node, pointer) => {
+  walkJsonSchemaAtPointer(schema, basePointer, (node, pointer) => {
     collectEnumLabelIssues(node, pointer, "x-enumLabels", issues);
 
     const i18n = isJsonObject(node["x-i18n"]) ? node["x-i18n"] : undefined;
@@ -187,42 +188,12 @@ function collectEnumLabelMapIssues(
   }
 }
 
-function walkSchema(
+function walkJsonSchemaAtPointer(
   schema: JsonObject,
   pointer: string,
   visit: (schema: JsonObject, pointer: string) => void,
 ): void {
-  visit(schema, pointer);
-
-  const properties = schema.properties;
-
-  if (isJsonObject(properties)) {
-    for (const [propertyName, propertySchema] of Object.entries(properties)) {
-      if (isJsonObject(propertySchema)) {
-        walkSchema(
-          propertySchema,
-          `${pointer}/properties/${escapeJsonPointer(propertyName)}`,
-          visit,
-        );
-      }
-    }
-  }
-
-  for (const keyword of ["items", "additionalProperties"] as const) {
-    const child = schema[keyword];
-
-    if (isJsonObject(child)) {
-      walkSchema(child, `${pointer}/${keyword}`, visit);
-    }
-  }
-
-  if (Array.isArray(schema.allOf)) {
-    schema.allOf.forEach((child, index) => {
-      if (isJsonObject(child)) {
-        walkSchema(child, `${pointer}/allOf/${index}`, visit);
-      }
-    });
-  }
+  walkJsonSchema(schema, (node, relativePointer) => visit(node, `${pointer}${relativePointer}`));
 }
 
 function isControlCompatible(schema: JsonObject, control: string): boolean {

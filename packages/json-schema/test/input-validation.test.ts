@@ -127,14 +127,59 @@ describe("command input validation", () => {
     });
   });
 
-  it("returns a neutral issue when an otherwise supported Schema cannot compile", () => {
+  it("preserves __proto__ as an own JSON property without using it for validation", () => {
+    const engine = createTooldeckJsonSchemaEngine();
+    const permissive = engine.compileCommandInput({ type: "object" }, "strict");
+    const required = engine.compileCommandInput(
+      {
+        type: "object",
+        required: ["role"],
+        properties: {
+          role: { type: "string" },
+        },
+      },
+      "strict",
+    );
+    const input = JSON.parse('{"__proto__":{"role":"admin"}}') as unknown;
+
+    expect(permissive.compiled).toBe(true);
+    expect(required.compiled).toBe(true);
+
+    if (!permissive.compiled || !required.compiled) {
+      return;
+    }
+
+    const cloned = permissive.validator.validate(input);
+
+    expect(cloned.valid).toBe(true);
+
+    if (!cloned.valid) {
+      return;
+    }
+
+    expect(Object.hasOwn(cloned.value, "__proto__")).toBe(true);
+    expect(Object.hasOwn(cloned.value, "role")).toBe(false);
+    expect(cloned.value.role).toBeUndefined();
+    expect(required.validator.validate(input)).toMatchObject({
+      valid: false,
+      error: {
+        issues: [expect.objectContaining({ code: "json-schema.required", propertyPath: "role" })],
+      },
+    });
+  });
+
+  it("reports every invalid pattern at its Schema path before compilation", () => {
     const result = createTooldeckJsonSchemaEngine().compileCommandInput(
       {
         type: "object",
         properties: {
-          text: {
+          first: {
             type: "string",
             pattern: "[",
+          },
+          second: {
+            type: "string",
+            pattern: "(",
           },
         },
       },
@@ -150,10 +195,19 @@ describe("command input validation", () => {
         issues: [
           {
             code: "schema.invalid-pattern",
-            instancePath: "",
-            propertyPath: "",
+            instancePath: "/properties/first/pattern",
+            propertyPath: "properties.first.pattern",
             keyword: "pattern",
             message: "Pattern is not a valid regular expression",
+            actual: "[",
+          },
+          {
+            code: "schema.invalid-pattern",
+            instancePath: "/properties/second/pattern",
+            propertyPath: "properties.second.pattern",
+            keyword: "pattern",
+            message: "Pattern is not a valid regular expression",
+            actual: "(",
           },
         ],
       },
