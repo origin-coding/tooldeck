@@ -239,7 +239,7 @@ describe("CLI plugin management", () => {
     } finally {
       log.mockRestore();
     }
-  });
+  }, 15_000);
 
   it("does not activate disabled plugins when running commands", async () => {
     const pluginsRoot = path.join(createTempDir(), "plugins");

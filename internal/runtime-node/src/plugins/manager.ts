@@ -1,8 +1,7 @@
 import type { CommandResult } from "@tooldeck/protocol";
 import type { CommandInput } from "@tooldeck/sdk-node";
 
-import { normalizeCommandInput, type CommandInputCoercion } from "@/commands/input";
-import { validateCommandOutputSchema } from "@/commands/output-validation";
+import type { CommandInputCoercion } from "@/commands/input";
 import type { CommandRunResult, RuntimeCommandRegistry } from "@/commands/registry";
 import { runRuntimeEffectPromise, runRuntimeEffectSync } from "@/effect";
 import { RuntimeError, toRuntimeError } from "@/errors/error";
@@ -42,6 +41,12 @@ export class PluginManager {
   }
 
   async runCommand(options: RunPluginCommandOptions): Promise<CommandResult> {
+    return (await this.runCommandWithInput(options)).result;
+  }
+
+  async runCommandWithInput(
+    options: RunPluginCommandOptions,
+  ): Promise<{ input: CommandInput; result: CommandResult }> {
     const indexedCommand = this.getIndexedCommandOrThrow(options.commandId);
     const input = this.normalizeCommandInput(options);
 
@@ -52,13 +57,12 @@ export class PluginManager {
       input,
     });
 
-    validateCommandOutputSchema({
+    this.manifestIndex.validateCommandOutput({
       commandId: options.commandId,
-      outputSchema: indexedCommand.definition.outputSchema,
       result,
     });
 
-    return result;
+    return { input, result };
   }
 
   async tryRunCommand(options: RunPluginCommandOptions): Promise<CommandRunResult> {
@@ -87,11 +91,8 @@ export class PluginManager {
   }
 
   normalizeCommandInput(options: RunPluginCommandOptions): CommandInput {
-    const indexedCommand = this.getIndexedCommandOrThrow(options.commandId);
-
-    return normalizeCommandInput({
-      input: options.input,
-      inputSchema: indexedCommand.definition.inputSchema,
+    return this.manifestIndex.normalizeCommandInput({
+      input: options.input ?? {},
       commandId: options.commandId,
       coercion: options.coercion ?? "none",
     });

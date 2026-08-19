@@ -97,7 +97,7 @@ function createRuntimeResources(
       commandCount: scanResult.commandCount,
       runCommand: (commandOptions) =>
         tryRuntimeBoundaryPromise(async () => commandService.runCommand(commandOptions)),
-      dispose: () => disposeRuntimeResources(hostRegistry, runtimeScope),
+      dispose: () => disposeRuntimeResources(hostRegistry, manifestIndex, runtimeScope),
     };
   });
 }
@@ -159,12 +159,15 @@ function scanRuntimePlugins(
 
 function disposeRuntimeResources(
   hostRegistry: PluginHostRegistry,
+  manifestIndex: ManifestIndex,
   runtimeScope: Scope.CloseableScope,
 ): RuntimeEffect<void> {
   return Effect.uninterruptible(
     Effect.gen(function* () {
       const hostsExit = yield* Effect.exit(hostRegistry.disposeAll());
       const scopeExit = yield* Effect.exit(Scope.close(runtimeScope, hostsExit));
+
+      manifestIndex.dispose();
 
       if (Exit.isFailure(hostsExit)) {
         return yield* Effect.failCause(hostsExit.cause);

@@ -138,6 +138,8 @@ TPP treats plugins as declared and callable capabilities, not UI components. The
 Tooldeck implementation keeps these boundaries:
 
 - `packages/protocol` contains data contracts and standards-facing JSON Schema only.
+- `packages/json-schema` provides public, Effect-neutral Draft-07 execution without exposing
+  Ajv types.
 - `packages/sdk-node` provides the public Node plugin authoring contract.
 - `internal/runtime-node` coordinates scanning, commands, validation, runtime-kind routing,
   lazy activation, and trusted local Node plugin loading.

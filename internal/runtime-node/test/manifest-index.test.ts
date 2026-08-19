@@ -96,4 +96,70 @@ describe("ManifestIndex", () => {
       }),
     ).toThrow("Command id conflict: json.format");
   });
+
+  it("compiles command schemas before adding a plugin to the index", () => {
+    const index = new ManifestIndex();
+    const manifest = createManifest("dev.example.invalid-schema", ["invalid.run"]);
+
+    manifest.contributes!.commands![0]!.inputSchema = {
+      type: "object",
+      properties: {
+        value: {
+          type: "string",
+          pattern: "[",
+        },
+      },
+    };
+
+    let thrown: unknown;
+
+    try {
+      index.addPluginManifest({
+        manifest,
+        manifestPath: "plugins/invalid-schema/manifest.json",
+        entryPath: "plugins/invalid-schema/dist/index.js",
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toMatchObject({
+      message: "Invalid plugin manifest: plugins/invalid-schema/manifest.json",
+      details: {
+        schemaError: {
+          kind: "compilation",
+          issues: [
+            expect.objectContaining({
+              code: "schema.invalid-pattern",
+              propertyPath: "contributes.commands[0].inputSchema.properties.value.pattern",
+            }),
+          ],
+        },
+      },
+    });
+    expect(index.hasPlugin("dev.example.invalid-schema")).toBe(false);
+    expect(index.hasCommand("invalid.run")).toBe(false);
+  });
+
+  it("releases indexed validators and catalog entries when disposed", () => {
+    const index = new ManifestIndex();
+
+    index.addPluginManifest({
+      manifest: createManifest("dev.example.disposable", ["disposable.run"]),
+      manifestPath: "plugins/disposable/manifest.json",
+      entryPath: "plugins/disposable/dist/index.js",
+    });
+
+    index.dispose();
+
+    expect(index.listPlugins()).toEqual([]);
+    expect(index.listCommands()).toEqual([]);
+    expect(() =>
+      index.normalizeCommandInput({
+        commandId: "disposable.run",
+        input: {},
+        coercion: "none",
+      }),
+    ).toThrow("Command is not contributed by any plugin: disposable.run");
+  });
 });

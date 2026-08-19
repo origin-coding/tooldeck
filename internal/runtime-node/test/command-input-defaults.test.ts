@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeCommandInput } from "@/index";
+import { expectCommandInputIssues, normalizeCommandInput } from "./command-input-fixtures";
 
 describe("command input defaults and coercion", () => {
   it("coerces raw CLI values and applies JSON Schema defaults", () => {
@@ -63,22 +63,24 @@ describe("command input defaults and coercion", () => {
   });
 
   it("does not coerce string values by default", () => {
-    expect(() =>
-      normalizeCommandInput({
-        commandId: "json.format",
-        input: {
-          indent: "2",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            indent: {
-              type: "integer",
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          commandId: "json.format",
+          input: {
+            indent: "2",
+          },
+          inputSchema: {
+            type: "object",
+            properties: {
+              indent: {
+                type: "integer",
+              },
             },
           },
-        },
-      }),
-    ).toThrow("Expected integer for command input: --indent");
+        }),
+      [{ code: "json-schema.type", propertyPath: "indent" }],
+    );
   });
 
   it("coerces CLI string values when CLI coercion is enabled", () => {
@@ -109,23 +111,28 @@ describe("command input defaults and coercion", () => {
   });
 
   it("rejects repeated values for scalar schema fields", () => {
-    expect(() =>
-      normalizeCommandInput({
-        commandId: "example.render",
-        coercion: "cli",
-        input: {
-          output: ["text", "code"],
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            output: {
-              type: "string",
-              enum: ["text", "code"],
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          commandId: "example.render",
+          coercion: "cli",
+          input: {
+            output: ["text", "code"],
+          },
+          inputSchema: {
+            type: "object",
+            properties: {
+              output: {
+                type: "string",
+                enum: ["text", "code"],
+              },
             },
           },
-        },
-      }),
-    ).toThrow("Expected string for command input: --output");
+        }),
+      [
+        { code: "json-schema.type", propertyPath: "output" },
+        { code: "json-schema.enum", propertyPath: "output" },
+      ],
+    );
   });
 });

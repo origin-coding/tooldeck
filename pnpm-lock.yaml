@@ -218,6 +218,9 @@ importers:
 
   internal/runtime-node:
     dependencies:
+      '@tooldeck/json-schema':
+        specifier: workspace:*
+        version: link:../../packages/json-schema
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
@@ -227,9 +230,6 @@ importers:
       '@tooldeck/state-machine':
         specifier: workspace:*
         version: link:../state-machine
-      ajv:
-        specifier: 'catalog:'
-        version: 8.20.0
       effect:
         specifier: 'catalog:'
         version: 3.22.1
@@ -271,6 +271,15 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.9.1
+
+  packages/json-schema:
+    dependencies:
+      '@tooldeck/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      ajv:
+        specifier: 'catalog:'
+        version: 8.20.0
 
   packages/plugin-package:
     dependencies:
@@ -1851,10 +1860,12 @@ packages:
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   abbrev@4.0.0:
     resolution: {integrity: sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA==}

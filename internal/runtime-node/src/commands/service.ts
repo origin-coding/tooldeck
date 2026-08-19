@@ -30,20 +30,16 @@ export class CommandService {
   }
 
   async runCommand(options: RunServiceCommandOptions): Promise<RunCommandOutput> {
-    const input = this.pluginManager.normalizeCommandInput({
+    const execution = await this.pluginManager.runCommandWithInput({
       commandId: options.commandId,
       input: options.input,
       coercion: this.coercion,
     });
-    const result = await this.pluginManager.runCommand({
-      commandId: options.commandId,
-      input,
-    });
 
     return {
       commandId: options.commandId,
-      input,
-      result,
+      input: execution.input,
+      result: execution.result,
     };
   }
 }

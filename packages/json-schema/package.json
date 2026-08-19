@@ -1,0 +1,38 @@
+{
+  "name": "@tooldeck/json-schema",
+  "version": "0.1.0",
+  "description": "Shared JSON Schema Draft-07 execution for Tooldeck.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/origin-coding/tooldeck.git",
+    "directory": "packages/json-schema"
+  },
+  "files": [
+    "dist/index.js",
+    "dist/index.js.map",
+    "dist/*.d.ts",
+    "dist/*.d.ts.map",
+    "README.md"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build --configLoader runner && tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tooldeck/protocol": "workspace:*",
+    "ajv": "catalog:"
+  }
+}
