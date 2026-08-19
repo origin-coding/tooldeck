@@ -3,7 +3,9 @@ import { describe, expectTypeOf, it } from "vitest";
 
 import type {
   JsonSchemaCompilationResult,
+  JsonSchemaCompilationError,
   JsonSchemaIssue,
+  JsonSchemaValidationError,
   JsonSchemaValidationResult,
   TooldeckJsonSchemaEngine,
   TooldeckJsonSchemaValidator,
@@ -18,6 +20,9 @@ describe("public JSON Schema contracts", () => {
     expectTypeOf<JsonSchemaIssue["actual"]>().toEqualTypeOf<
       import("@tooldeck/protocol").JsonValue | undefined
     >();
+    expectTypeOf<JsonSchemaIssue>().toMatchTypeOf<JsonObject>();
+    expectTypeOf<JsonSchemaValidationError>().toMatchTypeOf<JsonObject>();
+    expectTypeOf<JsonSchemaCompilationError>().toMatchTypeOf<JsonObject>();
   });
 
   it("provides typed results for fixed engine roles", () => {

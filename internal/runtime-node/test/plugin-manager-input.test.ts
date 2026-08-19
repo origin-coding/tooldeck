@@ -57,7 +57,20 @@ describe("PluginManager command input", () => {
         commandId: "json.format",
         input: { text: "{}", extra: true },
       }),
-    ).rejects.toThrow("Unknown command input argument: --extra");
+    ).rejects.toMatchObject({
+      message: "Invalid command input for json.format",
+      details: {
+        issue: "invalid_command_input",
+        schemaError: {
+          issues: expect.arrayContaining([
+            expect.objectContaining({
+              code: "json-schema.additional-property",
+              propertyPath: "extra",
+            }),
+          ]),
+        },
+      },
+    });
     expect(pluginHost.activations).toEqual([]);
   });
 
@@ -111,6 +124,18 @@ describe("PluginManager command input", () => {
         commandId: "json.format",
         input: { indent: "2" },
       }),
-    ).rejects.toThrow("Expected integer for command input: --indent");
+    ).rejects.toMatchObject({
+      message: "Invalid command input for json.format",
+      details: {
+        schemaError: {
+          issues: expect.arrayContaining([
+            expect.objectContaining({
+              code: "json-schema.type",
+              propertyPath: "indent",
+            }),
+          ]),
+        },
+      },
+    });
   });
 });

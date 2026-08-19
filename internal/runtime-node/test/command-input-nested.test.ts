@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeCommandInput } from "@/index";
+import { expectCommandInputIssues, normalizeCommandInput } from "./command-input-fixtures";
 
 describe("nested command input", () => {
   it("normalizes nested object inputs and applies nested defaults", () => {
@@ -64,35 +64,27 @@ describe("nested command input", () => {
   });
 
   it("reports nested object property paths", () => {
-    try {
-      normalizeCommandInput({
-        commandId: "json.format",
-        input: {
-          format: {
-            extra: true,
-          },
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          commandId: "json.format",
+          input: {
             format: {
-              type: "object",
-              additionalProperties: false,
-              properties: {},
+              extra: true,
             },
           },
-        },
-      });
-    } catch (error) {
-      expect(error).toMatchObject({
-        code: "ERR_INVALID_ARGUMENT",
-        details: {
-          issue: "unknown_property",
-          commandId: "json.format",
-          propertyPath: "format.extra",
-          schemaKeyword: "additionalProperties",
-        },
-      });
-    }
+          inputSchema: {
+            type: "object",
+            properties: {
+              format: {
+                type: "object",
+                additionalProperties: false,
+                properties: {},
+              },
+            },
+          },
+        }),
+      [{ code: "json-schema.additional-property", propertyPath: "format.extra" }],
+    );
   });
 });

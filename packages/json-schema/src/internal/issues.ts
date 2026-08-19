@@ -1,7 +1,7 @@
-import type { JsonValue } from "@tooldeck/protocol";
+import type { JsonObject, JsonValue } from "@tooldeck/protocol";
 import type { ErrorObject } from "ajv";
 
-import type { JsonSchemaIssue } from "../contracts";
+import type { JsonSchemaIssue, JsonSchemaIssueCode } from "../contracts";
 import {
   appendJsonPointer,
   cloneJsonValue,
@@ -23,6 +23,7 @@ export function createCompilationIssue(error: unknown): JsonSchemaIssue {
 
   if (missingRef) {
     return {
+      code: "schema.unresolved-reference",
       instancePath: "",
       propertyPath: "",
       keyword: "$ref",
@@ -35,6 +36,7 @@ export function createCompilationIssue(error: unknown): JsonSchemaIssue {
 
   if (message.includes("regular expression") || message.includes("Invalid escape")) {
     return {
+      code: "schema.invalid-pattern",
       instancePath: "",
       propertyPath: "",
       keyword: "pattern",
@@ -44,6 +46,7 @@ export function createCompilationIssue(error: unknown): JsonSchemaIssue {
 
   if (message.includes("unknown format")) {
     return {
+      code: "schema.unsupported-format",
       instancePath: "",
       propertyPath: "",
       keyword: "format",
@@ -52,6 +55,7 @@ export function createCompilationIssue(error: unknown): JsonSchemaIssue {
   }
 
   return {
+    code: "schema.compilation-failed",
     instancePath: "",
     propertyPath: "",
     keyword: "compile",
@@ -77,13 +81,84 @@ function normalizeAjvError(error: ErrorObject, rootValue: JsonValue): JsonSchema
   const actual = readActual(error, rootValue, propertyPointer);
 
   return {
+    code: issueCodeForKeyword(error.keyword),
     instancePath: error.instancePath,
     propertyPath: jsonPointerToPropertyPath(propertyPointer),
     keyword: error.keyword,
     message: formatIssueMessage(error.keyword),
     ...(expected === undefined ? {} : { expected }),
     ...(actual === undefined ? {} : { actual }),
+    ...readParameters(error),
   };
+}
+
+function issueCodeForKeyword(keyword: string): JsonSchemaIssueCode {
+  const codes: Record<string, JsonSchemaIssueCode> = {
+    additionalProperties: "json-schema.additional-property",
+    const: "json-schema.constant",
+    enum: "json-schema.enum",
+    exclusiveMaximum: "json-schema.exclusive-maximum",
+    exclusiveMinimum: "json-schema.exclusive-minimum",
+    "false schema": "json-schema.false-schema",
+    maximum: "json-schema.maximum",
+    maxItems: "json-schema.max-items",
+    maxLength: "json-schema.max-length",
+    maxProperties: "json-schema.max-properties",
+    minimum: "json-schema.minimum",
+    minItems: "json-schema.min-items",
+    minLength: "json-schema.min-length",
+    minProperties: "json-schema.min-properties",
+    multipleOf: "json-schema.multiple-of",
+    pattern: "json-schema.pattern",
+    required: "json-schema.required",
+    type: "json-schema.type",
+    uniqueItems: "json-schema.unique-items",
+  };
+
+  return codes[keyword] ?? "json-schema.validation-failed";
+}
+
+function readParameters(error: ErrorObject): { parameters: JsonObject } | object {
+  const parameters = normalizedParameters(error);
+
+  return Object.keys(parameters).length > 0 ? { parameters } : {};
+}
+
+function normalizedParameters(error: ErrorObject): JsonObject {
+  switch (error.keyword) {
+    case "additionalProperties":
+      return stringParameter(error, "additionalProperty", "property");
+    case "required":
+      return stringParameter(error, "missingProperty", "property");
+    case "type":
+      return stringParameter(error, "type", "type");
+    case "pattern":
+      return stringParameter(error, "pattern", "pattern");
+    case "enum":
+      return jsonParameter(error, "allowedValues", "allowedValues");
+    case "const":
+      return jsonParameter(error, "allowedValue", "allowedValue");
+    case "maximum":
+    case "minimum":
+    case "exclusiveMaximum":
+    case "exclusiveMinimum":
+    case "maxItems":
+    case "minItems":
+    case "maxLength":
+    case "minLength":
+    case "maxProperties":
+    case "minProperties":
+      return numberParameter(error, "limit", "limit");
+    case "multipleOf":
+      return numberParameter(error, "multipleOf", "multipleOf");
+    case "uniqueItems":
+      return {
+        ...numberParameter(error, "i", "firstIndex"),
+        ...numberParameter(error, "j", "secondIndex"),
+      };
+    default:
+      return {};
+  }
 }
 
 function readRelatedProperty(error: ErrorObject): string | undefined {
@@ -132,10 +207,35 @@ function tryCloneJsonValue(value: unknown): JsonValue | undefined {
   return cloned.valid ? cloned.value : undefined;
 }
 
+function stringParameter(error: ErrorObject, source: string, target: string): JsonObject {
+  const value = readParamString(error, source);
+
+  return value === undefined ? {} : { [target]: value };
+}
+
+function numberParameter(error: ErrorObject, source: string, target: string): JsonObject {
+  const value = readParamNumber(error, source);
+
+  return value === undefined ? {} : { [target]: value };
+}
+
+function jsonParameter(error: ErrorObject, source: string, target: string): JsonObject {
+  const value = (error.params as Record<string, unknown>)[source];
+  const cloned = cloneJsonValue(value);
+
+  return cloned.valid ? { [target]: cloned.value } : {};
+}
+
 function readParamString(error: ErrorObject, key: string): string | undefined {
   const value = (error.params as Record<string, unknown>)[key];
 
   return typeof value === "string" ? value : undefined;
+}
+
+function readParamNumber(error: ErrorObject, key: string): number | undefined {
+  const value = (error.params as Record<string, unknown>)[key];
+
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function readErrorString(error: unknown, key: string): string | undefined {

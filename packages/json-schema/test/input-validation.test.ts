@@ -87,7 +87,7 @@ describe("command input validation", () => {
     const rejected = compilation.validator.validate({ rejected: null });
 
     expect(rejected.valid).toBe(false);
-    expect(rejected.valid ? [] : rejected.issues).toContainEqual(
+    expect(rejected.valid ? [] : rejected.error.issues).toContainEqual(
       expect.objectContaining({
         propertyPath: "rejected",
       }),
@@ -109,15 +109,21 @@ describe("command input validation", () => {
 
     expect(result).toEqual({
       valid: false,
-      issues: [
-        {
-          instancePath: "/self",
-          propertyPath: "self",
-          keyword: "json",
-          message: "Value must be JSON-safe",
-          actual: "circular reference",
-        },
-      ],
+      error: {
+        kind: "validation",
+        code: "value_does_not_match_schema",
+        message: "Value is not JSON-safe",
+        issues: [
+          {
+            code: "json-value.not-json-safe",
+            instancePath: "/self",
+            propertyPath: "self",
+            keyword: "json",
+            message: "Value must be JSON-safe",
+            actual: "circular reference",
+          },
+        ],
+      },
     });
   });
 
@@ -137,14 +143,20 @@ describe("command input validation", () => {
 
     expect(result).toEqual({
       compiled: false,
-      issues: [
-        {
-          instancePath: "",
-          propertyPath: "",
-          keyword: "pattern",
-          message: "Pattern is not a valid regular expression",
-        },
-      ],
+      error: {
+        kind: "compilation",
+        code: "schema_could_not_be_compiled",
+        message: "JSON Schema could not be compiled",
+        issues: [
+          {
+            code: "schema.invalid-pattern",
+            instancePath: "",
+            propertyPath: "",
+            keyword: "pattern",
+            message: "Pattern is not a valid regular expression",
+          },
+        ],
+      },
     });
   });
 });
@@ -154,7 +166,7 @@ function compileInput(mode: "strict" | "cli") {
 
   expect(
     compilation.compiled,
-    compilation.compiled ? undefined : JSON.stringify(compilation.issues),
+    compilation.compiled ? undefined : JSON.stringify(compilation.error),
   ).toBe(true);
 
   if (!compilation.compiled) {

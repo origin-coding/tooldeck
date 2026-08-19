@@ -70,26 +70,34 @@ describe("output and neutral Draft-07 validation", () => {
 
     const missing = compilation.validator.validate({ options: {} });
 
-    expect(missing.valid ? [] : missing.issues).toContainEqual({
-      instancePath: "/options",
-      propertyPath: "options.mode",
-      keyword: "required",
-      message: "Required property is missing",
-      expected: "mode",
-    });
+    expect(missing.valid ? [] : missing.error.issues).toContainEqual(
+      expect.objectContaining({
+        code: "json-schema.required",
+        instancePath: "/options",
+        propertyPath: "options.mode",
+        keyword: "required",
+        message: "Required property is missing",
+        expected: "mode",
+        parameters: { property: "mode" },
+      }),
+    );
 
     const additional = compilation.validator.validate({
       options: { mode: "safe", "a/b~c": true },
     });
 
-    expect(additional.valid ? [] : additional.issues).toContainEqual({
-      instancePath: "/options",
-      propertyPath: 'options["a/b~c"]',
-      keyword: "additionalProperties",
-      message: "Additional property is not allowed",
-      expected: "a/b~c",
-      actual: true,
-    });
+    expect(additional.valid ? [] : additional.error.issues).toContainEqual(
+      expect.objectContaining({
+        code: "json-schema.additional-property",
+        instancePath: "/options",
+        propertyPath: 'options["a/b~c"]',
+        keyword: "additionalProperties",
+        message: "Additional property is not allowed",
+        expected: "a/b~c",
+        actual: true,
+        parameters: { property: "a/b~c" },
+      }),
+    );
   });
 
   it("supports direct boolean Draft-07 schemas", () => {
@@ -108,15 +116,21 @@ describe("output and neutral Draft-07 validation", () => {
 
     expect(result).toEqual({
       compiled: false,
-      issues: [
-        {
-          instancePath: "",
-          propertyPath: "",
-          keyword: "$ref",
-          message: "Schema reference could not be resolved",
-          expected: "https://example.com/external.schema.json",
-        },
-      ],
+      error: {
+        kind: "compilation",
+        code: "schema_could_not_be_compiled",
+        message: "JSON Schema could not be compiled",
+        issues: [
+          {
+            code: "schema.unresolved-reference",
+            instancePath: "",
+            propertyPath: "",
+            keyword: "$ref",
+            message: "Schema reference could not be resolved",
+            expected: "https://example.com/external.schema.json",
+          },
+        ],
+      },
     });
   });
 

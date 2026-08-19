@@ -32,16 +32,37 @@ const engine = createTooldeckJsonSchemaEngine();
 const compilation = engine.compileCommandInput(inputSchema, "cli");
 
 if (!compilation.compiled) {
-  return handleSchemaIssues(compilation.issues);
+  return handleSchemaError(compilation.error);
 }
 
 const result = compilation.validator.validate(rawInput);
 
 if (!result.valid) {
-  return handleInputIssues(result.issues);
+  return handleInputError(result.error);
 }
 
 return result.value;
+```
+
+Compilation and validation failures return a whole JSON-safe error object with a stable
+`kind`, `code`, `message`, and complete `issues` array. Consumers should present the
+whole error rather than choosing a single issue as the authoritative failure. Each issue
+has a stable Tooldeck-owned code, instance and Schema property paths, and optional
+structured facts such as `parameters.property` or `parameters.limit`.
+
+Adapters can add owner-specific path context without rewriting or selecting issues:
+
+```ts
+import { prefixJsonSchemaError } from "@tooldeck/json-schema";
+
+if (!compilation.compiled) {
+  const contextualError = prefixJsonSchemaError(compilation.error, {
+    instancePath: "/contributes/commands/0/inputSchema",
+    propertyPath: "contributes.commands[0].inputSchema",
+  });
+
+  return handleManifestSchemaError(contextualError);
+}
 ```
 
 Strict and CLI input validation both apply defaults to a JSON-safe copy. CLI validation

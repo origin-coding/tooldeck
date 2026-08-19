@@ -4,7 +4,9 @@ import type { ValidateFunction } from "ajv";
 
 import type {
   JsonSchemaCompilationResult,
+  JsonSchemaCompilationError,
   JsonSchemaIssue,
+  JsonSchemaValidationError,
   TooldeckJsonSchemaValidator,
 } from "../contracts";
 import { createCompilationIssue, normalizeAjvErrors } from "./issues";
@@ -19,7 +21,7 @@ export function compileWithAjv<T>(
   try {
     return compiledValidator(ajv.compile<T>(schema), semanticValidation);
   } catch (error) {
-    return { compiled: false, issues: [createCompilationIssue(error)] };
+    return { compiled: false, error: compilationError([createCompilationIssue(error)]) };
   }
 }
 
@@ -27,19 +29,22 @@ export function compileWithAjv<T>(
 export function compiledValidator<T>(
   validate: ValidateFunction<T>,
   semanticValidation?: (value: T) => JsonSchemaIssue[],
+  classifyIssues?: (issues: JsonSchemaIssue[]) => JsonSchemaIssue[],
 ): JsonSchemaCompilationResult<T> {
   const validator: TooldeckJsonSchemaValidator<T> = {
     validate(value: unknown) {
       const cloned = cloneJsonValue(value);
 
       if (!cloned.valid) {
-        return cloned;
+        return { valid: false, error: cloned.error };
       }
 
       if (!validate(cloned.value)) {
+        const issues = normalizeAjvErrors(validate.errors ?? [], cloned.value);
+
         return {
           valid: false,
-          issues: normalizeAjvErrors(validate.errors ?? [], cloned.value),
+          error: validationError(classifyIssues?.(issues) ?? issues),
         };
       }
 
@@ -47,12 +52,32 @@ export function compiledValidator<T>(
       const semanticIssues = semanticValidation?.(typedValue) ?? [];
 
       return semanticIssues.length > 0
-        ? { valid: false, issues: semanticIssues }
+        ? { valid: false, error: validationError(semanticIssues) }
         : { valid: true, value: typedValue };
     },
   };
 
   return { compiled: true, validator };
+}
+
+/** @internal */
+export function validationError(issues: JsonSchemaIssue[]): JsonSchemaValidationError {
+  return {
+    kind: "validation",
+    code: "value_does_not_match_schema",
+    message: "Value does not match JSON Schema",
+    issues,
+  };
+}
+
+/** @internal */
+export function compilationError(issues: JsonSchemaIssue[]): JsonSchemaCompilationError {
+  return {
+    kind: "compilation",
+    code: "schema_could_not_be_compiled",
+    message: "JSON Schema could not be compiled",
+    issues,
+  };
 }
 
 /** @internal */

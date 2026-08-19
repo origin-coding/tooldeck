@@ -157,6 +157,7 @@ function invalidJsonValue(
   actual: string,
 ): JsonSchemaValidationResult<JsonValue> {
   const issue: JsonSchemaIssue = {
+    code: "json-value.not-json-safe",
     instancePath,
     propertyPath: jsonPointerToPropertyPath(instancePath),
     keyword: "json",
@@ -164,7 +165,15 @@ function invalidJsonValue(
     actual,
   };
 
-  return { valid: false, issues: [issue] };
+  return {
+    valid: false,
+    error: {
+      kind: "validation",
+      code: "value_does_not_match_schema",
+      message: "Value is not JSON-safe",
+      issues: [issue],
+    },
+  };
 }
 
 function isPlainObject(value: object): value is Record<string, unknown> {

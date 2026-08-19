@@ -16,7 +16,7 @@ describe("Tooldeck Schema profile compilation", () => {
       "strict",
     );
 
-    expect(result.compiled, result.compiled ? undefined : JSON.stringify(result.issues)).toBe(true);
+    expect(result.compiled, result.compiled ? undefined : JSON.stringify(result.error)).toBe(true);
   });
 
   it.each(inputFixtures.invalid)("rejects invalid input fixture: $name", ({ schema }) => {
@@ -26,7 +26,7 @@ describe("Tooldeck Schema profile compilation", () => {
     );
 
     expect(result.compiled).toBe(false);
-    expect(result.compiled ? [] : result.issues).not.toHaveLength(0);
+    expect(result.compiled ? [] : result.error.issues).not.toHaveLength(0);
   });
 
   it.each(outputFixtures.valid)("compiles valid output fixture: $name", ({ schema }) => {
@@ -34,7 +34,7 @@ describe("Tooldeck Schema profile compilation", () => {
       schema as unknown as TooldeckOutputJsonSchema,
     );
 
-    expect(result.compiled, result.compiled ? undefined : JSON.stringify(result.issues)).toBe(true);
+    expect(result.compiled, result.compiled ? undefined : JSON.stringify(result.error)).toBe(true);
   });
 
   it.each(outputFixtures.invalid)("rejects invalid output fixture: $name", ({ schema }) => {
@@ -43,7 +43,7 @@ describe("Tooldeck Schema profile compilation", () => {
     );
 
     expect(result.compiled).toBe(false);
-    expect(result.compiled ? [] : result.issues).not.toHaveLength(0);
+    expect(result.compiled ? [] : result.error.issues).not.toHaveLength(0);
   });
 
   it("validates manifest profile references and Tooldeck input semantics", () => {
@@ -94,8 +94,9 @@ describe("Tooldeck Schema profile compilation", () => {
     const invalid = compilation.validator.validate(invalidManifest);
 
     expect(invalid.valid).toBe(false);
-    expect(invalid.valid ? [] : invalid.issues).toContainEqual(
+    expect(invalid.valid ? [] : invalid.error.issues).toContainEqual(
       expect.objectContaining({
+        code: "tooldeck.input-ui.field-order.unknown-property",
         keyword: "x-ui.fieldOrder",
         propertyPath: "contributes.commands[0].inputSchema.x-ui.fieldOrder[0]",
       }),
@@ -126,11 +127,54 @@ describe("Tooldeck Schema profile compilation", () => {
     );
 
     expect(result.compiled).toBe(false);
-    expect(result.compiled ? [] : result.issues).toContainEqual(
+    expect(result.compiled ? [] : result.error.issues).toContainEqual(
       expect.objectContaining({
+        code: "tooldeck.enum-labels.unknown-value",
         keyword: "enumLabels",
         propertyPath: "properties.mode.x-enumLabels.unknown",
       }),
+    );
+  });
+
+  it("classifies Tooldeck UI profile failures with stable issue codes", () => {
+    const engine = createTooldeckJsonSchemaEngine();
+    const unsupportedRootUi = engine.compileCommandInput(
+      {
+        type: "object",
+        "x-ui": { layout: "vertical" },
+      } as TooldeckInputJsonSchema,
+      "strict",
+    );
+    const invalidNestedUi = engine.compileCommandInput(
+      {
+        type: "object",
+        properties: {
+          options: {
+            type: "object",
+            properties: {
+              nested: {
+                type: "string",
+                "x-ui": { control: "text" },
+              },
+            },
+          },
+        },
+      } as TooldeckInputJsonSchema,
+      "strict",
+    );
+    const forbiddenOutputUi = engine.compileCommandOutput({
+      type: "object",
+      "x-ui": { fieldOrder: ["blocks"] },
+    } as TooldeckOutputJsonSchema);
+
+    expect(unsupportedRootUi.compiled ? [] : unsupportedRootUi.error.issues).toContainEqual(
+      expect.objectContaining({ code: "tooldeck.input-ui.unsupported-property" }),
+    );
+    expect(invalidNestedUi.compiled ? [] : invalidNestedUi.error.issues).toContainEqual(
+      expect.objectContaining({ code: "tooldeck.input-ui.invalid-location" }),
+    );
+    expect(forbiddenOutputUi.compiled ? [] : forbiddenOutputUi.error.issues).toContainEqual(
+      expect.objectContaining({ code: "tooldeck.output-ui.forbidden" }),
     );
   });
 });

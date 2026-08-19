@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeCommandInput } from "@/index";
+import { expectCommandInputIssues, normalizeCommandInput } from "./command-input-fixtures";
 
 describe("command input collections and composition", () => {
   it("normalizes arrays with item schemas and validates item constraints", () => {
@@ -32,72 +32,70 @@ describe("command input collections and composition", () => {
   });
 
   it("reports array item paths", () => {
-    try {
-      normalizeCommandInput({
-        commandId: "numbers.sum",
-        coercion: "cli",
-        input: {
-          values: ["invalid"],
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            values: {
-              type: "array",
-              items: {
-                type: "integer",
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          commandId: "numbers.sum",
+          coercion: "cli",
+          input: {
+            values: ["invalid"],
+          },
+          inputSchema: {
+            type: "object",
+            properties: {
+              values: {
+                type: "array",
+                items: {
+                  type: "integer",
+                },
               },
             },
           },
-        },
-      });
-    } catch (error) {
-      expect(error).toMatchObject({
-        code: "ERR_INVALID_ARGUMENT",
-        details: {
-          issue: "invalid_type",
-          propertyPath: "values[0]",
-        },
-      });
-    }
+        }),
+      [{ code: "json-schema.type", propertyPath: "values[0]" }],
+    );
   });
 
   it("validates unique array items", () => {
-    expect(() =>
-      normalizeCommandInput({
-        input: {
-          values: [1, 1],
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            values: {
-              type: "array",
-              uniqueItems: true,
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          input: {
+            values: [1, 1],
+          },
+          inputSchema: {
+            type: "object",
+            properties: {
+              values: {
+                type: "array",
+                uniqueItems: true,
+              },
             },
           },
-        },
-      }),
-    ).toThrow("Command input has duplicate items: --values");
+        }),
+      [{ code: "json-schema.unique-items", propertyPath: "values" }],
+    );
   });
 
   it("validates const values", () => {
-    expect(() =>
-      normalizeCommandInput({
-        input: {
-          mode: "compact",
-        },
-        inputSchema: {
-          type: "object",
-          properties: {
-            mode: {
-              type: "string",
-              const: "pretty",
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          input: {
+            mode: "compact",
+          },
+          inputSchema: {
+            type: "object",
+            properties: {
+              mode: {
+                type: "string",
+                const: "pretty",
+              },
             },
           },
-        },
-      }),
-    ).toThrow("Invalid const value for command input: --mode");
+        }),
+      [{ code: "json-schema.constant", propertyPath: "mode" }],
+    );
   });
 
   it("applies allOf schemas in order", () => {
@@ -137,7 +135,7 @@ describe("command input collections and composition", () => {
     });
   });
 
-  it("supports allOf without requiring an outer type", () => {
+  it("supports allOf at an explicitly typed object root", () => {
     expect(
       normalizeCommandInput({
         commandId: "json.format",
@@ -148,6 +146,7 @@ describe("command input collections and composition", () => {
           },
         },
         inputSchema: {
+          type: "object",
           allOf: [
             {
               properties: {

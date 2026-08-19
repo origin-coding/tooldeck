@@ -1,10 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { PluginManifest } from "@tooldeck/protocol";
-
+import { RuntimeError } from "@/errors/error";
 import type { ManifestIndex } from "@/manifests/catalog";
-import { parsePluginManifestText } from "@/manifests/validation";
 
 export type PluginScanSourceKind = "builtin" | "installed" | "external";
 
@@ -131,27 +129,24 @@ async function scanPluginSource(options: {
 }
 
 function indexPluginManifest(options: {
-  manifest: PluginManifest;
+  manifest: unknown;
   manifestIndex: ManifestIndex;
   manifestPath: string;
   source: PluginScanSource;
 }): ScanPluginDirectoryResult {
-  const commands = options.manifest.contributes?.commands ?? [];
-
-  options.manifestIndex.addPluginManifest({
+  const manifest = options.manifestIndex.addPluginManifest({
     manifest: options.manifest,
     manifestPath: options.manifestPath,
-    entryPath: path.resolve(path.dirname(options.manifestPath), options.manifest.runtime.entry),
     source: options.source,
   });
 
   return {
     pluginCount: 1,
-    commandCount: commands.length,
+    commandCount: manifest.contributes?.commands?.length ?? 0,
   };
 }
 
-async function tryReadManifest(manifestPath: string): Promise<PluginManifest | undefined> {
+async function tryReadManifest(manifestPath: string): Promise<unknown | undefined> {
   let text: string;
 
   try {
@@ -164,10 +159,18 @@ async function tryReadManifest(manifestPath: string): Promise<PluginManifest | u
     throw error;
   }
 
-  return parsePluginManifestText({
-    text,
-    manifestPath,
-  });
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new RuntimeError({
+      code: "ERR_INVALID_ARGUMENT",
+      message: `Plugin manifest is not valid JSON: ${manifestPath}`,
+      cause: error,
+      details: {
+        manifestPath,
+      },
+    });
+  }
 }
 
 function createMissingPluginDirectoryMessage(source: PluginScanSource): string {

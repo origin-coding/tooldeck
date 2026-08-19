@@ -1,6 +1,6 @@
 import type { JsonObject, JsonValue, PluginManifest } from "@tooldeck/protocol";
 
-import type { JsonSchemaIssue } from "../contracts";
+import type { JsonSchemaIssue, JsonSchemaIssueCode } from "../contracts";
 import { compareIssues } from "./issues";
 import { appendJsonPointer, escapeJsonPointer, jsonPointerToPropertyPath } from "./json";
 
@@ -78,6 +78,7 @@ function collectFieldOrderIssues(
     issues.push(
       createSemanticIssue(
         pointer,
+        "tooldeck.input-ui.field-order.unknown-property",
         "x-ui.fieldOrder",
         "Field order references an unknown input property",
         Object.keys(properties),
@@ -118,6 +119,7 @@ function collectDirectFieldUiIssues(
     issues.push(
       createSemanticIssue(
         pointer,
+        "tooldeck.input-ui.control.incompatible",
         "x-ui.control",
         "Input control is incompatible with the field schema",
         expectedTypesForControl(control),
@@ -154,6 +156,7 @@ function collectEnumLabelMapIssues(
     issues.push(
       createSemanticIssue(
         pointer,
+        "tooldeck.enum-labels.missing-enum",
         "enumLabels",
         "Enum labels require an enum on the same schema",
         "enum",
@@ -174,6 +177,7 @@ function collectEnumLabelMapIssues(
     issues.push(
       createSemanticIssue(
         labelPointer,
+        "tooldeck.enum-labels.unknown-value",
         "enumLabels",
         "Enum label does not match an enum value",
         [...enumKeys],
@@ -272,12 +276,14 @@ function enumValueToLabelKey(value: JsonValue): string {
 
 function createSemanticIssue(
   instancePath: string,
+  code: JsonSchemaIssueCode,
   keyword: string,
   message: string,
   expected?: JsonValue | JsonValue[],
   actual?: JsonValue,
 ): JsonSchemaIssue {
   return {
+    code,
     instancePath,
     propertyPath: jsonPointerToPropertyPath(instancePath),
     keyword,

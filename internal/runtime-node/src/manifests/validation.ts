@@ -1,8 +1,7 @@
-import { manifestV1Schema, type PluginManifest } from "@tooldeck/protocol";
-import Ajv, { type ErrorObject } from "ajv";
+import type { PluginManifest } from "@tooldeck/protocol";
 
 import { RuntimeError } from "@/errors/error";
-import { collectCommandSchemaUiErrors } from "@/manifests/schema-ui-validation";
+import { RuntimeJsonSchema } from "@/json-schema/runtime-json-schema";
 
 export interface ParsePluginManifestTextOptions {
   text: string;
@@ -13,14 +12,6 @@ export interface ValidatePluginManifestOptions {
   manifest: unknown;
   manifestPath?: string;
 }
-
-const ajv = new Ajv({
-  allErrors: true,
-  strict: false,
-  validateSchema: false,
-});
-
-const validateManifest = ajv.compile<PluginManifest>(createRuntimeManifestSchema());
 
 export function parsePluginManifestText(options: ParsePluginManifestTextOptions): PluginManifest {
   let manifest: unknown;
@@ -48,68 +39,7 @@ export function parsePluginManifestText(options: ParsePluginManifestTextOptions)
 }
 
 export function validatePluginManifest(options: ValidatePluginManifestOptions): PluginManifest {
-  if (validateManifest(options.manifest)) {
-    validatePluginManifestSemantics(options.manifest, options.manifestPath);
-
-    return options.manifest;
-  }
-
-  const errors = normalizeAjvErrors(validateManifest.errors ?? []);
-  const firstError = errors[0];
-  const reason = firstError
-    ? `${firstError.path || "/"} ${firstError.message}`
-    : "unknown validation error";
-
-  throw new RuntimeError({
-    code: "ERR_INVALID_ARGUMENT",
-    message: formatManifestErrorMessage(`Invalid plugin manifest: ${reason}`, options.manifestPath),
-    details: {
-      manifestPath: options.manifestPath ?? null,
-      errors,
-    },
-  });
-}
-
-function validatePluginManifestSemantics(
-  manifest: PluginManifest,
-  manifestPath: string | undefined,
-): void {
-  const errors: { path: string; message: string; keyword: string }[] = [];
-  const commands = manifest.contributes?.commands ?? [];
-
-  commands.forEach((command, commandIndex) => {
-    errors.push(
-      ...collectCommandSchemaUiErrors(command.inputSchema, command.outputSchema, commandIndex),
-    );
-  });
-
-  if (errors.length === 0) {
-    return;
-  }
-
-  const firstError = errors[0]!;
-  const reason = `${firstError.path} ${firstError.message}`;
-
-  throw new RuntimeError({
-    code: "ERR_INVALID_ARGUMENT",
-    message: formatManifestErrorMessage(`Invalid plugin manifest: ${reason}`, manifestPath),
-    details: {
-      manifestPath: manifestPath ?? null,
-      errors,
-    },
-  });
-}
-
-function normalizeAjvErrors(errors: ErrorObject[]): {
-  path: string;
-  message: string;
-  keyword: string;
-}[] {
-  return errors.map((error) => ({
-    path: error.instancePath || "/",
-    message: error.message ?? "failed validation",
-    keyword: error.keyword,
-  }));
+  return new RuntimeJsonSchema().validateManifest(options.manifest, options.manifestPath);
 }
 
 function formatManifestErrorMessage(message: string, manifestPath: string | undefined): string {
@@ -118,28 +48,4 @@ function formatManifestErrorMessage(message: string, manifestPath: string | unde
   }
 
   return `${message}: ${manifestPath}`;
-}
-
-function createRuntimeManifestSchema(): object {
-  const schema = structuredClone(manifestV1Schema) as {
-    definitions?: {
-      tooldeckInputJsonSchema?: unknown;
-      tooldeckOutputJsonSchema?: unknown;
-    };
-  };
-
-  if (schema.definitions) {
-    schema.definitions.tooldeckInputJsonSchema = {
-      type: "object",
-      description:
-        "A command input JSON Schema object. Full JSON Schema validation is deferred to command input handling.",
-    };
-    schema.definitions.tooldeckOutputJsonSchema = {
-      type: "object",
-      description:
-        "A command output JSON Schema object. Full validation is deferred to command schema compilation.",
-    };
-  }
-
-  return schema;
 }

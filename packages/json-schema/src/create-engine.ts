@@ -20,10 +20,20 @@ import {
   createProfileAjv,
   createStaticDraft07Ajv,
 } from "./internal/ajv";
-import { compiledValidator, compileWithAjv, validateSchemaProfile } from "./internal/compile";
+import {
+  compilationError,
+  compiledValidator,
+  compileWithAjv,
+  validateSchemaProfile,
+} from "./internal/compile";
 import { normalizeCommandInputSchema } from "./internal/input-schema";
 import { createCompilationIssue } from "./internal/issues";
 import { cloneJsonValue, isJsonObject } from "./internal/json";
+import {
+  classifyInputProfileIssues,
+  classifyManifestProfileIssues,
+  classifyOutputProfileIssues,
+} from "./internal/profile-issues";
 import {
   collectInputSchemaSemanticIssues,
   collectManifestSemanticIssues,
@@ -120,7 +130,11 @@ function compileManifest(
     return initializationFailure(protocol);
   }
 
-  return compiledValidator(protocol.validators.manifest, collectManifestSemanticIssues);
+  return compiledValidator(
+    protocol.validators.manifest,
+    collectManifestSemanticIssues,
+    classifyManifestProfileIssues,
+  );
 }
 
 function compileCommandInput(
@@ -134,10 +148,10 @@ function compileCommandInput(
     return cloned;
   }
 
-  const profileIssues = validateSchemaProfile(profile, cloned.schema);
+  const profileIssues = classifyInputProfileIssues(validateSchemaProfile(profile, cloned.schema));
 
   if (profileIssues.length > 0) {
-    return { compiled: false, issues: profileIssues };
+    return { compiled: false, error: compilationError(profileIssues) };
   }
 
   if (!isJsonObject(cloned.schema)) {
@@ -147,7 +161,7 @@ function compileCommandInput(
   const semanticIssues = collectInputSchemaSemanticIssues(cloned.schema);
 
   if (semanticIssues.length > 0) {
-    return { compiled: false, issues: semanticIssues };
+    return { compiled: false, error: compilationError(semanticIssues) };
   }
 
   const normalized = normalizeCommandInputSchema(
@@ -168,10 +182,10 @@ function compileCommandOutput(
     return cloned;
   }
 
-  const profileIssues = validateSchemaProfile(profile, cloned.schema);
+  const profileIssues = classifyOutputProfileIssues(validateSchemaProfile(profile, cloned.schema));
 
   if (profileIssues.length > 0) {
-    return { compiled: false, issues: profileIssues };
+    return { compiled: false, error: compilationError(profileIssues) };
   }
 
   return compileWithAjv<CommandResult>(ajv, cloned.schema);
@@ -179,11 +193,13 @@ function compileCommandOutput(
 
 function cloneSchemaDocument(
   schema: JsonSchemaDocument,
-): { compiled: true; schema: JsonSchemaDocument } | { compiled: false; issues: JsonSchemaIssue[] } {
+):
+  | { compiled: true; schema: JsonSchemaDocument }
+  | Extract<JsonSchemaCompilationResult<never>, { compiled: false }> {
   const cloned = cloneJsonValue(schema);
 
   if (!cloned.valid) {
-    return { compiled: false, issues: cloned.issues };
+    return { compiled: false, error: compilationError(cloned.error.issues) };
   }
 
   if (typeof cloned.value === "boolean" || isJsonObject(cloned.value)) {
@@ -193,23 +209,26 @@ function cloneSchemaDocument(
   return invalidSchemaRoot("JSON Schema must be an object or boolean");
 }
 
-function invalidSchemaRoot(message: string): { compiled: false; issues: JsonSchemaIssue[] } {
+function invalidSchemaRoot(
+  message: string,
+): Extract<JsonSchemaCompilationResult<never>, { compiled: false }> {
   return {
     compiled: false,
-    issues: [
+    error: compilationError([
       {
+        code: "schema.invalid-root",
         instancePath: "",
         propertyPath: "",
         keyword: "schema",
         message,
         expected: ["object", "boolean"],
       },
-    ],
+    ]),
   };
 }
 
 function initializationFailure<T>(
   initialization: Extract<ProtocolInitialization, { initialized: false }>,
 ): JsonSchemaCompilationResult<T> {
-  return { compiled: false, issues: initialization.issues };
+  return { compiled: false, error: compilationError(initialization.issues) };
 }

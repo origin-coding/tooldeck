@@ -137,8 +137,19 @@ describe("PluginManager command output", () => {
       hostRegistry: createHostRegistry(pluginHost),
     });
 
-    await expect(manager.runCommand({ commandId: "json.format" })).rejects.toThrow(
-      "Command output does not match outputSchema for json.format: --blocks[0].text",
-    );
+    await expect(manager.runCommand({ commandId: "json.format" })).rejects.toMatchObject({
+      message: "Command output does not match outputSchema for json.format",
+      details: {
+        issue: "invalid_command_output",
+        schemaError: {
+          issues: expect.arrayContaining([
+            expect.objectContaining({
+              code: "json-schema.pattern",
+              propertyPath: "blocks[0].text",
+            }),
+          ]),
+        },
+      },
+    });
   });
 });

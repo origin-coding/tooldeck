@@ -56,7 +56,9 @@ describe("manifest validation", () => {
   });
 
   it("throws a field path aware error for missing required fields", () => {
-    expect(() =>
+    let thrown: unknown;
+
+    try {
       validatePluginManifest({
         manifestPath: "plugins/bad/manifest.json",
         manifest: {
@@ -67,8 +69,31 @@ describe("manifest validation", () => {
             entry: "./dist/index.js",
           },
         },
-      }),
-    ).toThrow("Invalid plugin manifest: / must have required property 'name'");
+      });
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toMatchObject({
+      message: "Invalid plugin manifest: plugins/bad/manifest.json",
+      details: {
+        schemaError: {
+          kind: "validation",
+          issues: expect.arrayContaining([
+            expect.objectContaining({
+              code: "json-schema.required",
+              propertyPath: "name",
+              expected: "name",
+            }),
+            expect.objectContaining({
+              code: "json-schema.required",
+              propertyPath: "version",
+              expected: "version",
+            }),
+          ]),
+        },
+      },
+    });
   });
 
   it("accepts command-level x-ui layout hints", () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeCommandInput } from "@/index";
+import { expectCommandInputIssues, normalizeCommandInput } from "./command-input-fixtures";
 
 describe("command input validation", () => {
   it("throws when required inputs are missing", () => {
@@ -18,7 +18,7 @@ describe("command input validation", () => {
           },
         },
       }),
-    ).toThrow("Missing required command input: --text");
+    ).toThrow("Invalid command input for json.format");
 
     try {
       normalizeCommandInput({
@@ -38,34 +38,43 @@ describe("command input validation", () => {
       expect(error).toMatchObject({
         code: "ERR_INVALID_ARGUMENT",
         details: {
-          issue: "missing_required",
+          issue: "invalid_command_input",
           commandId: "json.format",
-          propertyPath: "text",
-          schemaKeyword: "required",
+          schemaError: {
+            kind: "validation",
+            issues: expect.arrayContaining([
+              expect.objectContaining({
+                code: "json-schema.required",
+                propertyPath: "text",
+              }),
+            ]),
+          },
         },
       });
     }
   });
 
   it("rejects additional properties when JSON Schema disallows them", () => {
-    expect(() =>
-      normalizeCommandInput({
-        commandId: "json.format",
-        input: {
-          text: "{}",
-          extra: true,
-        },
-        inputSchema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            text: {
-              type: "string",
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          commandId: "json.format",
+          input: {
+            text: "{}",
+            extra: true,
+          },
+          inputSchema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              text: {
+                type: "string",
+              },
             },
           },
-        },
-      }),
-    ).toThrow("Unknown command input argument: --extra");
+        }),
+      [{ code: "json-schema.additional-property", propertyPath: "extra" }],
+    );
   });
 
   it("validates number range, enum, string length, and pattern", () => {
@@ -90,40 +99,48 @@ describe("command input validation", () => {
       },
     };
 
-    expect(() =>
-      normalizeCommandInput({
-        input: {
-          indent: 12,
-        },
-        inputSchema,
-      }),
-    ).toThrow("Command input is above maximum: --indent");
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          input: {
+            indent: 12,
+          },
+          inputSchema,
+        }),
+      [{ code: "json-schema.maximum", propertyPath: "indent" }],
+    );
 
-    expect(() =>
-      normalizeCommandInput({
-        input: {
-          mode: "invalid",
-        },
-        inputSchema,
-      }),
-    ).toThrow("Invalid value for command input: --mode");
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          input: {
+            mode: "invalid",
+          },
+          inputSchema,
+        }),
+      [{ code: "json-schema.enum", propertyPath: "mode" }],
+    );
 
-    expect(() =>
-      normalizeCommandInput({
-        input: {
-          name: "A",
-        },
-        inputSchema,
-      }),
-    ).toThrow("Command input is shorter than minLength: --name");
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          input: {
+            name: "A",
+          },
+          inputSchema,
+        }),
+      [{ code: "json-schema.min-length", propertyPath: "name" }],
+    );
 
-    expect(() =>
-      normalizeCommandInput({
-        input: {
-          name: "abc123",
-        },
-        inputSchema,
-      }),
-    ).toThrow("Command input does not match pattern: --name");
+    expectCommandInputIssues(
+      () =>
+        normalizeCommandInput({
+          input: {
+            name: "abc123",
+          },
+          inputSchema,
+        }),
+      [{ code: "json-schema.pattern", propertyPath: "name" }],
+    );
   });
 });
