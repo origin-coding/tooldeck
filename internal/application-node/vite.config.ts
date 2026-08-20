@@ -8,6 +8,7 @@ const nodeBuiltins = new Set([
   ...builtinModules,
   ...builtinModules.map((moduleName) => `node:${moduleName}`),
 ]);
+const externalPackages = new Set(["@tooldeck/plugin-package", "@tooldeck/runtime-node"]);
 
 export default defineConfig({
   cacheDir: ".vite/cache",
@@ -27,6 +28,7 @@ export default defineConfig({
       external: (id) =>
         nodeBuiltins.has(id) ||
         id.startsWith("node:") ||
+        externalPackages.has(id) ||
         id === "effect" ||
         id.startsWith("effect/"),
       output: {
