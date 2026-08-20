@@ -2,6 +2,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import inputFixtures from "../../protocol/schema/fixtures/command-input-v1.fixtures.json";
+import outputFixtures from "../../protocol/schema/fixtures/command-output-v1.fixtures.json";
 import {
   createTooldeckPackageManifest,
   normalizePackagePath,
@@ -101,4 +103,40 @@ describe("Tooldeck plugin package creation", () => {
       },
     });
   });
+
+  it.each(outputFixtures.valid)(
+    "reads packages using supported protocol Schema fixtures: $name",
+    async ({ schema: outputSchema }) => {
+      const tempDir = createTempDir();
+      const packagePath = path.join(tempDir, "schema-profile.tdplugin");
+      const manifest = createManifest() as {
+        contributes: { commands: Array<Record<string, unknown>> };
+      };
+      manifest.contributes.commands[0]!.inputSchema = inputFixtures.valid[0]!.schema;
+      manifest.contributes.commands[0]!.outputSchema = outputSchema;
+
+      await writeTooldeckPackage(packagePath, {
+        files: {
+          "manifest.json": JSON.stringify(manifest),
+          "tooldeck-package.json": JSON.stringify(
+            createTooldeckPackageManifest({ files: ["dist/index.js"] }),
+          ),
+          "dist/index.js": "export default { activate() {} };\n",
+        },
+      });
+
+      await expect(readTooldeckPackage({ packagePath })).resolves.toMatchObject({
+        pluginManifest: {
+          contributes: {
+            commands: [
+              {
+                inputSchema: inputFixtures.valid[0]!.schema,
+                outputSchema,
+              },
+            ],
+          },
+        },
+      });
+    },
+  );
 });
