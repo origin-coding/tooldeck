@@ -129,7 +129,7 @@ Keep package dependencies layered by public contract and private implementation:
 
 @tooldeck/plugin-package
   Public .tdplugin container implementation: package metadata, ZIP adapter,
-  validation, safe unpacking, digest calculation, and package limits.
+  owner-specific validation adapter, safe unpacking, digest calculation, and package limits.
 
 @tooldeck/application-node
   Private Tooldeck Node application service: database lifecycle, preferences,
@@ -138,7 +138,8 @@ Keep package dependencies layered by public contract and private implementation:
 
 @tooldeck/plugin-tools
   Public plugin-author workflow: generate, check, build, inspect, pack, dist, and
-  command-handler testing helpers.
+  command-handler testing helpers, with owner-specific author diagnostics over the shared
+  JSON Schema engine.
 ```
 
 Dependency direction should stay one-way:
@@ -147,7 +148,8 @@ Dependency direction should stay one-way:
 protocol <- sdk-node <- runtime-node <- application-node <- CLI/Desktop main
 state-machine <- runtime-node <- application-node
 protocol <- json-schema <- runtime-node
-protocol <- plugin-package <- plugin-tools
+protocol <- json-schema <- plugin-package <- plugin-tools
+protocol <- json-schema <- plugin-tools
 plugin-package + runtime-node -> application-node
 ```
 

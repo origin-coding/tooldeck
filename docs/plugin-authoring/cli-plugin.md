@@ -3,7 +3,7 @@
 This page is kept for older links. The current plugin authoring guide is
 [Tooldeck Plugin Authoring](./README.md).
 
-Current Tooldeck 1.3 authoring is no longer CLI-only. Desktop and CLI share the same
+Current Tooldeck 1.4 authoring is no longer CLI-only. Desktop and CLI share the same
 trusted local plugin model:
 
 - Static `manifest.json` scanning.
@@ -15,4 +15,5 @@ trusted local plugin model:
 - Built-in, installed, and explicitly configured external plugin scan sources.
 - Shared install, enable/disable, uninstall, and retained-data purge behavior.
 
-Use the current guide for commands, package and installation examples, and 1.3 scope.
+Use the current guide for commands, Schema profile and compatibility rules, package and
+installation examples, and the current supported scope.

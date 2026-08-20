@@ -3,6 +3,11 @@ import path from "node:path";
 
 import type { PluginManifest } from "@tooldeck/protocol";
 
+import {
+  formatAuthoringManifestDiagnostics,
+  validateAuthoringManifest,
+} from "./authoring-json-schema";
+
 export const DEFAULT_PLUGIN_MANIFEST_PATH = "manifest.json";
 
 export interface ReadPluginManifestOptions {
@@ -21,9 +26,17 @@ export async function readPluginManifest(
 ): Promise<ReadPluginManifestResult> {
   const manifestPath = path.resolve(options.manifestPath ?? DEFAULT_PLUGIN_MANIFEST_PATH);
   const manifestText = await readFile(manifestPath, "utf8");
+  const parsed: unknown = JSON.parse(manifestText);
+  const validation = validateAuthoringManifest(parsed, manifestPath);
+
+  if (!validation.valid) {
+    throw new Error(
+      `Manifest is not valid for Tooldeck plugin authoring:\n${formatAuthoringManifestDiagnostics(validation.diagnostics)}`,
+    );
+  }
 
   return {
-    manifest: JSON.parse(manifestText) as PluginManifest,
+    manifest: validation.manifest,
     manifestPath,
     manifestDir: path.dirname(manifestPath),
     sourceLabel: path.basename(manifestPath),

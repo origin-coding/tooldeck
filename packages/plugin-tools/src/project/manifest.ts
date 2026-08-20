@@ -1,21 +1,12 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-import { manifestV1Schema, type PluginManifest } from "@tooldeck/protocol";
-import Ajv from "ajv";
+import type { PluginManifest } from "@tooldeck/protocol";
 
+import { validateAuthoringManifest } from "../authoring-json-schema";
 import { checkLocales } from "./locale";
-import { checkSupportedSchemaExtensions } from "./schema-extensions";
 import type { PluginProjectDiagnostic } from "./types";
-import { formatUnknownError, normalizeAjvErrors } from "./utils";
-
-const ajv = new Ajv({
-  allErrors: true,
-  strict: false,
-  validateSchema: false,
-});
-
-const validateManifestSchema = ajv.compile<PluginManifest>(createRuntimeManifestSchema());
+import { formatUnknownError } from "./utils";
 
 export async function readAndValidateManifest(
   manifestPath: string,
@@ -53,22 +44,15 @@ export async function readAndValidateManifest(
     return undefined;
   }
 
-  if (!validateManifestSchema(manifest)) {
-    diagnostics.push(
-      ...normalizeAjvErrors(validateManifestSchema.errors ?? []).map((error) => ({
-        severity: "error" as const,
-        code: "MANIFEST_SCHEMA",
-        message: error.message,
-        path: manifestPath,
-        fieldPath: error.fieldPath,
-        suggestion: error.suggestion,
-      })),
-    );
+  const validation = validateAuthoringManifest(manifest, manifestPath);
+
+  if (!validation.valid) {
+    diagnostics.push(...validation.diagnostics);
 
     return undefined;
   }
 
-  return manifest;
+  return validation.manifest;
 }
 
 export async function checkManifestSemantics(
@@ -122,7 +106,6 @@ export async function checkManifestSemantics(
   }
 
   checkUniqueCommandIds(manifest, manifestPath, diagnostics);
-  checkSupportedSchemaExtensions(manifest, manifestPath, diagnostics);
   await checkLocales(manifest, manifestDir, diagnostics);
 }
 
@@ -151,28 +134,4 @@ function checkUniqueCommandIds(
 
 function normalizePath(value: string): string {
   return value.replaceAll("\\", "/").replace(/^\.\//, "");
-}
-
-function createRuntimeManifestSchema(): object {
-  const schema = structuredClone(manifestV1Schema) as {
-    definitions?: {
-      tooldeckInputJsonSchema?: unknown;
-      tooldeckOutputJsonSchema?: unknown;
-    };
-  };
-
-  if (schema.definitions) {
-    schema.definitions.tooldeckInputJsonSchema = {
-      type: "object",
-      description:
-        "A command input JSON Schema object. Full JSON Schema validation is deferred to command input handling.",
-    };
-    schema.definitions.tooldeckOutputJsonSchema = {
-      type: "object",
-      description:
-        "A command output JSON Schema object. Full validation is deferred to command schema compilation.",
-    };
-  }
-
-  return schema;
 }

@@ -62,9 +62,67 @@ describe("Tooldeck plugin package metadata", () => {
     });
 
     await expect(readTooldeckPackage({ packagePath })).rejects.toMatchObject({
+      name: "TooldeckPackageError",
       code: "INVALID_PLUGIN_MANIFEST",
+      message: expect.stringContaining("Plugin manifest schema violation"),
       context: {
+        manifestPath: "manifest.json",
         fieldPath: "contributes.commands[0].id",
+        reason: "pattern",
+      },
+    } satisfies Partial<TooldeckPackageError>);
+  });
+
+  it("preserves invalid plugin manifest JSON context", async () => {
+    const tempDir = createTempDir();
+    const packagePath = path.join(tempDir, "invalid-manifest-json.tdplugin");
+
+    await writeTooldeckPackage(packagePath, {
+      files: {
+        "manifest.json": "{ invalid",
+        "tooldeck-package.json": JSON.stringify(
+          createTooldeckPackageManifest({ files: ["dist/index.js"] }),
+        ),
+        "dist/index.js": "export default { activate() {} };\n",
+      },
+    });
+
+    await expect(readTooldeckPackage({ packagePath })).rejects.toMatchObject({
+      name: "TooldeckPackageError",
+      code: "INVALID_PLUGIN_MANIFEST",
+      message: "Plugin manifest is not valid JSON.",
+      context: {
+        manifestPath: "manifest.json",
+        reason: expect.any(String),
+      },
+    } satisfies Partial<TooldeckPackageError>);
+  });
+
+  it("preserves locale path validation context", async () => {
+    const tempDir = createTempDir();
+    const packagePath = path.join(tempDir, "unsafe-locale-path.tdplugin");
+    const manifest = {
+      ...createManifest(),
+      locales: { en: "../outside.json" },
+    };
+
+    await writeTooldeckPackage(packagePath, {
+      files: {
+        "manifest.json": JSON.stringify(manifest),
+        "tooldeck-package.json": JSON.stringify(
+          createTooldeckPackageManifest({ files: ["dist/index.js"] }),
+        ),
+        "dist/index.js": "export default { activate() {} };\n",
+      },
+    });
+
+    await expect(readTooldeckPackage({ packagePath })).rejects.toMatchObject({
+      code: "INVALID_PACKAGE_PATH",
+      message: "Package path must not contain traversal segments.",
+      context: {
+        entryPath: "../outside.json",
+        fieldPath: "locales.en",
+        reason: "path traversal",
       },
     } satisfies Partial<TooldeckPackageError>);
   });
@@ -82,6 +140,12 @@ describe("Tooldeck plugin package metadata", () => {
 
     await expect(readTooldeckPackage({ packagePath })).rejects.toMatchObject({
       code: "MISSING_RUNTIME_ENTRY",
+      message: "Package is missing manifest runtime entry.",
+      context: {
+        packagePath,
+        entryPath: "dist/index.js",
+        fieldPath: "runtime.entry",
+      },
     } satisfies Partial<TooldeckPackageError>);
   });
 

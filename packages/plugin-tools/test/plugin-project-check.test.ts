@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -30,11 +30,16 @@ describe("checkPluginProject", () => {
     await writeFile(path.join(projectDir, "src", "generated", "commands.ts"), "stale", "utf8");
 
     const result = await checkPluginProject();
+    const diagnostic = result.diagnostics.find((item) => item.code === "GENERATED_STALE");
 
     expect(result.ok).toBe(false);
-    expect(result.diagnostics.some((diagnostic) => diagnostic.code === "GENERATED_STALE")).toBe(
-      true,
-    );
+    expect(diagnostic).toEqual({
+      severity: "error",
+      code: "GENERATED_STALE",
+      message: "Generated command types are out of sync. Run tooldeck-plugin generate.",
+      path: path.join(projectDir, "src", "generated", "commands.ts"),
+      suggestion: "Run tooldeck-plugin generate and commit the updated generated command types.",
+    });
   });
 
   it("checks built ESM output without activating the plugin", async () => {
@@ -134,6 +139,28 @@ describe("checkPluginProject", () => {
     );
   });
 
+  it("preserves an explicit manifest path in schema diagnostics", async () => {
+    const projectDir = await createPluginProject({
+      manifest: { ...createManifest(), runtime: { kind: "node" } } as never,
+    });
+    const manifestPath = path.join(projectDir, "plugin.manifest.json");
+    await rename(path.join(projectDir, "manifest.json"), manifestPath);
+    process.chdir(projectDir);
+
+    const result = await checkPluginProject({ manifestPath });
+    const diagnostic = result.diagnostics.find(
+      (item) => item.code === "MANIFEST_SCHEMA" && item.fieldPath === "runtime.entry",
+    );
+
+    expect(result.manifestPath).toBe(manifestPath);
+    expect(diagnostic).toMatchObject({
+      path: manifestPath,
+      fieldPath: "runtime.entry",
+      message: "runtime.entry is required.",
+      suggestion: 'Add "runtime.entry": "./dist/index.js".',
+    });
+  });
+
   it("rejects unsupported field x-ui properties for the selected control", async () => {
     const manifest = createManifest();
     manifest.contributes!.commands![0]!.inputSchema = {
@@ -144,7 +171,6 @@ describe("checkPluginProject", () => {
     } as never;
     const projectDir = await createPluginProject({ manifest });
     process.chdir(projectDir);
-    await generatePluginCommandTypesFile();
 
     const result = await checkPluginProject();
 
@@ -154,7 +180,9 @@ describe("checkPluginProject", () => {
         (diagnostic) =>
           diagnostic.code === "INPUT_FIELD_X_UI" &&
           diagnostic.message.includes("rows") &&
-          diagnostic.message.includes("text control"),
+          diagnostic.fieldPath ===
+            "contributes.commands[0].inputSchema.properties.text.x-ui.rows" &&
+          diagnostic.suggestion?.includes("use an input control"),
       ),
     ).toBe(true);
   });
@@ -180,14 +208,54 @@ describe("checkPluginProject", () => {
     process.chdir(projectDir);
 
     const result = await checkPluginProject();
+    const diagnostic = result.diagnostics.find(
+      (item) =>
+        item.code === "SCHEMA_X_I18N" &&
+        item.fieldPath ===
+          "contributes.commands[0].inputSchema.properties.mode.x-i18n.enumLabels.pretty",
+    );
 
     expect(result.ok).toBe(false);
-    expect(
-      result.diagnostics.some(
-        (diagnostic) =>
-          diagnostic.code === "SCHEMA_X_I18N" && diagnostic.message.includes("enumLabels.pretty"),
-      ),
-    ).toBe(true);
+    expect(diagnostic).toEqual({
+      severity: "error",
+      code: "SCHEMA_X_I18N",
+      message:
+        "Command at index 0 $.properties.mode.x-i18n.enumLabels.pretty must be a locale key string.",
+      path: path.join(projectDir, "manifest.json"),
+      fieldPath: "contributes.commands[0].inputSchema.properties.mode.x-i18n.enumLabels.pretty",
+      suggestion: 'Change the enum label for "pretty" to a locale key string.',
+    });
+  });
+
+  it("reports missing schema locale keys with locale file context", async () => {
+    const manifest = createManifest();
+    manifest.contributes!.commands![0]!.inputSchema = {
+      type: "object",
+      properties: {
+        text: {
+          type: "string",
+          "x-i18n": { title: "schema.text.title" },
+        },
+      },
+    };
+    const projectDir = await createPluginProject({ manifest });
+    process.chdir(projectDir);
+    await generatePluginCommandTypesFile();
+
+    const result = await checkPluginProject();
+    const diagnostic = result.diagnostics.find(
+      (item) => item.code === "LOCALE_KEY_MISSING" && item.fieldPath === "schema.text.title",
+    );
+
+    expect(result.ok).toBe(false);
+    expect(diagnostic).toEqual({
+      severity: "error",
+      code: "LOCALE_KEY_MISSING",
+      message: "Locale en does not define key: schema.text.title",
+      path: path.join(projectDir, "locales", "en.json"),
+      fieldPath: "schema.text.title",
+      suggestion: 'Add "schema.text.title" to ./locales/en.json with a translated string value.',
+    });
   });
 
   it("rejects x-ui nested below a direct input property", async () => {
@@ -233,7 +301,15 @@ describe("checkPluginProject", () => {
     process.chdir(projectDir);
 
     const result = await checkPluginProject();
+    const diagnostic = result.diagnostics.find((item) => item.code === "INPUT_FIELD_X_UI_CONTROL");
 
-    expect(result.diagnostics.some((item) => item.code === "INPUT_FIELD_X_UI_CONTROL")).toBe(true);
+    expect(diagnostic).toEqual({
+      severity: "error",
+      code: "INPUT_FIELD_X_UI_CONTROL",
+      message: "x-ui.control checkbox is incompatible with the schema for count.",
+      path: path.join(projectDir, "manifest.json"),
+      fieldPath: "contributes.commands[0].inputSchema.properties.count.x-ui.control",
+      suggestion: "Use a control compatible with the field type and enum shape.",
+    });
   });
 });

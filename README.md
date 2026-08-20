@@ -139,11 +139,15 @@ Tooldeck implementation keeps these boundaries:
 
 - `packages/protocol` contains data contracts and standards-facing JSON Schema only.
 - `packages/json-schema` provides public, Effect-neutral Draft-07 execution without exposing
-  Ajv types.
+  Ajv types. It is the single shared Ajv execution source for Tooldeck profiles, while
+  `packages/protocol` remains their data-only source of truth.
 - `packages/sdk-node` provides the public Node plugin authoring contract.
 - `internal/runtime-node` coordinates scanning, commands, validation, runtime-kind routing,
   lazy activation, and trusted local Node plugin loading.
 - `packages/plugin-package` owns the public `.tdplugin` container implementation.
+- `internal/runtime-node`, `packages/plugin-tools`, and `packages/plugin-package` keep
+  lifecycle/errors, author diagnostics, and package safety as owner-specific adapters over
+  the shared JSON Schema engine.
 - `internal/application-node` owns database, preferences, history, plugin management, and the
   application facade shared by CLI and Desktop main.
 - Renderer code does not access SQLite or import and execute plugin code directly.

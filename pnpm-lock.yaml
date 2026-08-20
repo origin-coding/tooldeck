@@ -283,12 +283,12 @@ importers:
 
   packages/plugin-package:
     dependencies:
+      '@tooldeck/json-schema':
+        specifier: workspace:*
+        version: link:../json-schema
       '@tooldeck/protocol':
         specifier: workspace:*
         version: link:../protocol
-      ajv:
-        specifier: 'catalog:'
-        version: 8.20.0
       fflate:
         specifier: ^0.8.3
         version: 0.8.3
@@ -299,6 +299,9 @@ importers:
 
   packages/plugin-tools:
     dependencies:
+      '@tooldeck/json-schema':
+        specifier: workspace:*
+        version: link:../json-schema
       '@tooldeck/plugin-package':
         specifier: workspace:*
         version: link:../plugin-package
@@ -308,9 +311,6 @@ importers:
       '@tooldeck/sdk-node':
         specifier: workspace:*
         version: link:../sdk-node
-      ajv:
-        specifier: 'catalog:'
-        version: 8.20.0
       citty:
         specifier: 'catalog:'
         version: 0.2.2

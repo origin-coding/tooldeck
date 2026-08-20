@@ -2,6 +2,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import inputFixtures from "../../protocol/schema/fixtures/command-input-v1.fixtures.json";
+import outputFixtures from "../../protocol/schema/fixtures/command-output-v1.fixtures.json";
 import {
   createTooldeckPackageManifest,
   normalizePackagePath,
@@ -101,4 +103,107 @@ describe("Tooldeck plugin package creation", () => {
       },
     });
   });
+
+  it.each(inputFixtures.valid)(
+    "reads packages using supported input Schema fixture: $name",
+    async ({ schema: inputSchema }) => {
+      await expect(readPackageWithSchemas({ inputSchema })).resolves.toMatchObject({
+        pluginManifest: {
+          contributes: {
+            commands: [{ inputSchema }],
+          },
+        },
+      });
+    },
+  );
+
+  it.each(outputFixtures.valid)(
+    "reads packages using supported output Schema fixture: $name",
+    async ({ schema: outputSchema }) => {
+      await expect(readPackageWithSchemas({ outputSchema })).resolves.toMatchObject({
+        pluginManifest: {
+          contributes: {
+            commands: [{ outputSchema }],
+          },
+        },
+      });
+    },
+  );
+
+  it.each(inputFixtures.invalid)(
+    "rejects unsupported input Schema fixture during package validation: $name",
+    async ({ schema: inputSchema }) => {
+      await expect(readPackageWithSchemas({ inputSchema })).rejects.toMatchObject({
+        code: "INVALID_PLUGIN_MANIFEST",
+        context: {
+          manifestPath: "manifest.json",
+          fieldPath: expect.stringMatching(/^contributes\.commands\[0]\.inputSchema/),
+          reason: expect.any(String),
+        },
+      });
+    },
+  );
+
+  it.each(outputFixtures.invalid)(
+    "rejects unsupported output Schema fixture during package validation: $name",
+    async ({ schema: outputSchema }) => {
+      await expect(readPackageWithSchemas({ outputSchema })).rejects.toMatchObject({
+        code: "INVALID_PLUGIN_MANIFEST",
+        context: {
+          manifestPath: "manifest.json",
+          fieldPath: expect.stringMatching(/^contributes\.commands\[0]\.outputSchema/),
+          reason: expect.any(String),
+        },
+      });
+    },
+  );
+
+  it("rejects invalid command Schema patterns during package validation", async () => {
+    await expect(
+      readPackageWithSchemas({
+        inputSchema: {
+          type: "object",
+          properties: {
+            text: { type: "string", pattern: "[" },
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_PLUGIN_MANIFEST",
+      context: {
+        manifestPath: "manifest.json",
+        fieldPath: "contributes.commands[0].inputSchema.properties.text.pattern",
+        reason: "pattern",
+      },
+    });
+  });
 });
+
+async function readPackageWithSchemas(options: { inputSchema?: unknown; outputSchema?: unknown }) {
+  const tempDir = createTempDir();
+  const packagePath = path.join(tempDir, "schema-profile.tdplugin");
+  const manifest = createManifest() as {
+    contributes: { commands: Array<Record<string, unknown>> };
+  };
+  const command = manifest.contributes.commands[0]!;
+
+  if (options.inputSchema !== undefined) {
+    command.inputSchema = options.inputSchema;
+  }
+
+  if (options.outputSchema !== undefined) {
+    command.outputSchema = options.outputSchema;
+  }
+
+  await writeTooldeckPackage(packagePath, {
+    files: {
+      "manifest.json": JSON.stringify(manifest),
+      "tooldeck-package.json": JSON.stringify(
+        createTooldeckPackageManifest({ files: ["dist/index.js"] }),
+      ),
+      "dist/index.js": "export default { activate() {} };\n",
+    },
+  });
+
+  return readTooldeckPackage({ packagePath });
+}

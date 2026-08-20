@@ -1,92 +1,82 @@
-import Ajv from "ajv";
+import { createTooldeckJsonSchemaEngine } from "@tooldeck/json-schema";
+import type {
+  PluginManifest,
+  TooldeckInputJsonSchema,
+  TooldeckOutputJsonSchema,
+} from "@tooldeck/protocol";
 import { describe, expect, it } from "vitest";
 
-import commandInputV1Schema from "../../protocol/schema/command-input-v1.schema.json";
-import commandOutputV1Schema from "../../protocol/schema/command-output-v1.schema.json";
 import inputFixtures from "../../protocol/schema/fixtures/command-input-v1.fixtures.json";
 import outputFixtures from "../../protocol/schema/fixtures/command-output-v1.fixtures.json";
-import manifestV1Schema from "../../protocol/schema/manifest-v1.schema.json";
 
-const inputProfileId = "https://tooldeck.dev/schemas/command-input-v1.schema.json";
-const outputProfileId = "https://tooldeck.dev/schemas/command-output-v1.schema.json";
-
-function createProfileAjv(): Ajv {
-  const ajv = new Ajv({
-    allErrors: true,
-    strict: false,
-    validateSchema: true,
-  });
-
-  ajv.addSchema(commandInputV1Schema);
-  ajv.addSchema(commandOutputV1Schema);
-
-  return ajv;
-}
-
-describe("Tooldeck command Schema profiles", () => {
-  it("self-validates all three public Schema artifacts as Draft-07", () => {
-    const ajv = createProfileAjv();
-
-    expect(ajv.validateSchema(commandInputV1Schema), ajv.errorsText()).toBe(true);
-    expect(ajv.validateSchema(commandOutputV1Schema), ajv.errorsText()).toBe(true);
-    expect(ajv.validateSchema(manifestV1Schema), ajv.errorsText()).toBe(true);
-    expect(() => ajv.compile(manifestV1Schema)).not.toThrow();
+describe("shared Tooldeck command Schema profiles", () => {
+  it("compiles the canonical manifest profile through the shared engine", () => {
+    expect(createTooldeckJsonSchemaEngine().compileManifest().compiled).toBe(true);
   });
 
   it.each(inputFixtures.valid)("accepts input fixture: $name", ({ schema }) => {
-    const validate = createProfileAjv().getSchema(inputProfileId)!;
+    const result = createTooldeckJsonSchemaEngine().compileCommandInput(
+      schema as TooldeckInputJsonSchema,
+      "strict",
+    );
 
-    expect(validate(schema), JSON.stringify(validate.errors, null, 2)).toBe(true);
+    expect(result.compiled, result.compiled ? undefined : JSON.stringify(result.error)).toBe(true);
   });
 
   it.each(inputFixtures.invalid)("rejects input fixture: $name", ({ schema }) => {
-    const validate = createProfileAjv().getSchema(inputProfileId)!;
-
-    expect(validate(schema)).toBe(false);
+    expect(
+      createTooldeckJsonSchemaEngine().compileCommandInput(
+        schema as TooldeckInputJsonSchema,
+        "strict",
+      ).compiled,
+    ).toBe(false);
   });
 
   it.each(outputFixtures.valid)("accepts output fixture: $name", ({ schema }) => {
-    const validate = createProfileAjv().getSchema(outputProfileId)!;
+    const result = createTooldeckJsonSchemaEngine().compileCommandOutput(
+      schema as unknown as TooldeckOutputJsonSchema,
+    );
 
-    expect(validate(schema), JSON.stringify(validate.errors, null, 2)).toBe(true);
+    expect(result.compiled, result.compiled ? undefined : JSON.stringify(result.error)).toBe(true);
   });
 
   it.each(outputFixtures.invalid)("rejects output fixture: $name", ({ schema }) => {
-    const validate = createProfileAjv().getSchema(outputProfileId)!;
-
-    expect(validate(schema)).toBe(false);
+    expect(
+      createTooldeckJsonSchemaEngine().compileCommandOutput(
+        schema as unknown as TooldeckOutputJsonSchema,
+      ).compiled,
+    ).toBe(false);
   });
 
-  it("composes both profiles through manifest-v1 while keeping outputSchema optional", () => {
-    const validate = createProfileAjv().compile(manifestV1Schema);
-    const manifest = {
+  it("composes both profiles and preserves nested boolean Schemas", () => {
+    const compilation = createTooldeckJsonSchemaEngine().compileManifest();
+    expect(compilation.compiled).toBe(true);
+
+    if (!compilation.compiled) return;
+
+    const manifest: PluginManifest = {
       schemaVersion: "1.0",
       id: "dev.example.schema-profile",
       name: "Schema profile example",
       version: "1.0.0",
-      runtime: {
-        kind: "node",
-        entry: "./dist/index.js",
-      },
+      runtime: { kind: "node", entry: "./dist/index.js" },
       contributes: {
         commands: [
           {
             id: "example.with-output",
             title: "With output",
-            inputSchema: inputFixtures.valid[0]!.schema,
-            outputSchema: outputFixtures.valid[0]!.schema,
+            inputSchema: inputFixtures.valid[0]!.schema as TooldeckInputJsonSchema,
+            outputSchema: outputFixtures.valid[0]!.schema as unknown as TooldeckOutputJsonSchema,
           },
           {
             id: "example.without-output",
             title: "Without output",
-            inputSchema: {
-              type: "object",
-            },
+            inputSchema: { type: "object", properties: { enabled: true, hidden: false } },
           },
         ],
       },
     };
 
-    expect(validate(manifest), JSON.stringify(validate.errors, null, 2)).toBe(true);
+    expect(compilation.validator.validate(manifest).valid).toBe(true);
   });
 });

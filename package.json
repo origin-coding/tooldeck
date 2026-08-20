@@ -9,6 +9,7 @@
     "builtin-plugins:list": "node scripts/builtin-plugins.mjs list",
     "builtin-plugins:build": "node scripts/builtin-plugins.mjs build",
     "builtin-plugins:stage": "node scripts/builtin-plugins.mjs stage",
+    "check:ajv-artifacts": "node scripts/check-ajv-artifacts.mjs",
     "changeset": "changeset",
     "check:desktop-boundaries": "pnpm --filter @tooldeck/desktop check:boundaries",
     "smoke:cli": "pnpm --filter @tooldeck/cli smoke:built",

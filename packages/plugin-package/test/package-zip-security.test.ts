@@ -119,6 +119,11 @@ describe("Tooldeck plugin ZIP validation", () => {
       }),
     ).rejects.toMatchObject({
       code: "PACKAGE_TOO_LARGE",
+      message: "Tooldeck package file is too large.",
+      context: {
+        packagePath,
+        reason: expect.stringMatching(/^\d+ > 1$/),
+      },
     } satisfies Partial<TooldeckPackageError>);
   });
 
@@ -134,6 +139,10 @@ describe("Tooldeck plugin ZIP validation", () => {
       }),
     ).rejects.toMatchObject({
       code: "TOO_MANY_FILES",
+      message: "Tooldeck package contains too many files.",
+      context: {
+        reason: "5 > 2",
+      },
     } satisfies Partial<TooldeckPackageError>);
   });
 
@@ -149,6 +158,10 @@ describe("Tooldeck plugin ZIP validation", () => {
       }),
     ).rejects.toMatchObject({
       code: "UNCOMPRESSED_SIZE_TOO_LARGE",
+      message: "Tooldeck package is too large after unzip.",
+      context: {
+        reason: expect.stringMatching(/^\d+ > 1$/),
+      },
     } satisfies Partial<TooldeckPackageError>);
   });
 

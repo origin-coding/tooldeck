@@ -1,6 +1,10 @@
 import type { PluginManifest } from "@tooldeck/protocol";
 import { compile } from "json-schema-to-typescript";
 
+import {
+  formatAuthoringManifestDiagnostics,
+  validateAuthoringManifest,
+} from "../authoring-json-schema";
 import { createCommandTypesModel, quotePropertyName } from "./model";
 import { sanitizeSchemaForTypescript } from "./schema";
 import type { GeneratePluginCommandTypesOptions, GeneratedCommand } from "./types";
@@ -11,7 +15,15 @@ export async function generatePluginCommandTypes(
   manifest: PluginManifest,
   options: GeneratePluginCommandTypesOptions = {},
 ): Promise<string> {
-  const model = createCommandTypesModel(manifest, options);
+  const validation = validateAuthoringManifest(manifest);
+
+  if (!validation.valid) {
+    throw new Error(
+      `Manifest is not valid for Tooldeck plugin authoring:\n${formatAuthoringManifestDiagnostics(validation.diagnostics)}`,
+    );
+  }
+
+  const model = createCommandTypesModel(validation.manifest, options);
   const declarations = await Promise.all(
     model.commands.map((command) => renderCommandInputDeclaration(command, options)),
   );

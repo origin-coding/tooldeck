@@ -29,8 +29,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tooldeck/json-schema": "workspace:*",
     "@tooldeck/protocol": "workspace:*",
-    "ajv": "catalog:",
     "fflate": "^0.8.3"
   },
   "devDependencies": {

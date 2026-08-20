@@ -27,6 +27,7 @@ export default defineConfig({
       external: (id) =>
         nodeBuiltins.has(id) ||
         id.startsWith("node:") ||
+        id === "@tooldeck/json-schema" ||
         id === "effect" ||
         id.startsWith("effect/"),
       output: {
