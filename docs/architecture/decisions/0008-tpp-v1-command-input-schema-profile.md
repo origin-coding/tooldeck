@@ -4,6 +4,15 @@
 
 Accepted
 
+> **Execution ownership update:** Accepted ADR
+> [#71](https://github.com/origin-coding/tooldeck/issues/71) supersedes only this ADR's
+> assignment of shared compiler, Ajv configuration, and neutral error normalization to
+> separate consumers. The public profile semantics, compatibility boundary, data-only
+> protocol ownership, scan-time compilation, non-activation guarantee, and scoped
+> lifecycle rules in this ADR remain effective. Shared execution now belongs to
+> `@tooldeck/json-schema`; runtime, plugin-tools, and plugin-package retain owner-specific
+> adapters.
+
 ## Date
 
 2026-07-24
@@ -142,3 +151,5 @@ Cache 生命周期超过 runtime；rescan/uninstall 后可能保留旧 Schema，
 - [JSON Schema and Ajv Convergence](../../planning/1.4/04-json-schema-ajv.md)
 - [TPP v1 Architecture](../tpp-v1.md)
 - [Issue #28](https://github.com/origin-coding/tooldeck/issues/28)
+- [ADR #71: Centralize JSON Schema execution](https://github.com/origin-coding/tooldeck/issues/71)
+- [ADR #74: TPP v1 Command Output Schema Profile](https://github.com/origin-coding/tooldeck/issues/74)

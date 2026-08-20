@@ -72,7 +72,9 @@ TPP 协议，也不应放入 `@tooldeck/protocol`。
 
 当前仓库中的 `internal/runtime-node` 不是 TPP 协议本身，而是当前可信本地 Node 纵向切片的
 TypeScript runtime 实现。它负责 manifest indexing、command orchestration、lazy activation 协调、
-状态机和输入输出校验。公开的 Node/TS 插件作者契约由 `packages/sdk-node` 提供；
+状态机和输入输出校验。`packages/protocol` 是 manifest 和 command Schema profile 的静态数据
+事实来源；公开、Effect-neutral 的 `packages/json-schema` 是这些 profile 的唯一共享 Ajv 执行
+来源。公开的 Node/TS 插件作者契约由 `packages/sdk-node` 提供；
 `runtime-node` 依赖这份公开契约，不把私有 runtime 类型反向泄漏给插件作者。
 
 V1 不新建宿主无关 `@tooldeck/runtime` 包。Node 插件宿主通过 runtime 内部的 host registry
@@ -82,10 +84,10 @@ V1 不新建宿主无关 `@tooldeck/runtime` 包。Node 插件宿主通过 runti
 TPP spec / schema
   ↓
 packages/protocol        # TPP 的 TypeScript 类型和 JSON Schema 表达
-  ↓
-packages/sdk-node        # 公开 Node plugin authoring contract
-  ↓
-internal/runtime-node    # runtime 协调、runtime-kind routing 和 Node host
+  ├─ packages/json-schema  # 唯一共享 Ajv 编译、执行和中立 issue normalization
+  └─ packages/sdk-node     # 公开 Node plugin authoring contract
+       ↓
+internal/runtime-node      # 同时消费上述公开边界，负责 runtime 协调和 Node host
 ```
 
 Tooldeck 在协议和运行时之外增加了本地分发产品层：
@@ -101,7 +103,9 @@ plugin-package + runtime-node
 ```
 
 `.tdplugin` container、installed plugin directory 和安装记录属于 Tooldeck 产品实现，
-不是新的 TPP contribution。`plugin-package` 不扫描或激活插件；
+不是新的 TPP contribution。Runtime、plugin-tools 和 plugin-package 都通过
+`@tooldeck/json-schema` 执行共同 Schema 机制，同时分别保留 runtime lifecycle/error、作者诊断、
+package safety/error 等 owner-specific adapter 责任。`plugin-package` 不扫描或激活插件；
 `application-node` 不负责 CLI 输出、Electron IPC 或 renderer 交互。
 
 如果未来以 PySide、Rust 或其他技术栈实现宿主，可以实现另一套 runtime，或通过 RPC 调用当前
@@ -463,6 +467,13 @@ interface CommandUiHint {
 
 `outputSchema` 是可选的命令输出契约。宿主始终校验命令返回值是否符合基础 `CommandResult` / `ContentBlock` 结构；如果 manifest 声明了 `outputSchema`，宿主必须在命令返回后继续用该 schema 校验完整 `CommandResult`。校验失败属于插件执行失败，应该进入统一错误处理和命令运行历史记录。
 
+Tooldeck 1.4 将 command Schema 固定为 `command-input-v1` 和 `command-output-v1` 两个明确的
+Draft-07 子集，而不是完整 Draft-07。两者都不支持 `$ref`、远程加载、`format`、
+`ajv-formats` 或 executable custom keywords；输出 profile 也不应用 defaults、coercion 或其他
+mutation。正式作者工作流、package 校验和 runtime scan 会在执行前拒绝不支持或不可编译的
+Schema。扫描期只处理静态 manifest 数据，不加载或激活插件代码。详细作者契约和 1.3 兼容
+边界见 [Tooldeck Plugin Authoring](../plugin-authoring/README.md#command-schema-profiles)。
+
 MVP 实现备忘：当前实现标准 JSON Schema 语义、`x-i18n` 翻译 key、`inputSchema.x-ui.fieldOrder` 表单字段排序提示、input field 级 `x-ui.control` 控件提示，以及 command 级 `x-ui.layout` 展示提示。`x-ui` 只作为宿主展示和交互提示扩展，不改变数据校验语义。CLI 必须按 JSON Schema 解析和校验输入，忽略 `x-ui`。除这些已声明字段以外的 `x-ui` 字段、以及 `x-cli` 暂时不作为 v1 MVP 的实现目标。
 
 `command.x-ui.layout` 只影响 Desktop 中命令输入区和输出区的整体排布，不影响 command 输入/输出校验，CLI 忽略该字段。`stacked` 是默认值，表示输入区在上、输出区在下；`split` 表示输入区和输出区并排，宿主可在窄屏降级为 `stacked`。该字段不描述输入字段内部布局，也不描述输出 block 内部布局。
@@ -722,7 +733,7 @@ Manifest 可被静态扫描
 真正调用命令时才 activate
 ```
 
-当前 Tooldeck 1.3 实现支持可信本地 `.tdplugin` 文件安装。安装、卸载、启用、禁用、
+自 Tooldeck 1.3 起，当前实现支持可信本地 `.tdplugin` 文件安装。安装、卸载、启用、禁用、
 catalog rescan 和 retained-data purge 都不会 import runtime entry；只有调用匹配 command
 才触发 lazy activation。installed plugin 与 builtin、external source 一样参与静态 manifest
 扫描，不引入来源覆盖规则。
