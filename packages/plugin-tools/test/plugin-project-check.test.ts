@@ -171,7 +171,6 @@ describe("checkPluginProject", () => {
     } as never;
     const projectDir = await createPluginProject({ manifest });
     process.chdir(projectDir);
-    await generatePluginCommandTypesFile();
 
     const result = await checkPluginProject();
 
@@ -181,7 +180,9 @@ describe("checkPluginProject", () => {
         (diagnostic) =>
           diagnostic.code === "INPUT_FIELD_X_UI" &&
           diagnostic.message.includes("rows") &&
-          diagnostic.message.includes("text control"),
+          diagnostic.fieldPath ===
+            "contributes.commands[0].inputSchema.properties.text.x-ui.rows" &&
+          diagnostic.suggestion?.includes("use an input control"),
       ),
     ).toBe(true);
   });

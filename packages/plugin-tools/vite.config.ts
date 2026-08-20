@@ -8,9 +8,9 @@ const nodeBuiltins = new Set([
 ]);
 
 const externalPackages = new Set([
+  "@tooldeck/json-schema",
   "@tooldeck/plugin-package",
   "@tooldeck/protocol",
-  "ajv",
   "citty",
   "consola",
   "json-schema-to-typescript",

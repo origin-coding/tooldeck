@@ -125,17 +125,17 @@ describe("generatePluginCommandTypes", () => {
   it("rejects command id constant key conflicts", async () => {
     const manifest = createManifest([
       {
-        id: "json.format",
+        id: "json.foo-bar",
         title: "Format JSON",
       },
       {
-        id: "json-format",
+        id: "json.foo.bar",
         title: "Format JSON Again",
       },
     ]);
 
     await expect(generatePluginCommandTypes(manifest)).rejects.toThrow(
-      'Generated commandIds key "jsonFormat" conflicts for command ids: json.format, json-format',
+      'Generated commandIds key "jsonFooBar" conflicts for command ids: json.foo-bar, json.foo.bar',
     );
   });
 });
@@ -196,7 +196,7 @@ describe("generate command type files", () => {
     );
   });
 
-  it("resolves schema refs relative to the manifest path", async () => {
+  it("rejects schema refs before generating command types", async () => {
     const projectDir = createTempDir();
     const manifestPath = path.join(projectDir, "manifest.json");
     const outputPath = path.join(projectDir, "generated", "commands.ts");
@@ -233,9 +233,10 @@ describe("generate command type files", () => {
       "utf8",
     );
 
-    await runGenerateCommandTypesCli(["--manifest", manifestPath, "--out", outputPath]);
-
-    await expect(readFile(outputPath, "utf8")).resolves.toContain("text: string;");
+    await expect(
+      runGenerateCommandTypesCli(["--manifest", manifestPath, "--out", outputPath]),
+    ).rejects.toThrow("unsupported inputSchema keyword: $ref");
+    await expect(readFile(outputPath, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 
   it("rejects positional arguments", async () => {
