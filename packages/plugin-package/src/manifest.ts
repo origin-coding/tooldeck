@@ -1,19 +1,10 @@
-import { manifestV1Schema } from "@tooldeck/protocol";
-import Ajv, { type ErrorObject } from "ajv";
+import { createTooldeckJsonSchemaEngine, type JsonSchemaError } from "@tooldeck/json-schema";
+import { manifestV1Schema, type JsonObject } from "@tooldeck/protocol";
 
 import { packageError } from "./errors.js";
 import { assertSafePackagePath } from "./paths.js";
 import type { TooldeckPackagePluginManifest } from "./types.js";
 import { isRecord } from "./utils.js";
-
-const ajv = new Ajv({
-  allErrors: true,
-  strict: false,
-  validateSchema: false,
-});
-const validatePackageManifestSchema = ajv.compile<TooldeckPackagePluginManifest>(
-  createPackageManifestSchema(),
-);
 
 export function parsePluginManifestText(
   text: string,
@@ -43,17 +34,29 @@ export function validatePluginManifestShape(
     });
   }
 
-  if (!validatePackageManifestSchema(value)) {
-    throw formatManifestSchemaError(validatePackageManifestSchema.errors ?? [], manifestPath);
+  const engine = createTooldeckJsonSchemaEngine();
+  const manifestCompilation = engine.compileDraft07<TooldeckPackagePluginManifest>(
+    createPackageManifestSchema(),
+  );
+
+  if (!manifestCompilation.compiled) {
+    throw formatManifestSchemaError(manifestCompilation.error, manifestPath);
   }
 
-  assertSafePackagePath(value.runtime.entry, "runtime.entry");
-  assertLocalePaths(value, manifestPath);
+  const validation = manifestCompilation.validator.validate(value);
 
-  return value;
+  if (!validation.valid) {
+    throw formatManifestSchemaError(validation.error, manifestPath);
+  }
+
+  validateCommandSchemas(validation.value, manifestPath, engine);
+  assertSafePackagePath(validation.value.runtime.entry, "runtime.entry");
+  assertLocalePaths(validation.value, manifestPath);
+
+  return validation.value;
 }
 
-function createPackageManifestSchema(): object {
+function createPackageManifestSchema(): JsonObject {
   const schema = structuredClone(manifestV1Schema) as {
     definitions?: {
       runtime?: {
@@ -61,8 +64,8 @@ function createPackageManifestSchema(): object {
           kind?: unknown;
         };
       };
-      tooldeckInputJsonSchema?: unknown;
-      tooldeckOutputJsonSchema?: unknown;
+      tooldeckInputJsonSchema?: boolean | object;
+      tooldeckOutputJsonSchema?: boolean | object;
     };
   };
 
@@ -74,68 +77,28 @@ function createPackageManifestSchema(): object {
   }
 
   if (schema.definitions) {
-    schema.definitions.tooldeckInputJsonSchema = {
-      type: "object",
-      description:
-        "A command input JSON Schema object. Full JSON Schema validation is deferred to command input handling.",
-    };
-    schema.definitions.tooldeckOutputJsonSchema = {
-      type: "object",
-      description:
-        "A command output JSON Schema object. Full validation is deferred to command schema compilation.",
-    };
+    schema.definitions.tooldeckInputJsonSchema = true;
+    schema.definitions.tooldeckOutputJsonSchema = true;
   }
 
-  return schema;
+  return schema as JsonObject;
 }
 
 function formatManifestSchemaError(
-  errors: ErrorObject[],
+  error: JsonSchemaError,
   manifestPath: string,
+  fieldPrefix?: string,
 ): ReturnType<typeof packageError> {
-  const error = errors[0];
-  const message = error?.message
-    ? `Plugin manifest schema violation: ${error.message}.`
+  const issue = error.issues[0];
+  const message = issue?.message
+    ? `Plugin manifest schema violation: ${issue.message}.`
     : "Plugin manifest does not match the protocol schema.";
 
   return packageError("INVALID_PLUGIN_MANIFEST", message, {
     manifestPath,
-    fieldPath: error ? formatAjvFieldPath(error) : undefined,
-    reason: error?.keyword,
+    fieldPath: issue ? joinFieldPath(fieldPrefix, issue.propertyPath || undefined) : fieldPrefix,
+    reason: issue?.keyword,
   });
-}
-
-function formatAjvFieldPath(error: ErrorObject): string | undefined {
-  const path = pointerToFieldPath(error.instancePath);
-
-  if (error.keyword === "required") {
-    const missingProperty = getStringParam(error.params, "missingProperty");
-    return joinFieldPath(path, missingProperty);
-  }
-
-  if (error.keyword === "additionalProperties") {
-    const additionalProperty = getStringParam(error.params, "additionalProperty");
-    return joinFieldPath(path, additionalProperty);
-  }
-
-  return path;
-}
-
-function pointerToFieldPath(pointer: string): string | undefined {
-  if (!pointer) {
-    return undefined;
-  }
-
-  const segments = pointer
-    .slice(1)
-    .split("/")
-    .map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"));
-
-  return segments
-    .map((segment, index) =>
-      /^\d+$/.test(segment) ? `[${segment}]` : `${index === 0 ? "" : "."}${segment}`,
-    )
-    .join("");
 }
 
 function joinFieldPath(base: string | undefined, property: string | undefined): string | undefined {
@@ -143,16 +106,42 @@ function joinFieldPath(base: string | undefined, property: string | undefined): 
     return base;
   }
 
-  return base ? `${base}.${property}` : property;
+  return base ? `${base}${property.startsWith("[") ? "" : "."}${property}` : property;
 }
 
-function getStringParam(params: Record<string, unknown>, name: string): string | undefined {
-  const value = params[name];
+function validateCommandSchemas(
+  manifest: TooldeckPackagePluginManifest,
+  manifestPath: string,
+  engine: ReturnType<typeof createTooldeckJsonSchemaEngine>,
+): void {
+  for (const [index, command] of (manifest.contributes?.commands ?? []).entries()) {
+    if (command.inputSchema !== undefined) {
+      const compilation = engine.compileCommandInput(command.inputSchema, "strict");
 
-  return typeof value === "string" ? value : undefined;
+      if (!compilation.compiled) {
+        throw formatManifestSchemaError(
+          compilation.error,
+          manifestPath,
+          `contributes.commands[${index}].inputSchema`,
+        );
+      }
+    }
+
+    if (command.outputSchema !== undefined) {
+      const compilation = engine.compileCommandOutput(command.outputSchema);
+
+      if (!compilation.compiled) {
+        throw formatManifestSchemaError(
+          compilation.error,
+          manifestPath,
+          `contributes.commands[${index}].outputSchema`,
+        );
+      }
+    }
+  }
 }
 
-function assertLocalePaths(value: Record<string, unknown>, manifestPath: string): void {
+function assertLocalePaths(value: TooldeckPackagePluginManifest, manifestPath: string): void {
   if (value.locales === undefined) {
     return;
   }

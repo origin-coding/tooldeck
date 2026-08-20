@@ -7,7 +7,7 @@ const nodeBuiltins = new Set([
   ...builtinModules.map((moduleName) => `node:${moduleName}`),
 ]);
 
-const externalPackages = new Set(["@tooldeck/protocol", "ajv", "fflate"]);
+const externalPackages = new Set(["@tooldeck/json-schema", "@tooldeck/protocol", "fflate"]);
 
 export default defineConfig({
   cacheDir: ".vite/cache",
