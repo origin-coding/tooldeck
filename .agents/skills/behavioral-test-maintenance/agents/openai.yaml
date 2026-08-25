@@ -1,0 +1,7 @@
+interface:
+  display_name: "Behavioral Test Maintenance"
+  short_description: "Audit and safely simplify behavioral test coverage"
+  default_prompt: "Use $behavioral-test-maintenance to audit this test scope and propose behavior-preserving maintenance candidates."
+
+policy:
+  allow_implicit_invocation: true
