@@ -344,6 +344,20 @@ test/1.3-plugin-lifecycle
 Use a Conventional Commit type, the target release version, and a short lowercase
 kebab-case name. Do not use or prepend the default `codex/` branch prefix.
 
+## Testing
+
+- Test stable observable behavior, contracts, and invariants rather than implementation details.
+- Before adding a test file, search for the existing suite that owns the behavior.
+- Prefer extending an existing owning suite over creating a new test file.
+- Do not create one permanent regression test file per bug; place regressions with the owning behavior.
+- When three or more tests differ mainly by data, consider a table-driven test. Consider a property test when the examples express one general invariant and can use a valid input domain and independent oracle.
+- Avoid duplicating the same behavior matrix across unit, integration, and end-to-end tests. Verify a behavior at the lowest reliable layer, and keep higher layers focused on wiring, boundaries, and flows unique to that layer.
+- Treat call order, mock interaction, private structure, and exact implementation identity as non-contract details unless the interaction itself is observable behavior.
+- Justify snapshot, golden, and expected-value changes with a specification or contract change; do not update them merely to match the current implementation.
+- Tests may be merged, rewritten, moved, or deleted when a stronger surviving test covers the same guarantee, fault class, and necessary boundary without materially reducing readability or failure localization.
+
+Use the `behavioral-test-maintenance` Skill for dedicated test-suite audits and simplification work; its initial invocation is read-only and modifications require a later user confirmation.
+
 ## Release Verification
 
 The complete 1.3 repository verification set is:
