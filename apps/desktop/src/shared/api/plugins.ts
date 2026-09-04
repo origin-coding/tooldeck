@@ -1,6 +1,7 @@
-import type { ApplicationCleanupFailureDiagnostic } from "@tooldeck/application-node";
+import type { JsonObject } from "@tooldeck/protocol";
 
 import type { CatalogLocaleRequest, DesktopCommand } from "./commands";
+import type { DesktopApiError } from "./errors";
 
 export type DesktopPluginSourceKind = "builtin" | "installed" | "external";
 
@@ -34,10 +35,6 @@ export interface SetPluginEnabledRequest {
   locale?: string;
 }
 
-export interface InstallPluginPackageIpcRequest extends CatalogLocaleRequest {
-  packagePath: string;
-}
-
 export interface UninstallPluginRequest extends CatalogLocaleRequest {
   pluginId: string;
 }
@@ -65,8 +62,15 @@ export type DesktopPluginInstallResult =
   | InstalledDesktopPluginResult
   | InstalledDesktopPluginRefreshFailedResult;
 
+export interface DesktopCleanupFailureDiagnostic {
+  phase: "cleanup" | "rollback";
+  step: string;
+  context: JsonObject;
+  error: Omit<DesktopApiError, "tag">;
+}
+
 export interface DesktopPluginUninstallResult {
-  cleanupFailures: ApplicationCleanupFailureDiagnostic[];
+  cleanupFailures: DesktopCleanupFailureDiagnostic[];
   cleanupPending: boolean;
   commands: DesktopCommand[];
   filesMissing: boolean;

@@ -1,5 +1,5 @@
 import type { DesktopCommandsApi } from "@/shared/api";
-import { desktopIpcChannels } from "@/shared/ipc";
+import { desktopIpcChannels } from "@/shared/transport/ipc";
 
 import { invokeDesktop } from "./invoke";
 

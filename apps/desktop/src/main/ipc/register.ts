@@ -1,7 +1,8 @@
-import { toApplicationErrorTransport } from "@tooldeck/application-node";
 import { ipcMain } from "electron";
 
-import type { DesktopIpcResult } from "@/shared/ipc";
+import type { DesktopIpcResult } from "@/shared/transport/ipc";
+
+import { toDesktopApiError } from "../desktop-contract/errors";
 
 export type DesktopIpcHandler = (...args: unknown[]) => unknown;
 
@@ -27,7 +28,7 @@ export function createDesktopIpcRegistrar(): {
           } catch (error) {
             return {
               ok: false,
-              error: toApplicationErrorTransport(error),
+              error: toDesktopApiError(error),
             };
           }
         });

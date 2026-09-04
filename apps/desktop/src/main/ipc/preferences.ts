@@ -1,6 +1,6 @@
 import type { TooldeckApplication } from "@tooldeck/application-node";
 
-import { desktopIpcChannels } from "@/shared/ipc";
+import { desktopIpcChannels } from "@/shared/transport/ipc";
 
 import { toDesktopPreference } from "../desktop-contract/catalog";
 import { decodeGetPreferenceRequest, decodeSetPreferenceRequest } from "./codecs/requests";

@@ -1,4 +1,4 @@
-import { isDesktopApiError } from "@/shared/ipc";
+import { isDesktopApiError } from "@/shared/api";
 
 import type { DesktopNavigationMode } from "./types";
 

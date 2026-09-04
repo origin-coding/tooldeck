@@ -1,6 +1,6 @@
 import type { TooldeckApplication } from "@tooldeck/application-node";
 
-import { desktopIpcChannels } from "@/shared/ipc";
+import { desktopIpcChannels } from "@/shared/transport/ipc";
 
 import { toDesktopCommandRun } from "../desktop-contract/history";
 import { decodeListCommandRunsRequest } from "./codecs/requests";

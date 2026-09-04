@@ -1,7 +1,7 @@
 import { webUtils } from "electron";
 
 import type { DesktopPluginsApi } from "@/shared/api";
-import { desktopIpcChannels } from "@/shared/ipc";
+import { desktopIpcChannels, type InstallPluginPackageIpcRequest } from "@/shared/transport/ipc";
 
 import { invokeDesktop } from "./invoke";
 
@@ -25,7 +25,7 @@ export const pluginsApi: DesktopPluginsApi = {
     return invokeDesktop(desktopIpcChannels.plugins.installPackage, {
       packagePath,
       ...request,
-    });
+    } satisfies InstallPluginPackageIpcRequest);
   },
   uninstall(request) {
     return invokeDesktop(desktopIpcChannels.plugins.uninstall, request);

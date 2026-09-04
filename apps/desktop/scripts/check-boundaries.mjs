@@ -2,9 +2,11 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { checkBoundaryImports } from "./boundary-imports.mjs";
+
 const desktopRoot = fileURLToPath(new URL("../", import.meta.url));
 
-const rendererAndPreload = ["src/renderer", "src/preload"];
+const rendererAndPreload = ["src/renderer", "src/preload", "src/shared"];
 const allowedRendererApiMethods = [
   "commands.list",
   "commands.run",
@@ -25,7 +27,7 @@ const checks = [
   {
     name: "CLI, Desktop renderer, and Desktop preload must not import Effect",
     pattern: String.raw`(?:from\s+["']effect(?:/[^"']*)?["']|import\(["']effect(?:/[^"']*)?["']\))`,
-    paths: ["src/renderer", "src/preload", "../cli/src"],
+    paths: ["src/renderer", "src/preload", "src/shared", "../cli/src"],
     expect: "no-match",
   },
   {
@@ -67,6 +69,15 @@ const checks = [
 ];
 
 const failures = [];
+
+for (const filePath of resolveFiles(rendererAndPreload).filter((file) => /\.tsx?$/.test(file))) {
+  failures.push(...checkBoundaryImports(filePath, readFileSync(filePath, "utf8"), desktopRoot));
+}
+
+const bridgeExposures = findMatches(String.raw`\bexposeInMainWorld\s*\(`, ["src/preload"]);
+if (bridgeExposures.length !== 1) {
+  failures.push("Preload must expose exactly one global bridge.");
+}
 
 assertMatchesOnlyInFiles({
   name: "Desktop main may import Effect only in its request codec boundary",

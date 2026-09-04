@@ -31,23 +31,30 @@ describe("desktop preload API", () => {
   });
 
   it("exposes a single API grouped by domain", () => {
+    expect(electron.exposeInMainWorld).toHaveBeenCalledTimes(1);
+    expect(electron.exposeInMainWorld).toHaveBeenCalledWith("tooldeck", api);
     expect(api).toEqual({
-      commands: expect.objectContaining({
+      commands: {
         list: expect.any(Function),
         run: expect.any(Function),
-      }),
-      plugins: expect.objectContaining({
+      },
+      plugins: {
         list: expect.any(Function),
+        listDataResidues: expect.any(Function),
+        setEnabled: expect.any(Function),
         installDroppedPackage: expect.any(Function),
-      }),
-      preferences: expect.objectContaining({
+        uninstall: expect.any(Function),
+        purgeData: expect.any(Function),
+        rescan: expect.any(Function),
+      },
+      preferences: {
         list: expect.any(Function),
         get: expect.any(Function),
         set: expect.any(Function),
-      }),
-      history: expect.objectContaining({
+      },
+      history: {
         listRuns: expect.any(Function),
-      }),
+      },
     });
   });
 

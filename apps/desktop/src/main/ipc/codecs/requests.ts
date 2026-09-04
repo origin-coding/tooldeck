@@ -12,7 +12,6 @@ import { Either, ParseResult, Schema } from "effect";
 
 import type {
   GetPreferenceRequest,
-  InstallPluginPackageIpcRequest,
   ListCommandRunsRequest,
   ListCommandsRequest,
   ListPluginsRequest,
@@ -23,6 +22,7 @@ import type {
   SetPreferenceRequest,
   UninstallPluginRequest,
 } from "@/shared/api";
+import type { InstallPluginPackageIpcRequest } from "@/shared/transport/ipc";
 
 const NonEmptyStringSchema = Schema.String.pipe(
   Schema.minLength(1, { message: () => "Expected a non-empty string" }),
