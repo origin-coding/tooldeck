@@ -4,8 +4,17 @@ import type { DesktopApi, DesktopApiError, DesktopCommand, DesktopPlugin } from 
 
 afterEach(() => vi.unstubAllGlobals());
 
-describe("Nuxt workspace state", () => {
-  let workspace: ReturnType<(typeof import("@/renderer/stores/workspace"))["useWorkspaceStore"]>;
+describe("workspace actions and feature state", () => {
+  let actions: ReturnType<(typeof import("@/renderer/app/workspace"))["useWorkspaceActions"]>;
+  let catalog: ReturnType<(typeof import("@/renderer/features/catalog/store"))["useCatalogStore"]>;
+  let commands: ReturnType<
+    (typeof import("@/renderer/features/commands/store"))["useCommandsStore"]
+  >;
+  let plugins: ReturnType<(typeof import("@/renderer/features/plugins/store"))["usePluginsStore"]>;
+  let preferences: ReturnType<
+    (typeof import("@/renderer/features/preferences/store"))["usePreferencesStore"]
+  >;
+  let history: ReturnType<(typeof import("@/renderer/features/history/store"))["useHistoryStore"]>;
   let api: DesktopApi;
 
   beforeEach(async () => {
@@ -28,9 +37,19 @@ describe("Nuxt workspace state", () => {
     vi.stubGlobal("window", { tooldeck: api });
     const { createPinia, setActivePinia } = await import("pinia");
     setActivePinia(createPinia());
-    const { useWorkspaceStore } = await import("@/renderer/stores/workspace");
-    workspace = useWorkspaceStore();
-    await workspace.initialize();
+    const { useWorkspaceActions } = await import("@/renderer/app/workspace");
+    const { useCatalogStore } = await import("@/renderer/features/catalog/store");
+    const { useCommandsStore } = await import("@/renderer/features/commands/store");
+    const { usePluginsStore } = await import("@/renderer/features/plugins/store");
+    const { usePreferencesStore } = await import("@/renderer/features/preferences/store");
+    const { useHistoryStore } = await import("@/renderer/features/history/store");
+    actions = useWorkspaceActions();
+    catalog = useCatalogStore();
+    commands = useCommandsStore();
+    plugins = usePluginsStore();
+    preferences = usePreferencesStore();
+    history = useHistoryStore();
+    await actions.initialize();
   });
 
   it("updates the catalog and returns the installed plugin for navigation", async () => {
@@ -46,14 +65,16 @@ describe("Nuxt workspace state", () => {
       plugins: [plugin],
     });
 
-    expect(await workspace.install(file)).toBe(plugin.id);
+    expect(await actions.install(file)).toBe(plugin.id);
 
     expect(api.plugins.installDroppedPackage).toHaveBeenCalledWith(file, {
       locale: expect.any(String),
     });
-    expect(workspace).toMatchObject({
+    expect(catalog).toMatchObject({
       commands: [command],
       plugins: [plugin],
+    });
+    expect(plugins).toMatchObject({
       installState: {
         status: "success",
         pluginId: plugin.id,
@@ -66,7 +87,7 @@ describe("Nuxt workspace state", () => {
     const existingPlugin = createPlugin("dev.example.existing", "builtin");
     const file = { name: "installed.tdplugin" } as File;
 
-    workspace.plugins = [existingPlugin];
+    catalog.plugins = [existingPlugin];
     vi.mocked(api.plugins.installDroppedPackage).mockResolvedValue({
       status: "installed-refresh-failed",
       installedPluginId: "dev.example.installed",
@@ -74,10 +95,10 @@ describe("Nuxt workspace state", () => {
       refreshError: "forced refresh failure",
     });
 
-    await workspace.install(file);
+    await actions.install(file);
 
-    expect(workspace).toMatchObject({
-      plugins: [existingPlugin],
+    expect(catalog.plugins).toEqual([existingPlugin]);
+    expect(plugins).toMatchObject({
       installState: {
         status: "refresh-failed",
         pluginId: "dev.example.installed",
@@ -91,7 +112,7 @@ describe("Nuxt workspace state", () => {
     const plugin = createPlugin("dev.example.installed");
     const command = createCommand(plugin.id);
 
-    workspace.installState = {
+    plugins.installState = {
       status: "refresh-failed",
       pluginId: plugin.id,
       packageName: "installed.tdplugin",
@@ -102,15 +123,15 @@ describe("Nuxt workspace state", () => {
       plugins: [plugin],
     });
 
-    await workspace.rescan();
+    await actions.rescan();
 
-    expect(workspace.installState).toEqual({
+    expect(plugins.installState).toEqual({
       status: "success",
       pluginId: plugin.id,
       packageName: "installed.tdplugin",
     });
-    expect(workspace.commands).toEqual([command]);
-    expect(workspace.plugins).toEqual([plugin]);
+    expect(catalog.commands).toEqual([command]);
+    expect(catalog.plugins).toEqual([plugin]);
   });
 
   it.each([
@@ -127,10 +148,12 @@ describe("Nuxt workspace state", () => {
   ])("stores $name separately from workspace load errors", async ({ error }) => {
     vi.mocked(api.plugins.installDroppedPackage).mockRejectedValue(error);
 
-    await workspace.install({ name: "invalid.tdplugin" } as File);
+    await actions.install({ name: "invalid.tdplugin" } as File);
 
-    expect(workspace.error).toBeUndefined();
-    expect(workspace).toMatchObject({
+    expect(actions.error).toBeUndefined();
+    expect(plugins.error).toBeUndefined();
+    expect(preferences.error).toBeUndefined();
+    expect(plugins).toMatchObject({
       installState: {
         status: "error",
         message: "invalid package",
@@ -141,7 +164,7 @@ describe("Nuxt workspace state", () => {
   it("uninstalls a plugin and exposes its retained local data", async () => {
     const plugin = createPlugin("dev.example.installed");
 
-    workspace.plugins = [plugin];
+    catalog.plugins = [plugin];
     vi.mocked(api.plugins.uninstall).mockResolvedValue({
       cleanupFailures: [],
       cleanupPending: false,
@@ -152,22 +175,20 @@ describe("Nuxt workspace state", () => {
       residues: [{ pluginId: plugin.id, statePresent: true, kvEntries: 2 }],
     });
 
-    await workspace.uninstall(plugin.id);
+    await actions.uninstall(plugin.id);
 
     expect(api.plugins.uninstall).toHaveBeenCalledWith({
       pluginId: plugin.id,
       locale: expect.any(String),
     });
-    expect(workspace).toMatchObject({
-      plugins: [],
-      residues: [{ pluginId: plugin.id, statePresent: true, kvEntries: 2 }],
-    });
+    expect(catalog.plugins).toEqual([]);
+    expect(plugins.residues).toEqual([{ pluginId: plugin.id, statePresent: true, kvEntries: 2 }]);
   });
 
   it("surfaces a warning after logically successful uninstall retains cleanup", async () => {
     const plugin = createPlugin("dev.example.retained-cleanup");
 
-    workspace.plugins = [plugin];
+    catalog.plugins = [plugin];
     vi.mocked(api.plugins.uninstall).mockResolvedValue({
       cleanupPending: true,
       cleanupFailures: [
@@ -189,9 +210,11 @@ describe("Nuxt workspace state", () => {
       residues: [],
     });
 
-    await workspace.uninstall(plugin.id);
+    await actions.uninstall(plugin.id);
 
-    expect(workspace).toMatchObject({
+    expect(actions.error).toBeUndefined();
+    expect(preferences.error).toBeUndefined();
+    expect(plugins).toMatchObject({
       error: undefined,
       cleanupWarning: {
         count: 1,
@@ -204,7 +227,7 @@ describe("Nuxt workspace state", () => {
   it("purges retained plugin data", async () => {
     const pluginId = "dev.example.uninstalled";
 
-    workspace.residues = [{ pluginId, statePresent: true, kvEntries: 2 }];
+    plugins.residues = [{ pluginId, statePresent: true, kvEntries: 2 }];
     vi.mocked(api.plugins.purgeData).mockResolvedValue({
       pluginId,
       stateRemoved: true,
@@ -212,10 +235,10 @@ describe("Nuxt workspace state", () => {
       residues: [],
     });
 
-    await workspace.purge(pluginId);
+    await actions.purge(pluginId);
 
     expect(api.plugins.purgeData).toHaveBeenCalledWith({ pluginId });
-    expect(workspace.residues).toEqual([]);
+    expect(plugins.residues).toEqual([]);
   });
 
   it("keeps a committed install successful when the residue query fails", async () => {
@@ -229,38 +252,40 @@ describe("Nuxt workspace state", () => {
     });
     vi.mocked(api.plugins.listDataResidues).mockRejectedValue(new Error("residue query failed"));
 
-    expect(await workspace.install({ name: "example.tdplugin" } as File)).toBe(plugin.id);
-    expect(workspace.installState.status).toBe("success");
-    expect(workspace.plugins).toEqual([plugin]);
-    expect(workspace.error).toBe("residue query failed");
+    expect(await actions.install({ name: "example.tdplugin" } as File)).toBe(plugin.id);
+    expect(plugins.installState.status).toBe("success");
+    expect(catalog.plugins).toEqual([plugin]);
+    expect(plugins.error).toBe("residue query failed");
 
     vi.mocked(api.plugins.listDataResidues).mockResolvedValue([]);
     vi.mocked(api.plugins.rescan).mockResolvedValue({ commands: [], plugins: [plugin] });
-    await workspace.rescan();
-    expect(workspace.error).toBeUndefined();
-    expect(workspace.installState.status).toBe("success");
+    await actions.rescan();
+    expect(actions.error).toBeUndefined();
+    expect(plugins.error).toBeUndefined();
+    expect(preferences.error).toBeUndefined();
+    expect(plugins.installState.status).toBe("success");
   });
 
   it("blocks command and plugin mutations until a committed install is rescanned", async () => {
     const plugin = createPlugin("dev.example.installed");
     const command = createCommand(plugin.id);
-    workspace.commands = [command];
+    catalog.commands = [command];
     vi.mocked(api.plugins.installDroppedPackage).mockResolvedValue({
       status: "installed-refresh-failed",
       installedPluginId: plugin.id,
       packageName: "example.tdplugin",
       refreshError: "refresh failed",
     });
-    await workspace.install({ name: "example.tdplugin" } as File);
-    await workspace.run(command.id);
-    await workspace.setEnabled(plugin.id, false);
+    await actions.install({ name: "example.tdplugin" } as File);
+    await actions.run(command.id);
+    await actions.setEnabled(plugin.id, false);
     expect(api.commands.run).not.toHaveBeenCalled();
     expect(api.plugins.setEnabled).not.toHaveBeenCalled();
 
     vi.mocked(api.plugins.rescan).mockResolvedValue({ commands: [command], plugins: [plugin] });
-    await workspace.rescan();
-    expect(workspace.installState.status).toBe("success");
-    expect(workspace.blocked).toBe(false);
+    await actions.rescan();
+    expect(plugins.installState.status).toBe("success");
+    expect(actions.blocked).toBe(false);
   });
 
   it("preserves the latest history filter when an older request finishes last", async () => {
@@ -271,7 +296,7 @@ describe("Nuxt workspace state", () => {
           resolveOlder = resolve;
         }),
     );
-    const older = workspace.loadHistory("first.command");
+    const older = history.load("first.command");
     const run = {
       id: "second-run",
       commandId: "second.command",
@@ -280,33 +305,35 @@ describe("Nuxt workspace state", () => {
       createdAt: 1000,
     };
     vi.mocked(api.history.listRuns).mockResolvedValueOnce([run]);
-    await workspace.loadHistory("second.command");
+    await history.load("second.command");
     resolveOlder([]);
     await older;
-    expect(workspace.history).toEqual([run]);
+    expect(history.history).toEqual([run]);
   });
 
   it("waits for startup reads to settle before allowing a failed initialization to retry", async () => {
     const pendingPreferences = deferred<Awaited<ReturnType<DesktopApi["preferences"]["list"]>>>();
-    workspace.initialized = false;
+    actions.initialized = false;
     vi.mocked(api.preferences.list).mockReturnValueOnce(pendingPreferences.promise);
     vi.mocked(api.plugins.listDataResidues).mockRejectedValueOnce(new Error("startup read failed"));
-    const initializing = workspace.initialize();
+    const initializing = actions.initialize();
     try {
       await Promise.resolve();
-      expect(workspace.loading).toBe(true);
-      expect(workspace.initialized).toBe(false);
-      await workspace.initialize();
-      expect(workspace.loading).toBe(true);
+      expect(actions.loading).toBe(true);
+      expect(actions.initialized).toBe(false);
+      await actions.initialize();
+      expect(actions.loading).toBe(true);
     } finally {
       pendingPreferences.resolve([]);
       await initializing;
     }
-    expect(workspace.loading).toBe(false);
-    expect(workspace.error).toBe("startup read failed");
-    await workspace.initialize();
-    expect(workspace.initialized).toBe(true);
-    expect(workspace.error).toBeUndefined();
+    expect(actions.loading).toBe(false);
+    expect(actions.error).toBe("startup read failed");
+    await actions.initialize();
+    expect(actions.initialized).toBe(true);
+    expect(actions.error).toBeUndefined();
+    expect(plugins.error).toBeUndefined();
+    expect(preferences.error).toBeUndefined();
   });
 
   it("keeps operations blocked after install commit until residues finish refreshing", async () => {
@@ -322,59 +349,57 @@ describe("Nuxt workspace state", () => {
     });
     vi.mocked(api.plugins.listDataResidues).mockReturnValueOnce(residueQuery.promise);
 
-    const installing = workspace.install({ name: "example.tdplugin" } as File);
+    const installing = actions.install({ name: "example.tdplugin" } as File);
     try {
-      await vi.waitFor(() => expect(workspace.installState.status).toBe("success"));
-      expect(workspace.blocked).toBe(true);
-      await workspace.run(command.id);
-      await workspace.setEnabled(plugin.id, false);
+      await vi.waitFor(() => expect(plugins.installState.status).toBe("success"));
+      expect(actions.blocked).toBe(true);
+      await actions.run(command.id);
+      await actions.setEnabled(plugin.id, false);
       expect(api.commands.run).not.toHaveBeenCalled();
       expect(api.plugins.setEnabled).not.toHaveBeenCalled();
     } finally {
       residueQuery.resolve([]);
       await installing;
     }
-    expect(workspace.blocked).toBe(false);
+    expect(actions.blocked).toBe(false);
   });
 
   it("retains a successful result and holds admission until every post-run refresh settles", async () => {
     const pendingHistory = deferred<Awaited<ReturnType<DesktopApi["history"]["listRuns"]>>>();
     const command = createCommand("dev.example.json");
-    workspace.commands = [command];
+    catalog.commands = [command];
     const result = { status: "success" as const, blocks: [] };
     vi.mocked(api.commands.run).mockResolvedValue(result);
     vi.mocked(api.commands.list).mockRejectedValue(new Error("catalog refresh failed"));
     vi.mocked(api.history.listRuns).mockReturnValueOnce(pendingHistory.promise);
-    const running = workspace.run(command.id);
+    const running = actions.run(command.id);
     try {
-      await vi.waitFor(() => expect(workspace.results[command.id]).toEqual(result));
-      expect(workspace.blocked).toBe(true);
-      await workspace.setEnabled(command.pluginId, false);
+      await vi.waitFor(() => expect(commands.results[command.id]).toEqual(result));
+      expect(actions.blocked).toBe(true);
+      await actions.setEnabled(command.pluginId, false);
       expect(api.plugins.setEnabled).not.toHaveBeenCalled();
     } finally {
       pendingHistory.resolve([]);
       await running;
     }
-    expect(workspace.blocked).toBe(false);
-    expect(workspace.results[command.id]).toEqual(result);
-    expect(workspace.runErrors[command.id]).toBeUndefined();
-    expect(workspace.error).toBe("catalog refresh failed");
+    expect(actions.blocked).toBe(false);
+    expect(commands.results[command.id]).toEqual(result);
+    expect(commands.runErrors[command.id]).toBeUndefined();
+    expect(actions.error).toBe("catalog refresh failed");
   });
 
   it("does not let an older catalog response overwrite a committed plugin snapshot", async () => {
-    const { useCatalogStore } = await import("@/renderer/features/catalog/store");
-    const catalog = useCatalogStore();
     const pendingCommands = deferred<DesktopCommand[]>();
     vi.mocked(api.commands.list).mockReturnValueOnce(pendingCommands.promise);
     const refresh = catalog.refresh("en-US");
     const plugin = createPlugin("dev.example.new");
     const command = createCommand(plugin.id);
     vi.mocked(api.plugins.rescan).mockResolvedValue({ plugins: [plugin], commands: [command] });
-    await workspace.rescan();
+    await actions.rescan();
     pendingCommands.resolve([]);
     await refresh;
-    expect(workspace.plugins).toEqual([plugin]);
-    expect(workspace.commands).toEqual([command]);
+    expect(catalog.plugins).toEqual([plugin]);
+    expect(catalog.commands).toEqual([command]);
   });
 
   it("refreshes localized catalog data without discarding the command draft", async () => {
@@ -382,8 +407,8 @@ describe("Nuxt workspace state", () => {
       ...createCommand("dev.example.localized"),
       inputSchema: { type: "object" as const, properties: { text: { type: "string" as const } } },
     };
-    workspace.commands = [command];
-    workspace.setInput(command.id, "text", "unfinished input");
+    catalog.commands = [command];
+    commands.setInput(command.id, "text", "unfinished input");
     vi.mocked(api.preferences.set).mockResolvedValue({
       scope: "shared",
       key: "locale",
@@ -393,31 +418,29 @@ describe("Nuxt workspace state", () => {
       valueType: "enum",
     });
     vi.mocked(api.commands.list).mockResolvedValue([{ ...command, title: "本地化命令" }]);
-    expect(await workspace.setPreference("shared", "locale", "zh-CN")).toBe(true);
-    expect(workspace.locale).toBe("zh-CN");
+    expect(await actions.setPreference("shared", "locale", "zh-CN")).toBe(true);
+    expect(preferences.locale).toBe("zh-CN");
     expect(api.commands.list).toHaveBeenLastCalledWith({ locale: "zh-CN" });
     expect(api.plugins.list).toHaveBeenLastCalledWith({ locale: "zh-CN" });
-    expect(workspace.commands[0]?.title).toBe("本地化命令");
-    expect(workspace.drafts[command.id]).toEqual({ text: "unfinished input" });
+    expect(catalog.commands[0]?.title).toBe("本地化命令");
+    expect(commands.drafts[command.id]).toEqual({ text: "unfinished input" });
   });
 
   it("keeps preference write failures in preferences instead of startup state", async () => {
-    const { usePreferencesStore } = await import("@/renderer/features/preferences/store");
-    const { useWorkspaceActions } = await import("@/renderer/app/workspace");
     vi.mocked(api.preferences.set).mockRejectedValue(new Error("preference write failed"));
-    expect(await workspace.setPreference("desktop", "sidebar.collapsed", true)).toBe(false);
-    expect(usePreferencesStore().error).toBe("preference write failed");
-    expect(useWorkspaceActions().error).toBeUndefined();
-    expect(workspace.collapsed).toBe(false);
-    expect(workspace.blocked).toBe(false);
+    expect(await actions.setPreference("desktop", "sidebar.collapsed", true)).toBe(false);
+    expect(preferences.error).toBe("preference write failed");
+    expect(actions.error).toBeUndefined();
+    expect(preferences.collapsed).toBe(false);
+    expect(actions.blocked).toBe(false);
   });
 
   it("updates derived command output when recursive JSON results are replaced", async () => {
     const { computed } = await import("vue");
     const command = createCommand("dev.example.json");
-    workspace.commands = [command];
+    catalog.commands = [command];
     vi.mocked(api.commands.list).mockResolvedValue([command]);
-    const output = computed(() => workspace.results[command.id]);
+    const output = computed(() => commands.results[command.id]);
     expect(output.value).toBeUndefined();
 
     const result: Awaited<ReturnType<DesktopApi["commands"]["run"]>> = {
@@ -425,13 +448,13 @@ describe("Nuxt workspace state", () => {
       blocks: [{ type: "json", value: { nested: [{ values: [1, null, true] }] } }],
     };
     vi.mocked(api.commands.run).mockResolvedValueOnce(result);
-    await workspace.run(command.id);
+    await actions.run(command.id);
     expect(output.value).toEqual(result);
 
     vi.mocked(api.commands.run).mockRejectedValueOnce(new Error("run failed"));
-    await workspace.run(command.id);
+    await actions.run(command.id);
     expect(output.value).toBeUndefined();
-    expect(workspace.runErrors[command.id]).toBe("run failed");
+    expect(commands.runErrors[command.id]).toBe("run failed");
   });
 });
 

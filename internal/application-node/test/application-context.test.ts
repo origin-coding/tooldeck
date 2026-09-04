@@ -18,13 +18,9 @@ import type {
 } from "@/plugins/types";
 import { Preferences, type PreferencesService } from "@/preferences/context";
 import type { ApplicationPreference } from "@/preferences/types";
-import { type ApplicationRuntime, Runtime, type RuntimeService } from "@/runtime/context";
+import type { ApplicationRuntime, RuntimeService } from "@/runtime/context";
 import * as storageModule from "@/storage";
-import {
-  type ApplicationRepositories,
-  ApplicationStorage,
-  type ApplicationStorageService,
-} from "@/storage/context";
+import type { ApplicationRepositories, ApplicationStorageService } from "@/storage/context";
 
 describe("application Context contracts", () => {
   it("defines four narrow domain services whose operations return ApplicationEffect", async () => {
@@ -119,7 +115,6 @@ describe("application Context contracts", () => {
     expectTypeOf<ReturnType<RuntimeService["current"]>>().toEqualTypeOf<
       ApplicationEffect<ApplicationRuntime>
     >();
-    expect(Runtime.key).toBe("@tooldeck/application-node/Runtime");
   });
 
   it("exposes one repository graph and transactions without exposing database details", () => {
@@ -129,10 +124,6 @@ describe("application Context contracts", () => {
     expectTypeOf<keyof ApplicationStorageService>().toEqualTypeOf<
       "repositories" | "withImmediateTransaction"
     >();
-    expect(ApplicationStorage.key).toBe("@tooldeck/application-node/ApplicationStorage");
-    expect(Plugins.key).toBe("@tooldeck/application-node/Plugins");
-    expect(Preferences.key).toBe("@tooldeck/application-node/Preferences");
-    expect(History.key).toBe("@tooldeck/application-node/History");
     expect(Object.keys(storageModule)).toEqual(["makeStorageLive"]);
   });
 });

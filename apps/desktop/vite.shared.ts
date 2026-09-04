@@ -2,14 +2,7 @@ import { builtinModules } from "node:module";
 
 import type { UserConfig } from "vite";
 
-export const mainProcessExternal = [
-  "electron",
-  "electron-updater",
-  ...builtinModules,
-  /^node:/,
-  // "@tooldeck/runtime-node",
-  // "@tooldeck/protocol",
-];
+export const mainProcessExternal = ["electron", "electron-updater", ...builtinModules, /^node:/];
 
 export const nodeTarget = "node22";
 

@@ -114,17 +114,16 @@ Tooldeck is a TypeScript pnpm workspace built with Electron, Nuxt, Vue, TDesign,
 Drizzle ORM, and the built-in `node:sqlite` driver. The renderer uses Pinia, Nuxt I18n,
 and UnoCSS; Vite builds the Electron main and preload processes.
 
-Common repository checks:
+Run the same verification sequence as CI:
 
 ```bash
-pnpm format:check
-pnpm lint
-pnpm typecheck
-pnpm test:run
-pnpm build
-pnpm check:desktop-boundaries
-pnpm smoke:cli
+pnpm verify
 ```
+
+This checks formatting and lint, builds the workspace, checks types, runs package and
+built-in staging tests, checks Desktop boundaries and Ajv artifacts, and runs the built
+CLI smoke test outside the workspace. Each check remains available as an individual
+root package script.
 
 Build and stage built-in plugins separately when preparing application artifacts:
 
