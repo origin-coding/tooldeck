@@ -2,10 +2,26 @@ import { isBuiltin } from "node:module";
 import path from "node:path";
 
 import ts from "typescript";
+import { parse } from "vue/compiler-sfc";
 
 // Check imports, re-exports, import types, and dynamic imports alike. Resolving
 // local paths prevents a relative import from bypassing an alias restriction.
 export function checkBoundaryImports(filePath, source, desktopRoot) {
+  if (filePath.endsWith(".vue")) {
+    const { descriptor, errors } = parse(source, { filename: filePath });
+    const failures = errors.map((error) => `${filePath}: ${String(error)}`);
+    for (const block of [descriptor.script, descriptor.scriptSetup]) {
+      if (!block) continue;
+      const code = block.src ? `import ${JSON.stringify(block.src)};` : block.content;
+      const padded = "\n".repeat(block.loc.start.line - 1) + code;
+      failures.push(
+        ...checkBoundaryImports(`${filePath}.ts`, padded, desktopRoot).map((failure) =>
+          failure.replace(".vue.ts:", ".vue:"),
+        ),
+      );
+    }
+    return failures;
+  }
   const relative = path.relative(desktopRoot, filePath).split(path.sep).join("/");
   const areas = {
     "src/renderer/": ["src/renderer", "src/shared/api"],
@@ -35,9 +51,17 @@ export function checkBoundaryImports(filePath, source, desktopRoot) {
     }
 
     const name = node.text;
-    if (name.startsWith(".") || name.startsWith("@/") || path.isAbsolute(name)) {
-      const target = name.startsWith("@/")
-        ? path.resolve(desktopRoot, "src", name.slice(2))
+    const alias = [
+      ["@/", "src"],
+      ["~/", "src/renderer"],
+      ["@@/", "."],
+      ["~~/", "."],
+      ["#shared/", "shared"],
+      ["#server/", "server"],
+    ].find(([prefix]) => name.startsWith(prefix));
+    if (name.startsWith(".") || alias || path.isAbsolute(name)) {
+      const target = alias
+        ? path.resolve(desktopRoot, alias[1], name.slice(alias[0].length))
         : path.resolve(path.dirname(filePath), name);
       const allowed = areas[area].some((directory) => {
         const within = path.relative(path.resolve(desktopRoot, directory), target);

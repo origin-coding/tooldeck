@@ -21,6 +21,26 @@ for (const [file, source] of [
   ["renderer/example.ts", 'const ipc = require("electron");'],
   ["renderer/example.ts", 'const channel = "tooldeck:run-command";'],
   ["renderer/example.ts", "const load = (name: string) => import(name);"],
+  [
+    "renderer/Example.vue",
+    '<script setup lang="ts">import "node:fs";</script><template><div /></template>',
+  ],
+  [
+    "renderer/Example.vue",
+    '<script lang="ts">export * from "@/shared/transport/ipc";</script><template><div /></template>',
+  ],
+  [
+    "renderer/Example.vue",
+    '<script setup lang="ts">const host = import("~~/src/main/application");</script><template><div /></template>',
+  ],
+  [
+    "renderer/Example.vue",
+    '<script setup lang="ts">import type { X } from "~/../main/application";</script><template><div /></template>',
+  ],
+  [
+    "renderer/Example.vue",
+    '<script src="../main/application.ts"></script><template><div /></template>',
+  ],
   ["preload/example.ts", 'export * from "../main/application";'],
   ["preload/example.ts", 'import { Schema } from "effect";'],
 ]) {
@@ -39,6 +59,10 @@ for (const [file, source] of [
   ["renderer/example.ts", 'import { isDesktopApiError } from "@/shared/api";'],
   ["renderer/example.ts", 'export * from "../shared/api/errors";'],
   ["renderer/example.ts", 'const Page = import("./pages/plugins");'],
+  [
+    "renderer/Example.vue",
+    '<script setup lang="ts">import { ref } from "vue"; import type { DesktopApi } from "@/shared/api";</script><template><div /></template>',
+  ],
   ["preload/example.ts", 'import { ipcRenderer } from "electron";'],
   ["preload/example.ts", 'import { desktopIpcChannels } from "@/shared/transport/ipc";'],
 ]) {

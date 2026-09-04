@@ -30,11 +30,14 @@
   "navigation": {
     "search": "Search",
     "noCommandsFound": "No commands found",
-    "noPluginsFound": "No plugins found"
+    "noPluginsFound": "No plugins found",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "management": "Management"
   },
   "page": {
     "commandHistory": "Command History",
-    "commandHistoryFor": "Command History: {{commandId}}",
+    "commandHistoryFor": "Command History: {commandId}",
     "loadingWorkspace": "Loading workspace",
     "settingsDescription": "Local desktop preferences and workspace state",
     "historyDescription": "Review recent command runs",
@@ -47,10 +50,10 @@
       "choose": "Choose a command from the list."
     },
     "history": "History",
-    "sourceLine": "{{pluginName}} / {{commandTitle}}",
+    "sourceLine": "{pluginName} / {commandTitle}",
     "pluginDisabled": {
       "title": "Plugin disabled",
-      "description": "Enable {{pluginName}} before running this command."
+      "description": "Enable {pluginName} before running this command."
     },
     "input": "Input",
     "output": "Output",
@@ -62,17 +65,18 @@
     },
     "outputState": {
       "commandFailed": "Command failed",
-      "noOutputYet": "No output yet",
-      "emptyOutput": "Empty output",
+      "noOutputYet": "Ready to run",
+      "emptyOutput": "Execution completed",
       "commandDidNotReturnOutput": "The command did not return output.",
-      "runCommandToSeeOutput": "Run a command to see output.",
+      "runCommandToSeeOutput": "Run the command to see its results here.",
       "errorWithoutOutput": "The command returned an error without output.",
-      "completedWithoutOutput": "The command completed without output.",
+      "completedWithoutOutput": "The command completed successfully without output.",
       "errorResult": "Command returned an error result.",
       "text": "text",
       "json": "json",
       "properties": "properties",
-      "code": "code"
+      "code": "code",
+      "running": "Running command"
     }
   },
   "plugin": {
@@ -87,10 +91,10 @@
     "uninstall": "Uninstall",
     "purge": "Purge",
     "uninstallConfirmTitle": "Uninstall this plugin?",
-    "uninstallConfirmDescription": "Remove {{pluginId}} from the managed plugin directory. Local state, plugin-scoped KV, and command history will be retained.",
+    "uninstallConfirmDescription": "Remove {pluginId} from the managed plugin directory. Local state, plugin-scoped KV, and command history will be retained.",
     "cleanupPending": {
       "title": "Plugin cleanup is pending",
-      "description": "The plugin was logically uninstalled, but {{count}} cleanup failure(s) remain. {{step}}: {{message}}"
+      "description": "The plugin was logically uninstalled, but {count} cleanup failure(s) remain. {step}: {message}"
     },
     "version": "Version",
     "source": "Source",
@@ -106,19 +110,19 @@
     "retainedData": {
       "title": "Retained plugin data",
       "description": "Local state and plugin-scoped KV retained after uninstall. Command history is always preserved.",
-      "summary": "State: {{state}} · KV entries: {{kvEntries}}",
+      "summary": "State: {state} · KV entries: {kvEntries}",
       "statePresent": "stored",
       "stateAbsent": "none",
       "confirmTitle": "Purge retained plugin data?",
-      "confirmDescription": "Permanently delete local state and plugin-scoped KV for {{pluginId}}. Command history will be preserved."
+      "confirmDescription": "Permanently delete local state and plugin-scoped KV for {pluginId}. Command history will be preserved."
     },
     "install": {
       "title": "Install local plugin",
       "dropAriaLabel": "Drop a Tooldeck plugin package to install it",
       "dropTitle": "Drop one .tdplugin package here",
-      "dropDescription": "Only local .tdplugin packages are accepted. Clicking does not open a file picker.",
-      "installing": "Installing {{packageName}}",
-      "success": "Installed {{packageName}}",
+      "dropDescription": "Drop one local .tdplugin package at a time.",
+      "installing": "Installing {packageName}",
+      "success": "Installed {packageName}",
       "failed": "Plugin installation failed",
       "refreshFailed": "Plugin installed, but the runtime refresh failed",
       "refreshFailedDescription": "Rescan plugins before running or changing plugin state.",
@@ -126,8 +130,14 @@
         "empty": "Drop one .tdplugin package.",
         "multiple": "Only one .tdplugin package can be installed at a time.",
         "invalid-extension": "Only files ending in .tdplugin can be installed."
-      }
-    }
+      },
+      "viewPlugin": "View plugin"
+    },
+    "backToList": "Back to plugins",
+    "state": "Status",
+    "enabled": "Enabled",
+    "details": "Details",
+    "manifestPath": "Manifest path"
   },
   "search": {
     "title": "Search",
@@ -144,7 +154,7 @@
   },
   "history": {
     "title": "Command History",
-    "titleFor": "Command History: {{commandId}}",
+    "titleFor": "Command History: {commandId}",
     "loading": "Loading history",
     "empty": "No command runs",
     "emptyForCommand": "No runs for this command",

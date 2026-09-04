@@ -70,7 +70,9 @@ const checks = [
 
 const failures = [];
 
-for (const filePath of resolveFiles(rendererAndPreload).filter((file) => /\.tsx?$/.test(file))) {
+for (const filePath of resolveFiles(rendererAndPreload).filter((file) =>
+  /\.(?:tsx?|vue)$/.test(file),
+)) {
   failures.push(...checkBoundaryImports(filePath, readFileSync(filePath, "utf8"), desktopRoot));
 }
 

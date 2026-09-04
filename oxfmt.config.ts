@@ -9,5 +9,4 @@ export default defineConfig({
   trailingComma: "all",
   ignorePatterns: [],
   sortImports: true,
-  sortTailwindcss: true,
 });

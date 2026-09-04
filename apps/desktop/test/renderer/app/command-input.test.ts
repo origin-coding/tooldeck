@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCommandInput, createInputState, getInputFields } from "@/renderer/app/command-input";
+import {
+  buildCommandInput,
+  createInputState,
+  getInputFields,
+} from "@/renderer/features/commands/command-input";
 import type { DesktopCommand } from "@/shared/api";
 
 describe("command input fields", () => {

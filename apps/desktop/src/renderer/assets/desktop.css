@@ -1,0 +1,65 @@
+:root {
+  font-family: Inter, "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: var(--td-text-color-primary);
+  background: var(--td-bg-color-page);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+button,
+input,
+textarea {
+  font: inherit;
+}
+a {
+  color: var(--td-brand-color);
+  text-decoration: none;
+}
+button,
+a,
+input,
+textarea {
+  -webkit-app-region: no-drag;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--td-brand-color);
+  outline-offset: 3px;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+h1 {
+  font-size: 19px;
+  font-weight: 600;
+}
+h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+p {
+  line-height: 1.65;
+  margin-bottom: 12px;
+}
+.muted {
+  color: var(--td-text-color-secondary);
+}
+.stack {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
