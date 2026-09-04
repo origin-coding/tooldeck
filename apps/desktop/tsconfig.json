@@ -1,11 +1,8 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "types": ["node", "electron"],
-    "jsx": "react-jsx",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": ["vite.*.config.ts", "src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.desktop.json" },
+    { "path": "./tsconfig.renderer.json" },
+    { "path": "./.nuxt/tsconfig.node.json" }
+  ]
 }

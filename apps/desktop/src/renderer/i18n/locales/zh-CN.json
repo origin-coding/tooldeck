@@ -34,7 +34,7 @@
   },
   "page": {
     "commandHistory": "命令历史",
-    "commandHistoryFor": "命令历史：{{commandId}}",
+    "commandHistoryFor": "命令历史：{commandId}",
     "loadingWorkspace": "正在加载工作区",
     "settingsDescription": "本地桌面偏好设置和工作区状态",
     "historyDescription": "查看最近的命令运行记录",
@@ -47,10 +47,10 @@
       "choose": "请从列表中选择一个命令。"
     },
     "history": "历史",
-    "sourceLine": "{{pluginName}} / {{commandTitle}}",
+    "sourceLine": "{pluginName} / {commandTitle}",
     "pluginDisabled": {
       "title": "插件已禁用",
-      "description": "请先启用 {{pluginName}}，再运行此命令。"
+      "description": "请先启用 {pluginName}，再运行此命令。"
     },
     "input": "输入",
     "output": "输出",
@@ -87,10 +87,10 @@
     "uninstall": "卸载",
     "purge": "清除数据",
     "uninstallConfirmTitle": "卸载此插件？",
-    "uninstallConfirmDescription": "从托管插件目录移除 {{pluginId}}。本地状态、插件专属 KV 和命令历史将保留。",
+    "uninstallConfirmDescription": "从托管插件目录移除 {pluginId}。本地状态、插件专属 KV 和命令历史将保留。",
     "cleanupPending": {
       "title": "插件清理仍待完成",
-      "description": "插件已完成逻辑卸载，但仍有 {{count}} 个清理失败。{{step}}：{{message}}"
+      "description": "插件已完成逻辑卸载，但仍有 {count} 个清理失败。{step}：{message}"
     },
     "version": "版本",
     "source": "来源",
@@ -106,19 +106,19 @@
     "retainedData": {
       "title": "保留的插件数据",
       "description": "卸载后保留的本地状态和插件专属 KV。命令历史始终保留。",
-      "summary": "状态：{{state}} · KV 条目：{{kvEntries}}",
+      "summary": "状态：{state} · KV 条目：{kvEntries}",
       "statePresent": "已保存",
       "stateAbsent": "无",
       "confirmTitle": "清除保留的插件数据？",
-      "confirmDescription": "永久删除 {{pluginId}} 的本地状态和插件专属 KV。命令历史仍会保留。"
+      "confirmDescription": "永久删除 {pluginId} 的本地状态和插件专属 KV。命令历史仍会保留。"
     },
     "install": {
       "title": "安装本地插件",
       "dropAriaLabel": "拖放 Tooldeck 插件包进行安装",
       "dropTitle": "拖放一个 .tdplugin 插件包到这里",
       "dropDescription": "只接受本地 .tdplugin 插件包；点击不会打开文件选择器。",
-      "installing": "正在安装 {{packageName}}",
-      "success": "已安装 {{packageName}}",
+      "installing": "正在安装 {packageName}",
+      "success": "已安装 {packageName}",
       "failed": "插件安装失败",
       "refreshFailed": "插件已安装，但运行时刷新失败",
       "refreshFailedDescription": "请先重新扫描插件，再运行插件或修改插件状态。",
@@ -144,7 +144,7 @@
   },
   "history": {
     "title": "命令历史",
-    "titleFor": "命令历史：{{commandId}}",
+    "titleFor": "命令历史：{commandId}",
     "loading": "正在加载历史",
     "empty": "暂无命令运行记录",
     "emptyForCommand": "此命令暂无运行记录",

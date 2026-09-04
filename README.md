@@ -110,8 +110,9 @@ generated command types, SDK usage, packaging rules, and installation verificati
 
 ## Development
 
-Tooldeck is a TypeScript pnpm workspace built with Electron, React, electron-vite, SQLite,
-Drizzle ORM, and the built-in `node:sqlite` driver.
+Tooldeck is a TypeScript pnpm workspace built with Electron, Nuxt, Vue, TDesign, SQLite,
+Drizzle ORM, and the built-in `node:sqlite` driver. The renderer uses Pinia, Nuxt I18n,
+and UnoCSS; Vite builds the Electron main and preload processes.
 
 Common repository checks:
 

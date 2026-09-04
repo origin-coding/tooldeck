@@ -12,6 +12,11 @@ const workspaceRoot = path.resolve(appRoot, "../..");
 const builtinPluginsRoot = path.join(appRoot, ".vite", "builtin-plugins");
 const vitePackageRoot = path.resolve(path.dirname(require.resolve("vite")), "../..");
 const viteCliPath = path.join(vitePackageRoot, "bin", "vite.js");
+const nuxtCliPath = path.join(
+  path.dirname(require.resolve("nuxt/package.json")),
+  "bin",
+  "nuxt.mjs",
+);
 const electronPath = require("electron");
 const rendererUrl = "http://localhost:5173";
 const bundles = ["main.js", "preload.cjs"].map((name) =>
@@ -56,17 +61,14 @@ try {
   }
 
   log("dev", "Starting renderer, main, and preload watchers...");
-  startVite("renderer", [
-    "--host",
-    "localhost",
-    "--port",
-    "5173",
-    "--strictPort",
-    "--configLoader",
-    "runner",
-    "--config",
-    "vite.renderer.config.ts",
-  ]);
+  supervisor.start(
+    "renderer",
+    process.execPath,
+    [nuxtCliPath, "dev", "--host", "localhost", "--port", "5173", "--no-fork"],
+    {
+      env: { ...process.env, NUXT_APP_BASE_URL: "/" },
+    },
+  );
   for (const name of ["main", "preload"]) {
     startVite(name, [
       "build",
