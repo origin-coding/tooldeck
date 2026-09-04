@@ -1,6 +1,6 @@
 import { ipcRenderer } from "electron";
 
-import type { DesktopIpcResult } from "@/shared/ipc";
+import type { DesktopIpcResult } from "@/shared/transport/ipc";
 
 export async function invokeDesktop<T>(channel: string, ...args: unknown[]): Promise<T> {
   const result = (await ipcRenderer.invoke(channel, ...args)) as DesktopIpcResult<T>;

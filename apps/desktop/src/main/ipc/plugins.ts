@@ -1,9 +1,10 @@
 import type { ApplicationPluginCatalog, TooldeckApplication } from "@tooldeck/application-node";
 
 import type { DesktopPluginInstallResult, DesktopPluginUninstallResult } from "@/shared/api";
-import { desktopIpcChannels } from "@/shared/ipc";
+import { desktopIpcChannels } from "@/shared/transport/ipc";
 
 import { toDesktopCommand, toDesktopPlugin } from "../desktop-contract/catalog";
+import { toDesktopCleanupFailure } from "../desktop-contract/errors";
 import {
   decodeInstallPluginPackageRequest,
   decodeListPluginsRequest,
@@ -62,7 +63,7 @@ export function registerPluginsIpc(
     });
 
     return {
-      cleanupFailures: uninstalled.cleanupFailures,
+      cleanupFailures: uninstalled.cleanupFailures.map(toDesktopCleanupFailure),
       cleanupPending: uninstalled.cleanupPending,
       filesMissing: uninstalled.filesMissing,
       pluginId: uninstalled.pluginId,

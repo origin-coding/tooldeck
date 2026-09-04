@@ -1,4 +1,5 @@
 export * from "./commands";
+export * from "./errors";
 export * from "./history";
 export * from "./plugins";
 export * from "./preferences";

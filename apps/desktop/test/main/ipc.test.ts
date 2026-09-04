@@ -1,6 +1,9 @@
 import path from "node:path";
 
-import type { TooldeckApplication } from "@tooldeck/application-node";
+import type {
+  ApplicationCleanupFailureDiagnostic,
+  TooldeckApplication,
+} from "@tooldeck/application-node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { internalBoundaryFailureFixtures } from "../../../../tests/fixtures/internal-schema-boundaries";
@@ -17,7 +20,41 @@ vi.mock("electron", () => ({
   },
 }));
 
+import { toDesktopCleanupFailure } from "@/main/desktop-contract/errors";
 import { registerTooldeckIpc } from "@/main/ipc";
+
+describe("Desktop cleanup diagnostics", () => {
+  const error = { source: "application", code: "ERR_UNKNOWN", message: "cleanup failed" } as const;
+
+  const diagnostics: ApplicationCleanupFailureDiagnostic[] = [
+    { phase: "cleanup", step: "database.close", context: {}, error },
+    {
+      phase: "rollback",
+      step: "pluginInstall.delete",
+      context: { pluginId: "dev.example.plugin" },
+      error,
+    },
+    {
+      phase: "cleanup",
+      step: "pluginStaging.remove",
+      context: { stagingEntry: "install-example" },
+      error,
+    },
+    {
+      phase: "cleanup",
+      step: "host.dispose",
+      context: { runtimeKind: "node" },
+      error,
+    },
+  ];
+
+  it.each(diagnostics)("preserves $step diagnostics as JSON data", (diagnostic) => {
+    const result = toDesktopCleanupFailure(diagnostic);
+
+    expect(result).toEqual(diagnostic);
+    expect(JSON.parse(JSON.stringify(result))).toEqual(diagnostic);
+  });
+});
 
 describe("registerTooldeckIpc", () => {
   beforeEach(() => {
@@ -76,12 +113,17 @@ describe("registerTooldeckIpc", () => {
           context: {
             pluginId: "dev.example.plugin",
             stagingEntry: "uninstall-example",
+            internalService: new Map(),
           },
           error: {
             source: "application",
             code: "ERR_UNKNOWN",
             message: "file is locked",
+            details: { retryable: true },
+            cause: new Error("private cleanup cause"),
+            stack: "private stack",
           },
+          rawError: new Error("private cleanup error"),
         },
       ],
       filesMissing: false,
@@ -115,6 +157,7 @@ describe("registerTooldeckIpc", () => {
               source: "application",
               code: "ERR_UNKNOWN",
               message: "file is locked",
+              details: { retryable: true },
             },
           },
         ],

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { initialState } from "@/renderer/app/types";
-import type { DesktopApi, DesktopCommand, DesktopPlugin } from "@/shared/api";
+import type { DesktopApi, DesktopApiError, DesktopCommand, DesktopPlugin } from "@/shared/api";
 
 let useDesktopStore: (typeof import("@/renderer/app/store"))["useDesktopStore"];
 let tooldeck: {
@@ -124,10 +124,19 @@ describe("catalog slice plugin installation", () => {
     });
   });
 
-  it("stores installation errors separately from workspace load errors", async () => {
-    vi.mocked(tooldeck.plugins.installDroppedPackage).mockRejectedValue(
-      new Error("invalid package"),
-    );
+  it.each([
+    { name: "local error", error: new Error("invalid package") },
+    {
+      name: "Desktop API error",
+      error: {
+        tag: "ApplicationError",
+        source: "application",
+        code: "ERR_INVALID_ARGUMENT",
+        message: "invalid package",
+      } satisfies DesktopApiError,
+    },
+  ])("stores $name separately from workspace load errors", async ({ error }) => {
+    vi.mocked(tooldeck.plugins.installDroppedPackage).mockRejectedValue(error);
 
     await useDesktopStore
       .getState()
