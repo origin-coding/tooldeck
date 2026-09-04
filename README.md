@@ -130,8 +130,28 @@ Build and stage built-in plugins separately when preparing application artifacts
 
 ```bash
 pnpm builtin-plugins:build
-pnpm builtin-plugins:stage
+pnpm builtin-plugins:stage -- --out apps/cli/dist/plugins --skip-build
+pnpm builtin-plugins:stage -- --out apps/desktop/.vite/builtin-plugins --skip-build
 ```
+
+The build command includes the plugins' workspace build dependencies. Staging packages
+each plugin as a temporary `.tdplugin`, validates and unpacks it, and checks that its
+runtime entry can be imported outside the workspace without activating the plugin.
+The package file collector includes declared runtime/locale files plus `dist` and
+`assets`; files needed at runtime must be included in that package layout. Root
+authoring `package.json` files are not copied into the staged plugins.
+
+Staging replaces the previous output only after every selected plugin passes. Temporary
+archives and unpacked directories are cleaned on success and failure. If replacing the
+output and restoring it both fail, the previous output is retained at the reported backup
+path for recovery. Desktop and CLI ship expanded directories with source kind `builtin`;
+no post-install extraction or
+plugin installation records are involved. Production staging excludes development-only
+plugins; pass `--mode development` to include them. `--skip-build` skips compilation,
+but still performs packaging and runtime checks.
+
+After building the workspace, run `pnpm test:builtin-plugins` for the staging regression
+suite (also included in `pnpm test:run`).
 
 ## Architecture
 

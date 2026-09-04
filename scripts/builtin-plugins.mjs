@@ -1,35 +1,39 @@
-import { spawn } from "node:child_process";
-import { cp, mkdir, readdir, readFile, rm } from "node:fs/promises";
+import { execFile, spawn } from "node:child_process";
+import { cp, mkdir, mkdtemp, readdir, readFile, rename, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 const workspaceRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const pluginsRoot = path.join(workspaceRoot, "plugins");
 const packageManager = process.env.npm_execpath?.includes("pnpm")
   ? { args: [process.env.npm_execpath], command: process.execPath }
   : { args: [], command: "pnpm" };
-const runtimeEntries = ["manifest.json", "package.json", "dist", "locales"];
+const execFileAsync = promisify(execFile);
 
 const [command, ...rawArgs] = process.argv.slice(2).filter((arg) => arg !== "--");
 
-try {
-  switch (command) {
-    case "list":
-      await listCommand(rawArgs);
-      break;
-    case "build":
-      await buildCommand();
-      break;
-    case "stage":
-      await stageCommand(rawArgs);
-      break;
-    default:
-      printUsage();
-      process.exitCode = 1;
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    switch (command) {
+      case "list":
+        await listCommand(rawArgs);
+        break;
+      case "build":
+        await buildCommand(rawArgs);
+        break;
+      case "stage":
+        await stageCommand(rawArgs);
+        break;
+      default:
+        printUsage();
+        process.exitCode = 1;
+    }
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 1;
   }
-} catch (error) {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
 }
 
 async function listCommand(args) {
@@ -56,9 +60,15 @@ async function buildCommand(args = []) {
     return;
   }
 
-  for (const plugin of plugins) {
-    await runPnpm(["--dir", workspaceRoot, "--filter", plugin.packageName, "build"]);
-  }
+  await runPnpm([
+    "--dir",
+    workspaceRoot,
+    "exec",
+    "turbo",
+    "run",
+    "build",
+    ...plugins.map((plugin) => `--filter=${plugin.packageName}...`),
+  ]);
 }
 
 async function stageCommand(args) {
@@ -70,25 +80,14 @@ async function stageCommand(args) {
     throw new Error("Missing required --out <dir> argument.");
   }
 
+  const outputRoot = path.resolve(workspaceRoot, args[outArgIndex + 1]);
+  assertSeparateDirectories(pluginsRoot, outputRoot);
+
   if (!skipBuild) {
     await buildCommand(["--mode", mode]);
   }
 
-  const outputRoot = path.resolve(workspaceRoot, args[outArgIndex + 1]);
-  const plugins = filterPluginsByMode(await discoverBuiltinPlugins(), mode);
-
-  await rm(outputRoot, { recursive: true, force: true });
-  await mkdir(outputRoot, { recursive: true });
-
-  for (const plugin of plugins) {
-    const outputPluginRoot = path.join(outputRoot, plugin.directoryName);
-
-    await mkdir(outputPluginRoot, { recursive: true });
-
-    for (const entry of runtimeEntries) {
-      await copyIfExists(path.join(plugin.root, entry), path.join(outputPluginRoot, entry));
-    }
-  }
+  const plugins = await stageBuiltinPlugins({ pluginsRoot, outputRoot, mode });
 
   console.log(
     `Staged ${plugins.length} builtin plugin${plugins.length === 1 ? "" : "s"} to ${path.relative(
@@ -98,8 +97,8 @@ async function stageCommand(args) {
   );
 }
 
-async function discoverBuiltinPlugins() {
-  const entries = await readdir(pluginsRoot, { withFileTypes: true });
+export async function discoverBuiltinPlugins(root = pluginsRoot) {
+  const entries = await readdir(root, { withFileTypes: true });
   const plugins = [];
 
   for (const entry of entries) {
@@ -107,14 +106,16 @@ async function discoverBuiltinPlugins() {
       continue;
     }
 
-    const pluginRoot = path.join(pluginsRoot, entry.name);
+    const pluginRoot = path.join(root, entry.name);
     const [manifest, packageJson] = await Promise.all([
-      readJsonIfExists(path.join(pluginRoot, "manifest.json")),
-      readJsonIfExists(path.join(pluginRoot, "package.json")),
+      readRequiredJson(path.join(pluginRoot, "manifest.json")),
+      readRequiredJson(path.join(pluginRoot, "package.json")),
     ]);
 
-    if (!manifest || !packageJson?.name) {
-      continue;
+    if (typeof manifest?.id !== "string" || typeof packageJson?.name !== "string") {
+      throw new Error(
+        `Builtin plugin must declare manifest.id and package.json name: ${pluginRoot}`,
+      );
     }
 
     plugins.push({
@@ -148,27 +149,133 @@ function parseMode(args, defaultMode) {
   return mode;
 }
 
-async function readJsonIfExists(filePath) {
+async function readRequiredJson(filePath) {
   try {
     return JSON.parse(await readFile(filePath, "utf8"));
   } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
-      return undefined;
-    }
-
-    throw error;
+    throw new Error(`Cannot read builtin plugin metadata ${filePath}: ${error.message}`, {
+      cause: error,
+    });
   }
 }
 
-async function copyIfExists(from, to) {
+// Only the build/staging path loads package tooling. Listing remains a static scan,
+// including on clean checkouts where the authoring packages have not been built yet.
+export async function stageBuiltinPlugins({
+  pluginsRoot: sourceRoot,
+  outputRoot,
+  mode = "production",
+  temporaryRoot = tmpdir(),
+}) {
+  assertSeparateDirectories(sourceRoot, outputRoot);
+  parseMode(["--mode", mode], "production");
+  const plugins = filterPluginsByMode(await discoverBuiltinPlugins(sourceRoot), mode);
+  const { packTooldeckPlugin, unpackTooldeckPackage } =
+    await import("../packages/plugin-package/dist/index.js");
+  const scratch = await mkdtemp(path.join(temporaryRoot, "tooldeck-builtin-package-"));
   try {
-    await cp(from, to, { recursive: true });
-  } catch (error) {
-    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
-      return;
+    const expandedRoot = path.join(scratch, "plugins");
+    await mkdir(expandedRoot);
+    for (const plugin of plugins) {
+      try {
+        const packagePath = path.join(scratch, `${plugin.directoryName}.tdplugin`);
+        await packTooldeckPlugin({ projectDir: plugin.root, outputPath: packagePath });
+        const destinationDir = path.join(expandedRoot, plugin.directoryName);
+        const { pluginManifest } = await unpackTooldeckPackage({ packagePath, destinationDir });
+        if (pluginManifest.runtime.kind !== "node") {
+          throw new Error(
+            `Unsupported builtin plugin runtime.kind: ${pluginManifest.runtime.kind}`,
+          );
+        }
+        await checkStagedRuntime(destinationDir, pluginManifest.runtime.entry);
+      } catch (error) {
+        throw new Error(`Builtin plugin ${plugin.packageName}: ${error.message}`, { cause: error });
+      }
     }
+    await replaceStaging(expandedRoot, outputRoot);
+    return plugins;
+  } finally {
+    await rm(scratch, { recursive: true, force: true });
+  }
+}
 
-    throw error;
+async function checkStagedRuntime(pluginRoot, entry) {
+  // Import in an isolated process outside the workspace so node_modules and the
+  // source package.json cannot hide an incomplete package. Never call activate.
+  const script = `
+    import { pathToFileURL } from "node:url";
+    const { default: plugin } = await import(pathToFileURL(process.argv[1]).href);
+    if (!plugin || typeof plugin !== "object" || typeof plugin.activate !== "function") {
+      throw new Error("Built default export must expose an activate(ctx) function.");
+    }
+  `;
+  try {
+    await execFileAsync(
+      process.execPath,
+      ["--input-type=module", "--eval", script, path.resolve(pluginRoot, entry)],
+      { cwd: pluginRoot, timeout: 30_000, windowsHide: true },
+    );
+  } catch (error) {
+    throw new Error(
+      `Packaged runtime entry ${entry} is not loadable: ${error.stderr || error.message}`,
+      { cause: error },
+    );
+  }
+}
+
+async function replaceStaging(source, destination) {
+  const parent = path.dirname(destination);
+  await mkdir(parent, { recursive: true });
+  const staging = await mkdtemp(path.join(parent, ".tooldeck-builtin-stage-"));
+  const next = path.join(staging, "next");
+  const previous = path.join(staging, "previous");
+  let hasPrevious = false;
+  let preserveBackup = false;
+  try {
+    await cp(source, next, { recursive: true });
+    try {
+      await rename(destination, previous);
+      hasPrevious = true;
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+    try {
+      await rename(next, destination);
+    } catch (error) {
+      if (hasPrevious) {
+        try {
+          await rename(previous, destination);
+        } catch (restoreError) {
+          preserveBackup = true;
+          throw new AggregateError(
+            [error, restoreError],
+            `Could not restore staging. Previous output retained at ${previous}`,
+          );
+        }
+      }
+      throw error;
+    }
+  } finally {
+    if (preserveBackup) {
+      await rm(next, { recursive: true, force: true });
+    } else {
+      await rm(staging, { recursive: true, force: true });
+    }
+  }
+}
+
+function assertSeparateDirectories(left, right) {
+  const contains = (parent, child) => {
+    const relative = path.relative(path.resolve(parent), path.resolve(child));
+    return (
+      relative === "" ||
+      (!relative.startsWith(`..${path.sep}`) && relative !== ".." && !path.isAbsolute(relative))
+    );
+  };
+  if (contains(left, right) || contains(right, left)) {
+    throw new Error(
+      `Builtin plugin source and staging directories must not overlap: ${left}, ${right}`,
+    );
   }
 }
 
