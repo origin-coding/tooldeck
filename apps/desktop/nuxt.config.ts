@@ -14,7 +14,7 @@ export default defineNuxtConfig({
   // Resolve renderer helpers and the shared Desktop API from the src directory.
   alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   components: [{ path: "~/components", extensions: ["vue"], pathPrefix: false }],
-  css: ["~/assets/desktop.css"],
+  css: ["~/assets/desktop.css", "~/assets/shared.css"],
   app: { head: { title: "Tooldeck" } },
 
   devServer: {

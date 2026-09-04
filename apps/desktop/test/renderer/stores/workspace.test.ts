@@ -233,6 +233,12 @@ describe("Nuxt workspace state", () => {
     expect(workspace.installState.status).toBe("success");
     expect(workspace.plugins).toEqual([plugin]);
     expect(workspace.error).toBe("residue query failed");
+
+    vi.mocked(api.plugins.listDataResidues).mockResolvedValue([]);
+    vi.mocked(api.plugins.rescan).mockResolvedValue({ commands: [], plugins: [plugin] });
+    await workspace.rescan();
+    expect(workspace.error).toBeUndefined();
+    expect(workspace.installState.status).toBe("success");
   });
 
   it("blocks command and plugin mutations until a committed install is rescanned", async () => {
@@ -280,6 +286,132 @@ describe("Nuxt workspace state", () => {
     expect(workspace.history).toEqual([run]);
   });
 
+  it("waits for startup reads to settle before allowing a failed initialization to retry", async () => {
+    const pendingPreferences = deferred<Awaited<ReturnType<DesktopApi["preferences"]["list"]>>>();
+    workspace.initialized = false;
+    vi.mocked(api.preferences.list).mockReturnValueOnce(pendingPreferences.promise);
+    vi.mocked(api.plugins.listDataResidues).mockRejectedValueOnce(new Error("startup read failed"));
+    const initializing = workspace.initialize();
+    try {
+      await Promise.resolve();
+      expect(workspace.loading).toBe(true);
+      expect(workspace.initialized).toBe(false);
+      await workspace.initialize();
+      expect(workspace.loading).toBe(true);
+    } finally {
+      pendingPreferences.resolve([]);
+      await initializing;
+    }
+    expect(workspace.loading).toBe(false);
+    expect(workspace.error).toBe("startup read failed");
+    await workspace.initialize();
+    expect(workspace.initialized).toBe(true);
+    expect(workspace.error).toBeUndefined();
+  });
+
+  it("keeps operations blocked after install commit until residues finish refreshing", async () => {
+    const residueQuery = deferred<Awaited<ReturnType<DesktopApi["plugins"]["listDataResidues"]>>>();
+    const plugin = createPlugin("dev.example.committed");
+    const command = createCommand(plugin.id);
+    vi.mocked(api.plugins.installDroppedPackage).mockResolvedValue({
+      status: "installed",
+      installedPluginId: plugin.id,
+      packageName: "example.tdplugin",
+      commands: [command],
+      plugins: [plugin],
+    });
+    vi.mocked(api.plugins.listDataResidues).mockReturnValueOnce(residueQuery.promise);
+
+    const installing = workspace.install({ name: "example.tdplugin" } as File);
+    try {
+      await vi.waitFor(() => expect(workspace.installState.status).toBe("success"));
+      expect(workspace.blocked).toBe(true);
+      await workspace.run(command.id);
+      await workspace.setEnabled(plugin.id, false);
+      expect(api.commands.run).not.toHaveBeenCalled();
+      expect(api.plugins.setEnabled).not.toHaveBeenCalled();
+    } finally {
+      residueQuery.resolve([]);
+      await installing;
+    }
+    expect(workspace.blocked).toBe(false);
+  });
+
+  it("retains a successful result and holds admission until every post-run refresh settles", async () => {
+    const pendingHistory = deferred<Awaited<ReturnType<DesktopApi["history"]["listRuns"]>>>();
+    const command = createCommand("dev.example.json");
+    workspace.commands = [command];
+    const result = { status: "success" as const, blocks: [] };
+    vi.mocked(api.commands.run).mockResolvedValue(result);
+    vi.mocked(api.commands.list).mockRejectedValue(new Error("catalog refresh failed"));
+    vi.mocked(api.history.listRuns).mockReturnValueOnce(pendingHistory.promise);
+    const running = workspace.run(command.id);
+    try {
+      await vi.waitFor(() => expect(workspace.results[command.id]).toEqual(result));
+      expect(workspace.blocked).toBe(true);
+      await workspace.setEnabled(command.pluginId, false);
+      expect(api.plugins.setEnabled).not.toHaveBeenCalled();
+    } finally {
+      pendingHistory.resolve([]);
+      await running;
+    }
+    expect(workspace.blocked).toBe(false);
+    expect(workspace.results[command.id]).toEqual(result);
+    expect(workspace.runErrors[command.id]).toBeUndefined();
+    expect(workspace.error).toBe("catalog refresh failed");
+  });
+
+  it("does not let an older catalog response overwrite a committed plugin snapshot", async () => {
+    const { useCatalogStore } = await import("@/renderer/features/catalog/store");
+    const catalog = useCatalogStore();
+    const pendingCommands = deferred<DesktopCommand[]>();
+    vi.mocked(api.commands.list).mockReturnValueOnce(pendingCommands.promise);
+    const refresh = catalog.refresh("en-US");
+    const plugin = createPlugin("dev.example.new");
+    const command = createCommand(plugin.id);
+    vi.mocked(api.plugins.rescan).mockResolvedValue({ plugins: [plugin], commands: [command] });
+    await workspace.rescan();
+    pendingCommands.resolve([]);
+    await refresh;
+    expect(workspace.plugins).toEqual([plugin]);
+    expect(workspace.commands).toEqual([command]);
+  });
+
+  it("refreshes localized catalog data without discarding the command draft", async () => {
+    const command = {
+      ...createCommand("dev.example.localized"),
+      inputSchema: { type: "object" as const, properties: { text: { type: "string" as const } } },
+    };
+    workspace.commands = [command];
+    workspace.setInput(command.id, "text", "unfinished input");
+    vi.mocked(api.preferences.set).mockResolvedValue({
+      scope: "shared",
+      key: "locale",
+      value: "zh-CN",
+      defaultValue: "system",
+      description: "Language",
+      valueType: "enum",
+    });
+    vi.mocked(api.commands.list).mockResolvedValue([{ ...command, title: "本地化命令" }]);
+    expect(await workspace.setPreference("shared", "locale", "zh-CN")).toBe(true);
+    expect(workspace.locale).toBe("zh-CN");
+    expect(api.commands.list).toHaveBeenLastCalledWith({ locale: "zh-CN" });
+    expect(api.plugins.list).toHaveBeenLastCalledWith({ locale: "zh-CN" });
+    expect(workspace.commands[0]?.title).toBe("本地化命令");
+    expect(workspace.drafts[command.id]).toEqual({ text: "unfinished input" });
+  });
+
+  it("keeps preference write failures in preferences instead of startup state", async () => {
+    const { usePreferencesStore } = await import("@/renderer/features/preferences/store");
+    const { useWorkspaceActions } = await import("@/renderer/app/workspace");
+    vi.mocked(api.preferences.set).mockRejectedValue(new Error("preference write failed"));
+    expect(await workspace.setPreference("desktop", "sidebar.collapsed", true)).toBe(false);
+    expect(usePreferencesStore().error).toBe("preference write failed");
+    expect(useWorkspaceActions().error).toBeUndefined();
+    expect(workspace.collapsed).toBe(false);
+    expect(workspace.blocked).toBe(false);
+  });
+
   it("updates derived command output when recursive JSON results are replaced", async () => {
     const { computed } = await import("vue");
     const command = createCommand("dev.example.json");
@@ -302,6 +434,14 @@ describe("Nuxt workspace state", () => {
     expect(workspace.runErrors[command.id]).toBe("run failed");
   });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
 
 function createPlugin(
   id: string,

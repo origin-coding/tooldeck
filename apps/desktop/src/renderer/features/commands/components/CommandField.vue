@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import type { CommandInputValue, InputField } from "@/renderer/app/command-input";
+import type { CommandInputValue, InputField } from "@/renderer/features/commands/command-input";
 
 const props = defineProps<{ field: InputField; value?: CommandInputValue; disabled?: boolean }>();
 const emit = defineEmits<{ change: [value: CommandInputValue] }>();
@@ -126,3 +126,19 @@ function number(value: unknown) {
     <small v-if="field.description" class="muted">{{ field.description }}</small>
   </div>
 </template>
+
+<style scoped>
+.form-field {
+  display: grid;
+  gap: 8px;
+}
+.form-field label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+.form-field :deep(.t-input-number) {
+  width: 100%;
+}
+</style>

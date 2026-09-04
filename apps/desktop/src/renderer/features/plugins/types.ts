@@ -1,5 +1,3 @@
-export type DesktopNavigationMode = "provider-first" | "entry-first";
-
 export type PluginInstallState =
   | { status: "idle" }
   | { status: "installing"; packageName: string }

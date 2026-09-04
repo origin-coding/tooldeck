@@ -1,11 +1,20 @@
 <script setup lang="ts">
 import { ref } from "vue";
 
-import { validatePluginPackageDrop } from "@/renderer/components/plugins/plugin-package-drop";
-import { useWorkspaceStore } from "@/renderer/stores/workspace";
-import { pluginPath } from "@/renderer/utils/session";
+import { validatePluginPackageDrop } from "@/renderer/features/plugins/package-drop";
+import { pluginPath } from "@/renderer/utils/routes";
 
-const workspace = useWorkspaceStore();
+import type { PluginActions } from "../actions";
+import { usePluginsStore } from "../store";
+
+const props = defineProps<{
+  blocked: boolean;
+  busy: boolean;
+  loading: boolean;
+  actions: Pick<PluginActions, "install" | "rescan">;
+}>();
+const plugins = usePluginsStore();
+
 const emit = defineEmits<{ done: [] }>();
 const installedPluginId = ref<string>();
 const attemptStarted = ref(false);
@@ -14,7 +23,7 @@ const dragActive = ref(false);
 const validationError = ref<string>();
 async function drop(event: DragEvent) {
   dragActive.value = false;
-  if (workspace.blocked) return;
+  if (props.blocked) return;
   installedPluginId.value = undefined;
   attemptStarted.value = false;
   const validation = validatePluginPackageDrop(event.dataTransfer?.files ?? []);
@@ -24,7 +33,7 @@ async function drop(event: DragEvent) {
   }
   validationError.value = undefined;
   attemptStarted.value = true;
-  installedPluginId.value = await workspace.install(validation.file);
+  installedPluginId.value = await props.actions.install(validation.file);
 }
 </script>
 
@@ -32,11 +41,11 @@ async function drop(event: DragEvent) {
   <div class="plugin-install" @dragover.prevent @drop.prevent>
     <div
       class="drop-zone"
-      :class="{ 'drag-active': dragActive, disabled: workspace.blocked }"
+      :class="{ 'drag-active': dragActive, disabled: props.blocked }"
       role="region"
       :aria-label="t('plugin.install.dropAriaLabel')"
-      :aria-disabled="workspace.blocked"
-      @dragenter.prevent.stop="dragActive = !workspace.blocked"
+      :aria-disabled="props.blocked"
+      @dragenter.prevent.stop="dragActive = !props.blocked"
       @dragover.prevent.stop
       @dragleave.prevent.stop="dragActive = false"
       @drop.prevent.stop="drop"
@@ -47,34 +56,32 @@ async function drop(event: DragEvent) {
     <div aria-live="polite" class="install-feedback">
       <t-alert v-if="validationError" theme="error" :message="validationError" />
       <t-loading
-        v-if="workspace.installState.status === 'installing'"
-        :text="t('plugin.install.installing', { packageName: workspace.installState.packageName })"
+        v-if="plugins.installState.status === 'installing'"
+        :text="t('plugin.install.installing', { packageName: plugins.installState.packageName })"
       />
       <t-alert
-        v-else-if="attemptStarted && workspace.installState.status === 'success'"
+        v-else-if="attemptStarted && plugins.installState.status === 'success'"
         theme="success"
-        :message="t('plugin.install.success', { packageName: workspace.installState.packageName })"
+        :message="t('plugin.install.success', { packageName: plugins.installState.packageName })"
       />
       <t-alert
-        v-else-if="attemptStarted && workspace.installState.status === 'error'"
+        v-else-if="attemptStarted && plugins.installState.status === 'error'"
         theme="error"
         :title="t('plugin.install.failed')"
-        :message="workspace.installState.message"
+        :message="plugins.installState.message"
       />
       <t-alert
-        v-else-if="workspace.installState.status === 'refresh-failed'"
+        v-else-if="plugins.installState.status === 'refresh-failed'"
         theme="warning"
         :title="t('plugin.install.refreshFailed')"
-        :message="
-          workspace.installState.message + ' ' + t('plugin.install.refreshFailedDescription')
-        "
+        :message="plugins.installState.message + ' ' + t('plugin.install.refreshFailedDescription')"
       >
         <template #operation>
           <t-button
             variant="text"
-            :loading="workspace.loading"
-            :disabled="workspace.busy"
-            @click="workspace.rescan()"
+            :loading="props.loading"
+            :disabled="props.busy"
+            @click="props.actions.rescan()"
           >
             {{ t("common.rescan") }}
           </t-button>
@@ -88,3 +95,31 @@ async function drop(event: DragEvent) {
     </div>
   </div>
 </template>
+
+<style scoped>
+.install-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+.drop-zone {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px;
+  border: 1px dashed var(--td-component-border);
+  border-radius: 8px;
+  background: var(--td-bg-color-secondarycontainer);
+  text-align: center;
+}
+.drop-zone.drag-active {
+  border-color: var(--td-brand-color);
+  background: var(--td-brand-color-light);
+}
+.drop-zone.disabled {
+  opacity: 0.6;
+}
+.install-feedback:not(:empty) {
+  margin-top: 14px;
+}
+</style>

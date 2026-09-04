@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
+
 defineProps<{ result?: CommandResult; error?: string; running?: boolean }>();
 const { t } = useI18n();
 function label(value: LocalizedString) {
@@ -61,3 +62,58 @@ function label(value: LocalizedString) {
     </template>
   </div>
 </template>
+
+<style scoped>
+.command-output {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+/* Bound long results inside the shared-height cards, not the card itself. */
+.command-output:not(.output-centered) {
+  max-height: 640px;
+}
+.command-output > * {
+  flex-shrink: 0;
+}
+.command-output.output-centered {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+.content-block {
+  min-width: 0;
+  border: 1px solid var(--td-component-stroke);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.content-block header {
+  padding: 8px 12px;
+  background: var(--td-bg-color-secondarycontainer);
+}
+pre {
+  margin: 0;
+  padding: 14px;
+  max-height: none;
+  overflow: auto;
+  font:
+    13px/1.6 "Cascadia Code",
+    Consolas,
+    monospace;
+  background: var(--td-bg-color-secondarycontainer);
+}
+.plain-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  background: transparent;
+}
+.content-block .property-list {
+  padding: 12px;
+}
+</style>

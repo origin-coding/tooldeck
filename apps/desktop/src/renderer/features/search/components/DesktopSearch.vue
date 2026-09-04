@@ -2,28 +2,29 @@
 import Fuse from "fuse.js";
 import { computed, ref, watch } from "vue";
 
-import { useWorkspaceStore } from "@/renderer/stores/workspace";
-import { commandPath, pluginPath } from "@/renderer/utils/session";
+import { useCatalogStore } from "@/renderer/features/catalog/store";
+import { commandPath, pluginPath } from "@/renderer/utils/routes";
+
+const catalog = useCatalogStore();
 
 const visible = defineModel<boolean>("visible", { default: false });
-const workspace = useWorkspaceStore();
 const router = useRouter();
 const { t } = useI18n();
 const query = ref("");
 const scope = ref("all");
 const records = computed(() =>
   [
-    ...workspace.commands.map((command) => ({
+    ...catalog.commands.map((command) => ({
       kind: "commands",
       id: command.id,
       title: command.title,
       description: command.description,
       pluginId: command.pluginId,
-      pluginName: workspace.plugins.find((plugin) => plugin.id === command.pluginId)?.name,
+      pluginName: catalog.plugins.find((plugin) => plugin.id === command.pluginId)?.name,
       searchText: command.searchText,
       path: commandPath(command.id),
     })),
-    ...workspace.plugins.map((plugin) => ({
+    ...catalog.plugins.map((plugin) => ({
       kind: "plugins",
       id: plugin.id,
       title: plugin.name,
@@ -68,13 +69,13 @@ function select(path: string) {
 </script>
 
 <template>
-  <t-dialog
+  <DesktopDialog
     v-model:visible="visible"
     :header="t('search.title')"
     :footer="false"
     width="min(720px, calc(100vw - 32px))"
     placement="center"
-    dialog-class-name="desktop-dialog search-dialog"
+    dialog-class-name="search-dialog"
   >
     <div class="search-content">
       <t-input
@@ -109,5 +110,39 @@ function select(path: string) {
         </button>
       </div>
     </div>
-  </t-dialog>
+  </DesktopDialog>
 </template>
+
+<style scoped>
+.search-content {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  min-height: 0;
+}
+.search-content > :not(.search-results) {
+  flex-shrink: 0;
+}
+.search-results {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.search-results :deep(.t-tag) {
+  flex-shrink: 0;
+  max-width: 40%;
+}
+</style>
+
+<style>
+.t-dialog.search-dialog {
+  height: min(640px, calc(100dvh - 48px));
+}
+.search-dialog > .t-dialog__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+</style>

@@ -1,0 +1,57 @@
+.page-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.page-toolbar > .actions {
+  flex-shrink: 0;
+}
+.property-list {
+  display: grid;
+  grid-template-columns: minmax(100px, 160px) minmax(0, 1fr);
+  margin: 0;
+  gap: 0 16px;
+  padding: 12px 0;
+}
+.property-list dt,
+.property-list dd {
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--td-component-stroke);
+  overflow-wrap: anywhere;
+}
+.property-list dt {
+  color: var(--td-text-color-secondary);
+}
+.result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: 100%;
+  padding: 14px 12px;
+  background: var(--td-bg-color-container);
+  border: 0;
+  border-bottom: 1px solid var(--td-component-stroke);
+  color: var(--td-text-color-primary);
+  text-align: left;
+}
+.result-row:is(button, a) {
+  cursor: pointer;
+}
+.result-row:is(button, a):hover {
+  background: var(--td-bg-color-container-hover);
+}
+.result-row > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.result-row strong,
+.result-row small {
+  display: block;
+}
+.result-row small {
+  margin-top: 5px;
+}

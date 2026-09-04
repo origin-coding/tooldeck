@@ -1,17 +1,15 @@
-import type { CommandInputState, CommandInputValue } from "@/renderer/app/command-input";
+import type {
+  CommandInputState,
+  CommandInputValue,
+} from "@/renderer/features/commands/command-input";
+
+import { commandPath, pluginPath } from "./routes";
 
 interface DesktopSession {
   path?: string;
   drafts: Record<string, CommandInputState>;
 }
 const key = "tooldeck.desktop.nuxt";
-
-export function commandPath(id: string) {
-  return `/commands/${encodeURIComponent(id)}`;
-}
-export function pluginPath(id: string) {
-  return `/plugins/${encodeURIComponent(id)}`;
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);

@@ -1,18 +1,4 @@
-import { isDesktopApiError } from "@/shared/api";
-
-import type { DesktopNavigationMode } from "./types";
-
-export function getErrorMessage(error: unknown): string {
-  if (isDesktopApiError(error)) {
-    return error.message;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return String(error);
-}
+export type DesktopNavigationMode = "provider-first" | "entry-first";
 
 export function getNavigationMode(
   preferences: { scope: string; key: string; value: unknown }[],
