@@ -4,9 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag. Defaults to v<apps/desktop package version>."
+        description: "Must match the selected workflow tag and Desktop version."
         required: false
         type: string
+      dry_run:
+        description: "Build and upload CI artifacts without publishing a GitHub Release."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -25,6 +30,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify immutable release ref
+        if: ${{ !inputs.dry_run }}
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: node scripts/check-release-ref.mjs
 
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm
@@ -122,6 +135,7 @@ jobs:
 
   publish-desktop-release:
     name: Publish desktop release assets
+    if: ${{ !inputs.dry_run }}
     runs-on: ubuntu-latest
     needs:
       - build-windows
@@ -145,18 +159,11 @@ jobs:
       - name: Resolve release tag
         id: release
         shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          tag="${{ inputs.tag }}"
-          if [ -z "$tag" ]; then
-            version="$(node -p "require('./apps/desktop/package.json').version")"
-            tag="v${version}"
-          fi
-
-          if ! git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
-            echo "::error::Release tag $tag does not exist. Create and push the tag before publishing desktop assets."
-            exit 1
-          fi
-
+          node scripts/check-release-ref.mjs
+          tag="$GITHUB_REF_NAME"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "title=Tooldeck Desktop $tag" >> "$GITHUB_OUTPUT"
 
@@ -173,7 +180,7 @@ jobs:
           RELEASE_TITLE: ${{ steps.release.outputs.title }}
         run: |
           if gh release view "$RELEASE_TAG" --repo "$RELEASE_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" release-assets/* --repo "$RELEASE_REPOSITORY" --clobber
+            gh release upload "$RELEASE_TAG" release-assets/* --repo "$RELEASE_REPOSITORY"
           else
             gh release create "$RELEASE_TAG" release-assets/* \
               --repo "$RELEASE_REPOSITORY" \

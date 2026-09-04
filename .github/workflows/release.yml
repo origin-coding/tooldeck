@@ -23,6 +23,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify immutable release ref
+        run: node scripts/check-release-ref.mjs
 
       - name: Setup workspace
         uses: ./.github/actions/setup-pnpm

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { checkPluginProject } from "@tooldeck/plugin-tools";
 import { runCommand } from "citty";
+import ts from "typescript";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -132,7 +133,7 @@ describe("createPluginProject", () => {
     expect(source).toContain("plugin.command(commandIds.myPluginEcho");
   });
 
-  it("generates a project that passes plugin project checks", async () => {
+  it("generates a project that passes plugin checks and typechecks its example test", async () => {
     const cwd = createTempDir();
     const result = await createPluginProject({
       cwd,
@@ -147,6 +148,33 @@ describe("createPluginProject", () => {
     expect(checkResult.diagnostics.filter((diagnostic) => diagnostic.severity === "error")).toEqual(
       [],
     );
+
+    const program = ts.createProgram({
+      rootNames: [path.join(result.projectDir, "test", "plugin.test.ts")],
+      options: {
+        noEmit: true,
+        strict: true,
+        skipLibCheck: true,
+        target: ts.ScriptTarget.ESNext,
+        module: ts.ModuleKind.ESNext,
+        moduleResolution: ts.ModuleResolutionKind.Bundler,
+        types: [],
+        paths: {
+          "@tooldeck/sdk-node": [
+            fileURLToPath(new URL("../../sdk-node/dist/index.d.ts", import.meta.url)),
+          ],
+          "@tooldeck/plugin-tools/testing": [
+            fileURLToPath(new URL("../../plugin-tools/dist/testing.d.ts", import.meta.url)),
+          ],
+          vitest: [fileURLToPath(import.meta.resolve("vitest")).replace(/\.js$/, ".d.ts")],
+        },
+      },
+    });
+    expect(
+      ts
+        .getPreEmitDiagnostics(program)
+        .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")),
+    ).toEqual([]);
   });
 
   it("refuses to write into a non-empty target directory", async () => {

@@ -2,6 +2,20 @@
 
 本目录记录 Tooldeck 的长期架构决策。ADR 用来解释“为什么这么设计”，不替代版本规划、实现 README 或 API 文档。
 
+本目录现有文件是历史记录。新的 RFC/ADR 使用 GitHub `type:decision` Issues，遵循
+[Issue conventions](../../../.github/ISSUE_CONVENTIONS.md)，不再新增同名 Markdown 决策副本。
+下文文件命名和模板仅说明历史格式。
+
+Tooldeck 1.4 后续已接受的决策：
+
+- [#47: pnpm Catalog governance](https://github.com/origin-coding/tooldeck/issues/47)
+- [#52: Secondary failures and cleanup](https://github.com/origin-coding/tooldeck/issues/52)
+- [#58: Application Context and Layer composition](https://github.com/origin-coding/tooldeck/issues/58)
+- [#70: Effect and private Effect Schema boundaries](https://github.com/origin-coding/tooldeck/issues/70)
+  （替代 #57）
+- [#71: Public JSON Schema execution](https://github.com/origin-coding/tooldeck/issues/71)
+- [#74: TPP v1 command output Schema profile](https://github.com/origin-coding/tooldeck/issues/74)
+
 ADR 默认使用中文正文，文件名、标题中的稳定识别部分和关键技术术语可以保留英文。例如 `ZipAdapter`、`digest`、`runtime entry`、`ZIP64` 等术语不强制翻译，避免引入额外歧义。
 
 不建议在同一个 ADR 中维护完整中英双语正文。需要面向英文读者时，可以在文档开头补充简短英文摘要；只有确实需要完整双语维护时，才新增独立的 `.en.md` 文件。

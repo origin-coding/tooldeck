@@ -1,10 +1,8 @@
-# @tooldeck/create-plugin
+# @tooldeck/json-schema
 
-## 1.4.0
+## 0.1.0
 
 ### Minor Changes
-
-- Preserve generated command input types in the example plugin test so a new project passes TypeScript checking against the published SDK and test helper declarations.
 
 - Release the Tooldeck 1.4 plugin authoring and application stack.
   - Publish shared, Effect-neutral Draft-07 execution in `@tooldeck/json-schema`, with scoped engines, opaque validators, JSON-safe input copying, and neutral diagnostics.
@@ -13,14 +11,7 @@
   - Update generated plugin projects and the Vite 8 authoring toolchain together with the 1.4 package versions.
   - Run the CLI through the shared Node application service and package validated built-in plugins for distribution.
 
-## 1.3.0
+### Patch Changes
 
-### Minor Changes
-
-- b80d3c2: Align the generated plugin project and Vite integration with the Tooldeck 1.3 authoring and packaging workflow.
-
-## 1.2.0
-
-### Minor Changes
-
-- Prepare 1.2.0 release for npm-trusted packages.
+- Updated dependencies
+  - @tooldeck/protocol@1.4.0

@@ -14,15 +14,15 @@ docs/architecture/tpp-v1.md
 
 Read that document when changing protocol, runtime, plugin, storage, CLI, or desktop architecture.
 
-## First Version Stack
+## Current Stack
 
-Use these technologies for the first version:
+Use these technologies for Tooldeck 1.4:
 
 ```text
 Electron
-React
+Nuxt CSR / Vue / TDesign
 TypeScript
-electron-vite
+Vite (Electron main and preload)
 pnpm workspace
 SQLite
 Drizzle ORM
@@ -33,7 +33,7 @@ The project should be a monorepo.
 
 ## Current Project Stage
 
-The project is preparing the Tooldeck 1.3 release. The current trusted local-plugin
+The project is preparing the Tooldeck 1.4 release. The current trusted local-plugin
 vertical slice is:
 
 ```text
@@ -76,6 +76,7 @@ apps/
 
 packages/
   protocol/                 TPP data contracts and schema.
+  json-schema/              Public Effect-neutral Draft-07 execution.
   sdk-node/                 Public Node plugin authoring contract.
   plugin-package/           Public .tdplugin format utilities.
   plugin-tools/              Public plugin authoring CLI and test helpers.
@@ -360,15 +361,17 @@ Use the `behavioral-test-maintenance` Skill for dedicated test-suite audits and 
 
 ## Release Verification
 
-The complete 1.3 repository verification set is:
+The authoritative 1.4 repository gate is `pnpm verify`, shared by local, PR, dry-run,
+and release workflows. It runs:
 
 ```text
 pnpm format:check
 pnpm lint
+pnpm build
 pnpm typecheck
 pnpm test:run
-pnpm build
 pnpm check:desktop-boundaries
+pnpm check:ajv-artifacts
 pnpm smoke:cli
 ```
 

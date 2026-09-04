@@ -6,6 +6,13 @@
 
 ## 1. 项目定位
 
+当前 Tooldeck 1.4 的 Desktop 实现使用 Electron + Nuxt CSR / Vue / TDesign，Vite 分别构建
+main 和 preload。下文“第一版技术选型”和早期目录示意保留原始设计背景；当前 package map
+以 [README](../../README.md#architecture) 为准。Effect 和 Effect Schema 的私有边界见
+[ADR #70](https://github.com/origin-coding/tooldeck/issues/70)，公开 JSON Schema 执行边界见
+[ADR #71](https://github.com/origin-coding/tooldeck/issues/71)。这些实现选择不扩展 commands-only
+可信本地插件的协议范围。
+
 项目名：`tooldeck`
 
 `tooldeck` 是一个桌面工具箱应用，目标是通过一套自定义插件协议，让不同工具能力可以同时服务于：

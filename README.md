@@ -19,8 +19,9 @@ manifest-driven Toolbox Plugin Protocol (TPP).
 - Build and install local `.tdplugin` packages through a shared CLI and Desktop lifecycle.
 - Keep built-in, installed, and explicitly configured external plugin sources distinct.
 
-Tooldeck 1.3 completes the local plugin lifecycle with packaging, installation,
-enable/disable, uninstall, and retained-data purge.
+Tooldeck 1.4 builds on the local plugin lifecycle with a Nuxt/Vue Desktop renderer,
+a shared Node application service, and consistent JSON Schema validation across the
+runtime and plugin authoring tools.
 
 ## Quick Start
 
@@ -182,6 +183,8 @@ architecture:
 - [Tooldeck 1.2 Planning](docs/planning/1.2.md)
 - [Tooldeck 1.3 Planning and Implementation Status](docs/planning/1.3.md)
 - [Architecture Decision Records](docs/architecture/decisions/README.md)
+- [Tooldeck 1.4 Planning and Release Tracking](docs/planning/1.4.md)
+- [Release Guide](docs/releasing.md)
 
 ## Repository Layout
 
@@ -192,6 +195,7 @@ apps/
 
 packages/
   protocol/                 TPP data contracts and schema.
+  json-schema/              Public Effect-neutral Draft-07 execution.
   sdk-node/                 Public Node plugin authoring contract.
   plugin-package/           Public .tdplugin format utilities.
   plugin-tools/             Public plugin authoring CLI and test helpers.
@@ -199,6 +203,7 @@ packages/
   create-plugin/            Public external plugin project generator.
 
 internal/
+  state-machine/            Private Effect-first transition core.
   runtime-node/             Private runtime coordination and Node plugin host.
   application-node/         Private database and product application facade.
 
