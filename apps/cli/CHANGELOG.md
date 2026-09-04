@@ -1,6 +1,6 @@
 # @tooldeck/cli
 
-## 1.4.0 (Unreleased)
+## 1.4.0
 
 ### Changed
 

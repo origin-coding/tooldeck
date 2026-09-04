@@ -1,5 +1,13 @@
 # @tooldeck/plugin-package
 
+## 1.4.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @tooldeck/protocol@1.4.0
+  - @tooldeck/json-schema@1.4.0
+
 ## 0.1.0
 
 ### Minor Changes

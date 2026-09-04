@@ -1,12 +1,12 @@
 import plugin from "../src";
-import { commandIds } from "../src/generated/commands";
+import { commandIds, type PluginCommandInputs } from "../src/generated/commands";
 
 import { createPluginTestHost } from "@tooldeck/plugin-tools/testing";
 import { describe, expect, it } from "vitest";
 
 describe("<%= it.commandId %>", () => {
   it("echoes text input", async () => {
-    const host = await createPluginTestHost(plugin, {
+    const host = await createPluginTestHost<PluginCommandInputs>(plugin, {
       pluginId: <%= JSON.stringify(it.pluginId) %>,
     });
 

@@ -360,6 +360,35 @@ Use the `behavioral-test-maintenance` Skill for dedicated test-suite audits and 
 
 ## Release Verification
 
+### Unified Version Policy
+
+All Tooldeck workspace packages use one release version, including public packages,
+private internal packages, CLI, Desktop, built-in plugins, and integration-test packages.
+The root workspace package and built-in plugin manifests use that same version.
+
+- Maintain one Changesets `fixed` group covering `@tooldeck/*`, with
+  `privatePackages.version: true`, `privatePackages.tag: false`, and no ignored members.
+- Preserve `private: true` on private packages. Unified versioning does not authorize
+  publishing them or expanding the explicit npm publish list.
+- Use `pnpm version-packages` for version changes. It runs Changesets, then synchronizes
+  the root package and built-in plugin manifest versions. Do not independently bump
+  individual workspace packages or bypass the synchronization step.
+- Run `pnpm check:release-versions` to verify alignment. It is part of `pnpm verify`.
+- Keep TPP `schemaVersion`, archive format versions, database migrations, historical
+  compatibility fixtures, and generated external plugin project versions independent
+  from the Tooldeck product version.
+- A fixed-group release advances every member together. Assess public breaking changes
+  against the shared release version rather than retaining independent package versions.
+
+Formal npm and Desktop publication uses `release.yml` from `v<release version>`. Check
+out the workflow commit SHA in every job and verify that the tag resolves to that commit.
+Use `scripts/check-release-ref.mjs` alongside the unified version check. The reusable
+`desktop-release.yml` only builds artifacts and has no standalone dispatch or publishing
+job. Complete verification, npm dry-run, and all Desktop builds before publishing npm;
+publish GitHub Release assets only after npm succeeds. Keep the separate npm-production
+and desktop-production environments. Published assets must not be overwritten
+automatically; inspect partial uploads before retrying a release.
+
 The complete 1.3 repository verification set is:
 
 ```text

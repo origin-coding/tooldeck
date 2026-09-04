@@ -152,6 +152,27 @@ but still performs packaging and runtime checks.
 After building the workspace, run `pnpm test:builtin-plugins` for the staging regression
 suite (also included in `pnpm test:run`).
 
+## Release Versions
+
+Tooldeck uses one release version across its public packages, private packages, CLI,
+Desktop, and built-in plugins. Changesets manages these workspace packages as one fixed
+group. Private packages remain private and are excluded from npm publication.
+
+Maintainers run `pnpm version-packages` to apply pending changesets and synchronize the
+root workspace and built-in plugin manifest versions. `pnpm check:release-versions`
+checks alignment and is included in `pnpm verify`. TPP schema versions and historical
+compatibility fixtures retain their own version semantics.
+
+Formal npm and Desktop publication uses `release.yml` from the matching `v<version>` tag.
+Every job checks out the workflow commit SHA, and publication verifies that the tag
+points to that commit. Verification and npm publish dry-run complete first, followed by
+all three Desktop builds. Only then can npm publication and GitHub Release asset upload
+proceed, using their separate production environments.
+
+Pushing the release tag starts the complete workflow. `desktop-release.yml` is an internal
+reusable build workflow and is not dispatched separately. Existing release assets are
+not overwritten automatically; inspect partial uploads before retrying.
+
 ## Architecture
 
 TPP treats plugins as declared and callable capabilities, not UI components. The current

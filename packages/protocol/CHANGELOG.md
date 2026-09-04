@@ -1,5 +1,13 @@
 # @tooldeck/protocol
 
+## 1.4.0
+
+### Minor Changes
+
+- Adopt one Tooldeck release version for all public packages, private packages, and applications. The fixed release group advances together to 1.4.0, including the first release of @tooldeck/json-schema. Synchronize the root workspace and built-in plugin manifest versions with the same release.
+
+  Preserve generated command input types in the scaffold's example test so new plugin projects typecheck against the public SDK and test helper declarations.
+
 ## 1.3.0
 
 ### Minor Changes
