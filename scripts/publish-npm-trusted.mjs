@@ -9,6 +9,7 @@ const dryRun = process.argv.includes("--dry-run");
 
 const publishPackages = [
   "packages/protocol",
+  "packages/json-schema",
   "packages/sdk-node",
   "packages/plugin-package",
   "packages/vite-plugin",
@@ -22,8 +23,9 @@ for (const packagePath of publishPackages) {
   const packageJson = JSON.parse(readFileSync(path.join(packageRoot, "package.json"), "utf8"));
   const { name, version } = packageJson;
   const spec = `${name}@${version}`;
+  const versionExists = await packageVersionExists(spec);
 
-  if (await packageVersionExists(spec)) {
+  if (!dryRun && versionExists) {
     console.log(`${spec} already exists on npm; skipping.`);
     continue;
   }
@@ -37,6 +39,11 @@ for (const packagePath of publishPackages) {
     });
 
     const tarball = findSingleTarball(packDir);
+    if (dryRun && versionExists) {
+      console.log(`${spec} packed successfully; skipping publish dry-run for an existing version.`);
+      continue;
+    }
+
     const publishArgs = ["publish", tarball, "--access", "public", "--provenance"];
 
     if (dryRun) {
@@ -55,6 +62,7 @@ for (const packagePath of publishPackages) {
 async function packageVersionExists(spec) {
   const command = createCommand(npmCommand(), ["view", spec, "version"]);
   const result = spawnSync(command.file, command.args, {
+    ...command.options,
     cwd: workspaceRoot,
     encoding: "utf8",
   });
@@ -91,6 +99,7 @@ function findSingleTarball(packDir) {
 function run(command, args, options) {
   const spawnCommand = createCommand(command, args);
   const result = spawnSync(spawnCommand.file, spawnCommand.args, {
+    ...spawnCommand.options,
     ...options,
     encoding: "utf8",
     stdio: "inherit",
@@ -120,7 +129,10 @@ function createCommand(command, args) {
 
   return {
     file: "cmd.exe",
-    args: ["/d", "/s", "/c", [command, ...args].map(quoteWindowsArg).join(" ")],
+    args: ["/d", "/s", "/c", `"${[command, ...args].map(quoteWindowsArg).join(" ")}"`],
+    // This is already a cmd.exe command line. Node's default Windows argument
+    // escaping would turn its path quotes into literal characters.
+    options: { windowsVerbatimArguments: true },
   };
 }
 

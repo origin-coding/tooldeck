@@ -1,3 +1,5 @@
+import { isPlainObject } from "es-toolkit";
+
 import type {
   CommandInputState,
   CommandInputValue,
@@ -12,7 +14,7 @@ interface DesktopSession {
 const key = "tooldeck.desktop.nuxt";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
+  return isPlainObject(value);
 }
 function isInputValue(value: unknown): value is CommandInputValue {
   const primitive = (item: unknown) =>

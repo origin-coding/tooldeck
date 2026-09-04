@@ -18,8 +18,7 @@
     "typecheck": "nuxt prepare && tsc --noEmit -p tsconfig.desktop.json && tsc --noEmit -p .nuxt/tsconfig.node.json && vue-tsc --noEmit -p tsconfig.renderer.json"
   },
   "dependencies": {
-    "electron-updater": "^6.8.9",
-    "fuse.js": "^7.4.2"
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@nuxtjs/i18n": "10.6.0",
@@ -35,7 +34,8 @@
     "effect": "catalog:",
     "electron": "^42.3.0",
     "electron-builder": "^26.8.1",
-    "less": "^4.9.1",
+    "es-toolkit": "catalog:",
+    "fuse.js": "^7.4.2",
     "nuxt": "^4.5.2",
     "pinia": "^4.0.3",
     "tdesign-icons-vue-next": "^0.4.11",

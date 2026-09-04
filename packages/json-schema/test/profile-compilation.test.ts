@@ -103,6 +103,38 @@ describe("Tooldeck Schema profile compilation", () => {
     );
   });
 
+  it("composes both profiles and preserves nested boolean Schemas", () => {
+    const compilation = createTooldeckJsonSchemaEngine().compileManifest();
+    expect(compilation.compiled).toBe(true);
+
+    if (!compilation.compiled) return;
+
+    const manifest: PluginManifest = {
+      schemaVersion: "1.0",
+      id: "dev.example.schema-profile",
+      name: "Schema profile example",
+      version: "1.0.0",
+      runtime: { kind: "node", entry: "./dist/index.js" },
+      contributes: {
+        commands: [
+          {
+            id: "example.with-output",
+            title: "With output",
+            inputSchema: inputFixtures.valid[0]!.schema as TooldeckInputJsonSchema,
+            outputSchema: outputFixtures.valid[0]!.schema as unknown as TooldeckOutputJsonSchema,
+          },
+          {
+            id: "example.without-output",
+            title: "Without output",
+            inputSchema: { type: "object", properties: { enabled: true, hidden: false } },
+          },
+        ],
+      },
+    };
+
+    expect(compilation.validator.validate(manifest).valid).toBe(true);
+  });
+
   it("returns the same fixed manifest compilation within one engine", () => {
     const engine = createTooldeckJsonSchemaEngine();
 

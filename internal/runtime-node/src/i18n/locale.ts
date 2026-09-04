@@ -1,4 +1,5 @@
 import type { LocaleCode, LocalizedString } from "@tooldeck/protocol";
+import { uniq } from "es-toolkit";
 
 type JsonSchemaDefinition = boolean | JsonSchemaObject;
 
@@ -65,12 +66,13 @@ export function createLocaleFallbacks(
   locale: LocaleCode | undefined,
   defaultLocale: LocaleCode | undefined,
 ): LocaleCode[] {
-  const candidates: LocaleCode[] = [];
+  return uniq(
+    [locale, defaultLocale].filter(isNonEmptyString).flatMap((candidate) => {
+      const language = candidate.split("-")[0];
 
-  appendLocaleFallback(candidates, locale);
-  appendLocaleFallback(candidates, defaultLocale);
-
-  return candidates;
+      return language ? [candidate, language] : [candidate];
+    }),
+  );
 }
 
 export function flattenLocaleResource(value: unknown, prefix = ""): FlatLocaleResource {
@@ -300,26 +302,6 @@ function isLocalizedString(value: unknown): value is LocalizedString {
     typeof value.key === "string" &&
     typeof value.default === "string"
   );
-}
-
-function appendLocaleFallback(candidates: LocaleCode[], locale: LocaleCode | undefined): void {
-  if (!isNonEmptyString(locale)) {
-    return;
-  }
-
-  appendUnique(candidates, locale);
-
-  const language = locale.split("-")[0];
-
-  if (language && language !== locale) {
-    appendUnique(candidates, language);
-  }
-}
-
-function appendUnique(values: string[], value: string): void {
-  if (!values.includes(value)) {
-    values.push(value);
-  }
 }
 
 function isNonEmptyString(value: string | undefined): value is string {
