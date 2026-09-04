@@ -8,6 +8,9 @@ export default defineNuxtConfig({
 
   // Keep Nuxt's client source inside the existing Desktop renderer boundary.
   srcDir: "src/renderer",
+  // nuxt generate creates dist as a link to the static output, not renderer source.
+  // Ignore the link itself as well as its contents in Nuxt and Vite watchers.
+  ignore: ["dist", "dist/**"],
   // Resolve renderer helpers and the shared Desktop API from the src directory.
   alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   components: [{ path: "~/components", extensions: ["vue"], pathPrefix: false }],

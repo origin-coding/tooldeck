@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 import { useWorkspaceStore } from "@/renderer/stores/workspace";
 import { commandPath, pluginPath } from "@/renderer/utils/session";
@@ -8,6 +8,7 @@ const route = useRoute();
 const router = useRouter();
 const workspace = useWorkspaceStore();
 const { t } = useI18n();
+const installOpen = ref(false);
 const plugin = computed(() => workspace.plugins.find((item) => item.id === route.params.id));
 const commands = computed(() =>
   workspace.commands.filter((item) => item.pluginId === plugin.value?.id),
@@ -19,7 +20,15 @@ async function uninstall(id: string) {
 
 <template>
   <div class="stack">
-    <PluginInstall />
+    <header class="page-toolbar">
+      <NuxtLink v-if="plugin" to="/plugins" class="back-link">
+        <chevron-left-icon />{{ t("plugin.backToList") }}
+      </NuxtLink>
+      <h1 v-else>{{ t("common.plugins") }}</h1>
+      <t-button v-if="!plugin" :disabled="workspace.blocked" @click="installOpen = true">
+        <template #icon><add-icon /></template>{{ t("plugin.install.title") }}
+      </t-button>
+    </header>
     <template v-if="plugin">
       <t-card :title="plugin.name">
         <template #actions>
@@ -50,12 +59,20 @@ async function uninstall(id: string) {
           <dd>{{ plugin.version }}</dd>
           <dt>{{ t("plugin.source") }}</dt>
           <dd>{{ t(`plugin.sourceKind.${plugin.sourceKind}`) }}</dd>
-          <dt>{{ t("plugin.runtime") }}</dt>
-          <dd><DesktopStatus :status="plugin.enabled ? plugin.runtimeState : 'disabled'" /></dd>
+          <dt>{{ t("plugin.state") }}</dt>
+          <dd>{{ t(plugin.enabled ? "plugin.enabled" : "status.disabled") }}</dd>
           <dt>{{ t("common.commands") }}</dt>
           <dd>{{ plugin.commandCount }}</dd>
         </dl>
-        <code class="manifest-path">{{ plugin.manifestPath }}</code>
+        <details class="plugin-details">
+          <summary>{{ t("plugin.details") }}</summary>
+          <dl class="property-list">
+            <dt>{{ t("plugin.runtime") }}</dt>
+            <dd><DesktopStatus :status="plugin.enabled ? plugin.runtimeState : 'disabled'" /></dd>
+            <dt>{{ t("plugin.manifestPath") }}</dt>
+            <dd><code>{{ plugin.manifestPath }}</code></dd>
+          </dl>
+        </details>
       </t-card>
       <t-card :title="t('plugin.contributedCommands')">
         <p class="muted">{{ t("plugin.contributedCommandsDescription") }}</p>
@@ -72,7 +89,7 @@ async function uninstall(id: string) {
         /></NuxtLink>
       </t-card>
     </template>
-    <t-card v-else :title="t('common.plugins')">
+    <t-card v-else>
       <t-empty v-if="!workspace.plugins.length" :description="t('navigation.noPluginsFound')" />
       <NuxtLink
         v-for="item in workspace.plugins"
@@ -85,7 +102,7 @@ async function uninstall(id: string) {
         ><DesktopStatus :status="item.enabled ? item.runtimeState : 'disabled'"
       /></NuxtLink>
     </t-card>
-    <t-card v-if="workspace.residues.length" :title="t('plugin.retainedData.title')">
+    <t-card v-if="!plugin && workspace.residues.length" :title="t('plugin.retainedData.title')">
       <p class="muted">{{ t("plugin.retainedData.description") }}</p>
       <div v-for="residue in workspace.residues" :key="residue.pluginId" class="result-row">
         <span
@@ -113,5 +130,19 @@ async function uninstall(id: string) {
         >
       </div>
     </t-card>
+    <t-dialog
+      v-model:visible="installOpen"
+      :header="t('plugin.install.title')"
+      :footer="false"
+      width="min(640px, calc(100vw - 32px))"
+      placement="center"
+      dialog-class-name="desktop-dialog install-dialog"
+      destroy-on-close
+      :close-btn="workspace.installState.status !== 'installing'"
+      :close-on-esc-keydown="workspace.installState.status !== 'installing'"
+      :close-on-overlay-click="false"
+    >
+      <PluginInstall @done="installOpen = false" />
+    </t-dialog>
   </div>
 </template>

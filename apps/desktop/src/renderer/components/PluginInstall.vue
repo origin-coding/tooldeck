@@ -6,26 +6,30 @@ import { useWorkspaceStore } from "@/renderer/stores/workspace";
 import { pluginPath } from "@/renderer/utils/session";
 
 const workspace = useWorkspaceStore();
-const router = useRouter();
+const emit = defineEmits<{ done: [] }>();
+const installedPluginId = ref<string>();
+const attemptStarted = ref(false);
 const { t } = useI18n();
 const dragActive = ref(false);
 const validationError = ref<string>();
 async function drop(event: DragEvent) {
   dragActive.value = false;
   if (workspace.blocked) return;
+  installedPluginId.value = undefined;
+  attemptStarted.value = false;
   const validation = validatePluginPackageDrop(event.dataTransfer?.files ?? []);
   if (!validation.valid) {
     validationError.value = t(`plugin.install.validation.${validation.reason}`);
     return;
   }
   validationError.value = undefined;
-  const pluginId = await workspace.install(validation.file);
-  if (pluginId) await router.push(pluginPath(pluginId));
+  attemptStarted.value = true;
+  installedPluginId.value = await workspace.install(validation.file);
 }
 </script>
 
 <template>
-  <t-card :title="t('plugin.install.title')">
+  <div class="plugin-install" @dragover.prevent @drop.prevent>
     <div
       class="drop-zone"
       :class="{ 'drag-active': dragActive, disabled: workspace.blocked }"
@@ -47,16 +51,40 @@ async function drop(event: DragEvent) {
         :text="t('plugin.install.installing', { packageName: workspace.installState.packageName })"
       />
       <t-alert
-        v-else-if="workspace.installState.status === 'success'"
+        v-else-if="attemptStarted && workspace.installState.status === 'success'"
         theme="success"
         :message="t('plugin.install.success', { packageName: workspace.installState.packageName })"
       />
       <t-alert
-        v-else-if="workspace.installState.status === 'error'"
+        v-else-if="attemptStarted && workspace.installState.status === 'error'"
         theme="error"
         :title="t('plugin.install.failed')"
         :message="workspace.installState.message"
       />
+      <t-alert
+        v-else-if="workspace.installState.status === 'refresh-failed'"
+        theme="warning"
+        :title="t('plugin.install.refreshFailed')"
+        :message="
+          workspace.installState.message + ' ' + t('plugin.install.refreshFailedDescription')
+        "
+      >
+        <template #operation>
+          <t-button
+            variant="text"
+            :loading="workspace.loading"
+            :disabled="workspace.busy"
+            @click="workspace.rescan()"
+          >
+            {{ t("common.rescan") }}
+          </t-button>
+        </template>
+      </t-alert>
     </div>
-  </t-card>
+    <div v-if="installedPluginId" class="install-actions">
+      <NuxtLink :to="pluginPath(installedPluginId)" @click="emit('done')">{{
+        t("plugin.install.viewPlugin")
+      }}</NuxtLink>
+    </div>
+  </div>
 </template>

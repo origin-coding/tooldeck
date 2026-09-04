@@ -21,15 +21,6 @@ const entries = computed(() =>
         path: commandPath(command.id),
       })),
 );
-const heading = computed(() =>
-  route.path.startsWith("/settings")
-    ? t("common.settings")
-    : route.path.startsWith("/history")
-      ? t("history.title")
-      : route.path.startsWith("/commands")
-        ? t("common.commands")
-        : t("common.plugins"),
-);
 
 function preventFileNavigation(event: DragEvent) {
   if (Array.from(event.dataTransfer?.types ?? []).includes("Files")) event.preventDefault();
@@ -44,80 +35,92 @@ function preventFileNavigation(event: DragEvent) {
     @drop="preventFileNavigation"
   >
     <aside class="sidebar">
-      <NuxtLink to="/" class="brand" aria-label="Tooldeck"
-        ><span class="brand-mark">T</span
-        ><strong v-if="!workspace.collapsed">Tooldeck</strong></NuxtLink
-      >
-      <t-button
-        block
-        variant="outline"
-        :aria-label="t('navigation.search')"
-        @click="searchOpen = true"
-      >
-        <template #icon><search-icon /></template
-        ><span v-if="!workspace.collapsed">{{ t("navigation.search") }}</span>
-      </t-button>
+      <div class="sidebar-header">
+        <t-tooltip
+          :content="t(workspace.collapsed ? 'navigation.expandSidebar' : 'navigation.collapseSidebar')"
+          placement="right"
+        >
+          <t-button
+            variant="text"
+            shape="square"
+            :disabled="workspace.blocked"
+            :aria-label="
+              t(workspace.collapsed ? 'navigation.expandSidebar' : 'navigation.collapseSidebar')
+            "
+            :aria-expanded="!workspace.collapsed"
+            aria-controls="desktop-navigation"
+            @click="workspace.setPreference('desktop', 'sidebar.collapsed', !workspace.collapsed)"
+          >
+            <template #icon><view-list-icon /></template>
+          </t-button>
+        </t-tooltip>
+        <NuxtLink v-show="!workspace.collapsed" to="/" class="brand">Tooldeck</NuxtLink>
+      </div>
+      <div class="sidebar-search">
+        <t-tooltip
+          :content="t('navigation.search')"
+          :disabled="!workspace.collapsed"
+          placement="right"
+        >
+          <t-button
+            block
+            variant="outline"
+            :aria-label="t('navigation.search')"
+            aria-haspopup="dialog"
+            @click="searchOpen = true"
+          >
+            <template #icon><search-icon /></template>
+            <span v-show="!workspace.collapsed">{{ t("navigation.search") }}</span>
+          </t-button>
+        </t-tooltip>
+      </div>
       <nav
+        id="desktop-navigation"
         class="catalog-nav"
         :aria-label="
           workspace.navigationMode === 'provider-first' ? t('common.plugins') : t('common.commands')
         "
       >
-        <NuxtLink
-          v-for="entry in entries"
-          :key="entry.id"
-          :to="entry.path"
-          :title="entry.title"
-          class="nav-link"
-        >
-          <extension-icon v-if="workspace.navigationMode === 'provider-first'" /><tools-icon
-            v-else
-          />
-          <span v-if="!workspace.collapsed">{{ entry.title }}</span>
-        </NuxtLink>
-        <p v-if="entries.length === 0 && !workspace.collapsed" class="muted">
-          {{
-            t(
-              workspace.navigationMode === "provider-first"
-                ? "navigation.noPluginsFound"
-                : "navigation.noCommandsFound",
-            )
-          }}
-        </p>
+        <t-menu :value="route.path" :collapsed="workspace.collapsed" :width="[232, 64]">
+          <t-menu-item
+            v-for="entry in entries"
+            :key="entry.path"
+            :value="entry.path"
+            :to="entry.path"
+            router-link
+          >
+            <template #icon>
+              <extension-icon v-if="workspace.navigationMode === 'provider-first'" />
+              <tools-icon v-else />
+            </template>
+            {{ entry.title }}
+          </t-menu-item>
+          <li v-if="!entries.length && !workspace.collapsed" class="catalog-empty muted">
+            {{
+              t(
+                workspace.navigationMode === "provider-first"
+                  ? "navigation.noPluginsFound"
+                  : "navigation.noCommandsFound",
+              )
+            }}
+          </li>
+        </t-menu>
       </nav>
-      <nav class="footer-nav">
-        <NuxtLink to="/plugins" class="nav-link" :title="t('common.plugins')"
-          ><extension-icon /><span v-if="!workspace.collapsed">{{
-            t("common.plugins")
-          }}</span></NuxtLink
-        >
-        <NuxtLink to="/history" class="nav-link" :title="t('history.title')"
-          ><history-icon /><span v-if="!workspace.collapsed">{{
-            t("history.title")
-          }}</span></NuxtLink
-        >
-        <NuxtLink to="/settings" class="nav-link" :title="t('common.settings')"
-          ><setting-icon /><span v-if="!workspace.collapsed">{{
-            t("common.settings")
-          }}</span></NuxtLink
-        >
-        <t-button
-          variant="text"
-          :disabled="workspace.blocked"
-          :aria-label="t('settings.sidebarCollapsed.label')"
-          @click="workspace.setPreference('desktop', 'sidebar.collapsed', !workspace.collapsed)"
-        >
-          <template #icon
-            ><menu-fold-icon v-if="!workspace.collapsed" /><menu-unfold-icon v-else
-          /></template>
-        </t-button>
+      <nav class="footer-nav" :aria-label="t('navigation.management')">
+        <t-menu :value="route.path" :collapsed="workspace.collapsed" :width="[232, 64]">
+          <t-menu-item value="/plugins" to="/plugins" router-link>
+            <template #icon><extension-icon /></template>{{ t("common.plugins") }}
+          </t-menu-item>
+          <t-menu-item value="/history" to="/history" router-link>
+            <template #icon><history-icon /></template>{{ t("history.title") }}
+          </t-menu-item>
+          <t-menu-item value="/settings" to="/settings" router-link>
+            <template #icon><setting-icon /></template>{{ t("common.settings") }}
+          </t-menu-item>
+        </t-menu>
       </nav>
     </aside>
     <div class="desktop-main">
-      <header class="topbar">
-        <h1>{{ heading }}</h1>
-        <t-tag variant="light">Tooldeck</t-tag>
-      </header>
       <main class="workspace stack">
         <t-alert
           v-if="workspace.error"

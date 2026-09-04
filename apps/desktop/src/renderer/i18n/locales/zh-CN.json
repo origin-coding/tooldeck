@@ -30,7 +30,10 @@
   "navigation": {
     "search": "搜索",
     "noCommandsFound": "未找到命令",
-    "noPluginsFound": "未找到插件"
+    "noPluginsFound": "未找到插件",
+    "expandSidebar": "展开侧栏",
+    "collapseSidebar": "折叠侧栏",
+    "management": "管理"
   },
   "page": {
     "commandHistory": "命令历史",
@@ -62,17 +65,18 @@
     },
     "outputState": {
       "commandFailed": "命令失败",
-      "noOutputYet": "暂无输出",
-      "emptyOutput": "空输出",
+      "noOutputYet": "等待运行",
+      "emptyOutput": "执行完成",
       "commandDidNotReturnOutput": "命令没有返回输出。",
-      "runCommandToSeeOutput": "运行命令后可查看输出。",
+      "runCommandToSeeOutput": "运行命令后，结果会显示在这里。",
       "errorWithoutOutput": "命令返回了错误但没有输出。",
-      "completedWithoutOutput": "命令已完成但没有输出。",
+      "completedWithoutOutput": "命令执行成功，无输出内容。",
       "errorResult": "命令返回了错误结果。",
       "text": "文本",
       "json": "JSON",
       "properties": "属性",
-      "code": "代码"
+      "code": "代码",
+      "running": "正在运行命令"
     }
   },
   "plugin": {
@@ -116,7 +120,7 @@
       "title": "安装本地插件",
       "dropAriaLabel": "拖放 Tooldeck 插件包进行安装",
       "dropTitle": "拖放一个 .tdplugin 插件包到这里",
-      "dropDescription": "只接受本地 .tdplugin 插件包；点击不会打开文件选择器。",
+      "dropDescription": "支持本地 .tdplugin 插件包，一次拖放一个文件。",
       "installing": "正在安装 {packageName}",
       "success": "已安装 {packageName}",
       "failed": "插件安装失败",
@@ -126,8 +130,14 @@
         "empty": "请拖放一个 .tdplugin 插件包。",
         "multiple": "一次只能安装一个 .tdplugin 插件包。",
         "invalid-extension": "只能安装以 .tdplugin 结尾的文件。"
-      }
-    }
+      },
+      "viewPlugin": "查看插件"
+    },
+    "backToList": "返回插件列表",
+    "state": "状态",
+    "enabled": "已启用",
+    "details": "详细信息",
+    "manifestPath": "清单路径"
   },
   "search": {
     "title": "搜索",

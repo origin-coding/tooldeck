@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CommandResult, LocalizedString } from "@tooldeck/protocol";
-defineProps<{ result?: CommandResult; error?: string }>();
+defineProps<{ result?: CommandResult; error?: string; running?: boolean }>();
 const { t } = useI18n();
 function label(value: LocalizedString) {
   return typeof value === "string" ? value : value.default;
@@ -8,54 +8,56 @@ function label(value: LocalizedString) {
 </script>
 
 <template>
-  <div class="stack command-output">
-    <t-alert v-if="error" theme="error" :title="t('command.runFailed')" :message="error" />
-    <t-alert
-      v-if="result?.status === 'error'"
-      theme="error"
-      :title="t('command.outputState.commandFailed')"
-      :message="result.error?.message ?? t('command.outputState.errorResult')"
-    />
-    <t-empty
-      v-if="!result"
-      :description="
-        t(
-          error
-            ? 'command.outputState.commandDidNotReturnOutput'
-            : 'command.outputState.runCommandToSeeOutput',
-        )
-      "
-    />
-    <t-empty
-      v-else-if="!result.blocks.length"
-      :description="
-        t(
-          result.status === 'error'
-            ? 'command.outputState.errorWithoutOutput'
-            : 'command.outputState.completedWithoutOutput',
-        )
-      "
-    />
-    <section v-for="(block, index) in result?.blocks ?? []" :key="index" class="content-block">
-      <header>
-        <t-tag size="small">{{
-          block.type === "code"
-            ? (block.language ?? t("command.outputState.code"))
-            : t(`command.outputState.${block.type}`)
-        }}</t-tag>
-      </header>
-      <dl v-if="block.type === 'properties'" class="property-list">
-        <template v-for="(item, itemIndex) in block.items" :key="itemIndex">
-          <dt>{{ label(item.label) }}</dt>
-          <dd>
-            {{ item.value === null ? "null" : String(item.value) }}
-            <small v-if="item.note" class="muted">{{ label(item.note) }}</small>
-          </dd>
-        </template>
-      </dl>
-      <pre v-else :class="{ 'plain-text': block.type === 'text' }">{{
-        block.type === "json" ? JSON.stringify(block.value, null, 2) : block.text
-      }}</pre>
-    </section>
+  <div
+    class="command-output"
+    :class="{
+      'output-centered':
+        running ||
+        (!result && !error) ||
+        (result?.status === 'success' && !result.blocks.length && !error),
+    }"
+    :aria-busy="running"
+  >
+    <t-loading v-if="running" :text="t('command.outputState.running')" />
+    <template v-else>
+      <t-alert v-if="error" theme="error" :title="t('command.runFailed')" :message="error" />
+      <t-alert
+        v-else-if="result?.status === 'error'"
+        theme="error"
+        :title="t('command.outputState.commandFailed')"
+        :message="result.error?.message ?? t('command.outputState.errorResult')"
+      />
+      <t-empty
+        v-if="!result && !error"
+        :title="t('command.outputState.noOutputYet')"
+        :description="t('command.outputState.runCommandToSeeOutput')"
+      />
+      <t-empty
+        v-else-if="result?.status === 'success' && !result.blocks.length && !error"
+        :title="t('command.outputState.emptyOutput')"
+        :description="t('command.outputState.completedWithoutOutput')"
+      />
+      <section v-for="(block, index) in result?.blocks ?? []" :key="index" class="content-block">
+        <header>
+          <t-tag size="small">{{
+            block.type === "code"
+              ? (block.language ?? t("command.outputState.code"))
+              : t(`command.outputState.${block.type}`)
+          }}</t-tag>
+        </header>
+        <dl v-if="block.type === 'properties'" class="property-list">
+          <template v-for="(item, itemIndex) in block.items" :key="itemIndex">
+            <dt>{{ label(item.label) }}</dt>
+            <dd>
+              {{ item.value === null ? "null" : String(item.value) }}
+              <small v-if="item.note" class="muted">{{ label(item.note) }}</small>
+            </dd>
+          </template>
+        </dl>
+        <pre v-else :class="{ 'plain-text': block.type === 'text' }">{{
+          block.type === "json" ? JSON.stringify(block.value, null, 2) : block.text
+        }}</pre>
+      </section>
+    </template>
   </div>
 </template>

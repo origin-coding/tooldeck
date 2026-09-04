@@ -6,6 +6,7 @@ import { useWorkspaceStore } from "@/renderer/stores/workspace";
 import { pluginPath } from "@/renderer/utils/session";
 
 const route = useRoute();
+const router = useRouter();
 const workspace = useWorkspaceStore();
 const { t } = useI18n();
 const command = computed(() => workspace.commands.find((item) => item.id === route.params.id));
@@ -18,28 +19,30 @@ const plugin = computed(() =>
 <template>
   <div class="stack">
     <template v-if="command">
-      <t-card :title="command.title">
-        <template #actions
-          ><div class="actions">
-            <NuxtLink :to="{ path: '/history', query: { command: command.id } }">{{
-              t("command.history")
-            }}</NuxtLink
-            ><t-button
-              :disabled="workspace.blocked || !command.pluginEnabled"
-              :loading="workspace.runningCommandId === command.id"
-              @click="workspace.run(command.id)"
-              ><template #icon><play-icon /></template>{{ t("common.run") }}</t-button
-            >
-          </div></template
-        >
-        <p v-if="command.description">{{ command.description }}</p>
-        <NuxtLink :to="pluginPath(command.pluginId)">{{
-          t("command.sourceLine", {
-            pluginName: plugin?.name ?? command.pluginId,
-            commandTitle: command.title,
-          })
-        }}</NuxtLink>
-      </t-card>
+      <header class="page-toolbar">
+        <div class="page-heading">
+          <h1>{{ command.title }}</h1>
+          <p v-if="command.description" class="muted">{{ command.description }}</p>
+          <NuxtLink :to="pluginPath(command.pluginId)">{{
+            plugin?.name ?? command.pluginId
+          }}</NuxtLink>
+        </div>
+        <div class="actions">
+          <t-button
+            variant="text"
+            @click="router.push({ path: '/history', query: { command: command.id } })"
+          >
+            {{ t("command.history") }}
+          </t-button>
+          <t-button
+            :disabled="workspace.blocked || !command.pluginEnabled"
+            :loading="workspace.runningCommandId === command.id"
+            @click="workspace.run(command.id)"
+          >
+            <template #icon><play-icon /></template>{{ t("common.run") }}
+          </t-button>
+        </div>
+      </header>
       <t-alert
         v-if="!command.pluginEnabled"
         theme="warning"
@@ -49,9 +52,13 @@ const plugin = computed(() =>
         "
       />
       <div class="command-panels" :class="{ split: command['x-ui']?.layout === 'split' }">
-        <t-card :title="t('command.input')">
-          <div class="stack">
-            <t-empty v-if="!fields.length" :description="t('command.form.noInputRequired')" />
+        <t-card :title="t('command.input')" class="command-card">
+          <div class="stack input-form" :class="{ 'input-empty': !fields.length }">
+            <t-empty
+              v-if="!fields.length"
+              :title="t('command.form.noInputRequired')"
+              description=""
+            />
             <CommandField
               v-for="field in fields"
               :key="command.id + ':' + field.key"
@@ -62,13 +69,16 @@ const plugin = computed(() =>
             />
           </div>
         </t-card>
-        <t-card :title="t('command.output')">
+        <t-card :title="t('command.output')" class="command-card output-card">
           <template #actions
             ><DesktopStatus
-              v-if="workspace.results[command.id]"
+              v-if="
+                workspace.results[command.id] && workspace.runningCommandId !== command.id
+              "
               :status="workspace.results[command.id]!.status"
           /></template>
           <CommandResult
+            :running="workspace.runningCommandId === command.id"
             :result="workspace.results[command.id]"
             :error="workspace.runErrors[command.id]"
           />

@@ -68,8 +68,15 @@ function select(path: string) {
 </script>
 
 <template>
-  <t-dialog v-model:visible="visible" :header="t('search.title')" :footer="false" width="720px">
-    <div class="stack">
+  <t-dialog
+    v-model:visible="visible"
+    :header="t('search.title')"
+    :footer="false"
+    width="min(720px, calc(100vw - 32px))"
+    placement="center"
+    dialog-class-name="desktop-dialog search-dialog"
+  >
+    <div class="search-content">
       <t-input
         v-model="query"
         autofocus
