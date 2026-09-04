@@ -18,6 +18,10 @@ const buildTargets = [
   ["vite", "build", "--configLoader", "runner", "--config", "vite.preload.config.ts"],
 ];
 
+// Vite resolves the root tsconfig references before loading its config.
+// Generate Nuxt's referenced configs first, including on a clean checkout.
+await run("nuxt", ["prepare"]);
+
 for (const [command, ...args] of buildTargets) {
   await run(command, args);
 }

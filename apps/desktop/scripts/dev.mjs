@@ -52,6 +52,20 @@ try {
     throw new Error(`builtin-plugins exited with ${prepared.signal ?? prepared.code}`);
   }
 
+  // Main/preload config loading must not race Nuxt's tsconfig generation.
+  log("dev", "Preparing Nuxt types...");
+  const nuxtPreparation = supervisor.start(
+    "nuxt-prepare",
+    process.execPath,
+    [nuxtCliPath, "prepare"],
+    { required: false },
+  );
+  const nuxtPrepared = await nuxtPreparation.completed;
+  supervisor.signal.throwIfAborted();
+  if (nuxtPrepared.code !== 0) {
+    throw new Error(`nuxt prepare exited with ${nuxtPrepared.signal ?? nuxtPrepared.code}`);
+  }
+
   // A previous session's bundles must not satisfy this session's readiness.
   for (const bundle of bundles) {
     await unlink(bundle).catch((error) => {
