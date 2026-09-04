@@ -1,5 +1,14 @@
 # @tooldeck/integration-tests
 
+## 1.4.0
+
+### Patch Changes
+
+- Updated dependencies
+  - @tooldeck/protocol@1.4.0
+  - @tooldeck/runtime-node@1.4.0
+  - @tooldeck/hello-world@1.4.0
+
 ## 1.1.2
 
 ### Patch Changes
